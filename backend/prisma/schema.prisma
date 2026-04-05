@@ -1,0 +1,210 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  EMPLOYEE
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+}
+
+enum MovementStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+// ─────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String
+  username     String   @unique
+  phone        String
+  email        String?  @unique
+  passwordHash String
+  role         Role     @default(EMPLOYEE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // relations
+  ownedBusinesses Business[]      @relation("BusinessOwner")
+  businessUsers   BusinessUser[]
+  transactions    Transaction[]
+  stockMovements  StockMovement[]
+}
+
+// ─────────────────────────────────────────
+// BUSINESSES
+// ─────────────────────────────────────────
+
+model Business {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String?
+  country   String
+  location  String
+  currency  String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  owner         User           @relation("BusinessOwner", fields: [ownerId], references: [id])
+  businessUsers BusinessUser[]
+  warehouses    Warehouse[]
+  products      Product[]
+  transactions  Transaction[]
+}
+
+// ─────────────────────────────────────────
+// BUSINESS USERS
+// ─────────────────────────────────────────
+
+model BusinessUser {
+  id         String   @id @default(uuid())
+  businessId String
+  userId     String
+  role       Role
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+}
+
+// ─────────────────────────────────────────
+// WAREHOUSES
+// ─────────────────────────────────────────
+
+model Warehouse {
+  id         String   @id @default(uuid())
+  businessId String
+  name       String
+  location   String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  stock         WarehouseStock[]
+  transactions  Transaction[]
+  movementsFrom StockMovement[] @relation("MovementFrom")
+  movementsTo   StockMovement[] @relation("MovementTo")
+}
+
+// ─────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────
+
+model Product {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  unit        String
+  price       Float    @default(0)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  stock            WarehouseStock[]
+  transactionItems TransactionItem[]
+  stockMovements   StockMovement[]
+}
+
+// ─────────────────────────────────────────
+// WAREHOUSE STOCK
+// ─────────────────────────────────────────
+
+model WarehouseStock {
+  id                String   @id @default(uuid())
+  warehouseId       String
+  productId         String
+  quantity          Float    @default(0)
+  lowStockThreshold Float    @default(10)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, productId])
+}
+
+// ─────────────────────────────────────────
+// TRANSACTIONS
+// ─────────────────────────────────────────
+
+model Transaction {
+  id            String        @id @default(uuid())
+  businessId    String
+  warehouseId   String
+  performedById String
+  paymentMethod PaymentMethod
+  totalAmount   Float
+  customerName  String        @default("Casual Customer")
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  business    Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse         @relation(fields: [warehouseId], references: [id])
+  performedBy User              @relation(fields: [performedById], references: [id])
+  items       TransactionItem[]
+}
+
+// ─────────────────────────────────────────
+// TRANSACTION ITEMS
+// ─────────────────────────────────────────
+
+model TransactionItem {
+  id            String @id @default(uuid())
+  transactionId String
+  productId     String
+  quantitySold  Float
+  unitPrice     Float
+  subtotal      Float
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id])
+}
+
+// ─────────────────────────────────────────
+// STOCK MOVEMENTS
+// ─────────────────────────────────────────
+
+model StockMovement {
+  id              String         @id @default(uuid())
+  businessId      String
+  fromWarehouseId String
+  toWarehouseId   String
+  productId       String
+  quantity        Float
+  status          MovementStatus @default(COMPLETED)
+  movedById       String
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  movedBy       User      @relation(fields: [movedById], references: [id])
+  fromWarehouse Warehouse @relation("MovementFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouse   Warehouse @relation("MovementTo", fields: [toWarehouseId], references: [id])
+  product       Product   @relation(fields: [productId], references: [id])
+}
