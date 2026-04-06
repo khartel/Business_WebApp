@@ -5,6 +5,9 @@ import { useAuth } from "./context/AuthContext";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 
+//Platform Admin Pages
+import PlatformAdmin from "./pages/PlatformAdmin";
+
 // Layout
 import AppLayout from "./components/layout/AppLayout";
 
@@ -157,7 +160,7 @@ const AppRoutes = () => {
           }
         />
       </Route>
-      
+      <Route path="/super-admin" element={<PlatformAdmin />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -13,6 +13,7 @@ const productRoutes = require("./routes/product.routes");
 const stockRoutes = require("./routes/stock.routes");
 const transactionRoutes = require("./routes/transaction.routes");
 const reportRoutes = require("./routes/report.routes");
+const platformRoutes = require("./routes/superadmin.routes");
 
 const app = express();
 
@@ -32,7 +33,21 @@ app.use("/api", limiter);
 // GENERAL MIDDLEWARE
 // ─────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://192.168.0.101:5173",
+    ];
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin}`));
+    }
+  },
   credentials: true,
 }));
 
@@ -51,18 +66,25 @@ app.use("/api/businesses/:businessId/products", productRoutes);
 app.use("/api/businesses/:businessId/stock", stockRoutes);
 app.use("/api/businesses/:businessId/transactions", transactionRoutes);
 app.use("/api/businesses/:businessId/reports", reportRoutes);
+app.use("/api/platform", platformRoutes);
 
-// Health check
+// ─────────────────────────────────────────
+// HEALTH CHECK
+// ─────────────────────────────────────────
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: "Server is running" });
 });
 
-// 404 handler
+// ─────────────────────────────────────────
+// 404 HANDLER
+// ─────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
-// Global error handler
+// ─────────────────────────────────────────
+// GLOBAL ERROR HANDLER
+// ─────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ success: false, message: "Internal server error" });

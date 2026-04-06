@@ -7,4 +7,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    host: '0.0.0.0',  // ← Listen on all network interfaces
+    port: 5173,        // ← Your frontend port (default vite port)
+  },
 })
