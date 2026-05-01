@@ -18,6 +18,14 @@ const platformRoutes = require("./routes/superadmin.routes");
 const app = express();
 
 // ─────────────────────────────────────────
+// REQUEST LOGGER
+// ─────────────────────────────────────────
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// ─────────────────────────────────────────
 // SECURITY MIDDLEWARE
 // ─────────────────────────────────────────
 app.use(helmet());

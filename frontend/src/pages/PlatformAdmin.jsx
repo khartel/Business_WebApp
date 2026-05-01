@@ -125,7 +125,11 @@ export default function PlatformAdmin() {
   const [expandedId, setExpandedId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const isUnlocked = !!submittedKey;
+  // Handle wrong key
+  const isWrongKey = isError && (error?.response?.status === 403 || error?.response?.status === 401);
+
+  // Use a temporary variable to check if unlocked
+  const isUnlocked = !!submittedKey && !isWrongKey;
 
   // ─────────────────────────────────────────
   // FETCH SUPERADMINS
@@ -133,16 +137,11 @@ export default function PlatformAdmin() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["platform-superadmins", submittedKey],
     queryFn: () => platformService.getAll(submittedKey),
-    enabled: isUnlocked,
+    enabled: !!submittedKey,
     retry: false,
   });
 
   const superAdmins = data?.data || [];
-
-  // Handle wrong key
-  const wrongKey = isError &&
-    error?.response?.status === 403 ||
-    error?.response?.status === 401;
 
   // ─────────────────────────────────────────
   // DELETE MUTATION
@@ -243,7 +242,7 @@ export default function PlatformAdmin() {
               {keyError && (
                 <p className="text-red-400 text-xs mt-1">{keyError}</p>
               )}
-              {wrongKey && (
+              {isWrongKey && (
                 <p className="text-red-400 text-xs mt-1">
                   Invalid master key. Access denied.
                 </p>

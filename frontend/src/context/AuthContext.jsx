@@ -23,6 +23,13 @@ export const AuthProvider = ({ children }) => {
     const { token, user } = res.data;
 
     localStorage.setItem("token", token);
+
+    // Set initial active business
+    const businesses = getUserBusinesses(user);
+    if (businesses.length > 0) {
+      localStorage.setItem("activeBusiness", JSON.stringify(businesses[0]));
+    }
+
     localStorage.setItem("user", JSON.stringify(user));
     setUser(user);
 
@@ -49,12 +56,6 @@ export const AuthProvider = ({ children }) => {
   // Get businesses based on role
   const getUserBusinesses = (userData) => {
     if (!userData) return [];
-
-    if (userData.role === "SUPERADMIN") {
-      return userData.ownedBusinesses || [];
-    }
-
-    // For Admin and Employee
     return userData.businesses || [];
   };
 
