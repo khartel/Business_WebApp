@@ -48,13 +48,17 @@ export default function Login() {
     setApiError("");
 
     try {
-      await login({
+      const user = await login({
         username: form.username,
         password: form.password,
         rememberMe: form.rememberMe,
       });
 
-      navigate("/dashboard");
+      if (user.mustChangePassword) {
+        navigate("/change-password");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       setApiError(
         error.response?.data?.message || "Invalid username or password"

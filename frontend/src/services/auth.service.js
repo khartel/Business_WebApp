@@ -20,4 +20,9 @@ export const authService = {
     const res = await api.get("/auth/me");
     return res.data;
   },
+
+  changePassword: async (data) => {
+    const res = await api.post("/auth/change-password", data);
+    return res.data;
+  },
 };

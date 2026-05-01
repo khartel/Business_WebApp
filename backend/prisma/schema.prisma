@@ -38,8 +38,9 @@ model User {
   username     String   @unique
   phone        String
   email        String?  @unique
-  passwordHash String
-  role         Role     @default(EMPLOYEE)
+  passwordHash       String
+  mustChangePassword Boolean  @default(false)
+  role               Role     @default(EMPLOYEE)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -165,10 +166,10 @@ model Transaction {
   notes         String?
   createdAt     DateTime      @default(now())
 
-  business    Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  warehouse   Warehouse         @relation(fields: [warehouseId], references: [id])
-  performedBy User              @relation(fields: [performedById], references: [id])
-  items       TransactionItem[]
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  performedBy   User            @relation(fields: [performedById], references: [id], onDelete: Cascade)
+  items         TransactionItem[]
 }
 
 // ─────────────────────────────────────────
@@ -184,7 +185,7 @@ model TransactionItem {
   subtotal      Float
 
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  product     Product     @relation(fields: [productId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 // ─────────────────────────────────────────
@@ -203,8 +204,8 @@ model StockMovement {
   notes           String?
   createdAt       DateTime       @default(now())
 
-  movedBy       User      @relation(fields: [movedById], references: [id])
-  fromWarehouse Warehouse @relation("MovementFrom", fields: [fromWarehouseId], references: [id])
-  toWarehouse   Warehouse @relation("MovementTo", fields: [toWarehouseId], references: [id])
-  product       Product   @relation(fields: [productId], references: [id])
+  movedBy       User      @relation(fields: [movedById], references: [id], onDelete: Cascade)
+  fromWarehouse Warehouse @relation("MovementFrom", fields: [fromWarehouseId], references: [id], onDelete: Cascade)
+  toWarehouse   Warehouse @relation("MovementTo", fields: [toWarehouseId], references: [id], onDelete: Cascade)
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

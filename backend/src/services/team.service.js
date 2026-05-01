@@ -66,8 +66,9 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
     }
   }
 
-  // Create new user with default password (username + 123)
-  const defaultPassword = `${username}123`;
+  // Create new user with a more secure default password pattern
+  // In a production app, you should trigger a password reset email here
+  const defaultPassword = `Biz@${username}${phone.slice(-4)}`;
   const passwordHash = await bcrypt.hash(defaultPassword, 12);
 
   // Create user and add to business in one transaction
@@ -81,6 +82,7 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
         email: cleanEmail,  // null if not provided
         passwordHash,
         role,
+        mustChangePassword: true,
       },
     });
 

@@ -1,4 +1,4 @@
-const { registerSuperAdmin, loginUser, getMe } = require("../services/auth.service");
+const { registerSuperAdmin, loginUser, getMe, updatePassword } = require("../services/auth.service");
 const { sendSuccess, sendError } = require("../utils/response.utils");
 
 /**
@@ -117,4 +117,31 @@ const me = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, me };
+/**
+ * POST /api/auth/change-password
+ */
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return sendError(res, {
+        message: "Current and new passwords are required",
+        statusCode: 400,
+      });
+    }
+
+    await updatePassword(req.user.id, currentPassword, newPassword);
+
+    return sendSuccess(res, {
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    return sendError(res, {
+      message: error.message || "Could not update password",
+      statusCode: 400,
+    });
+  }
+};
+
+module.exports = { register, login, logout, me, changePassword };

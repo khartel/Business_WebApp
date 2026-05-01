@@ -188,8 +188,39 @@ const getMe = async (userId) => {
   return user;
 };
 
+/**
+ * Update user password
+ */
+const updatePassword = async (userId, currentPassword, newPassword) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!isPasswordValid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordHash,
+      mustChangePassword: false,
+    },
+  });
+
+  return true;
+};
+
 module.exports = {
   registerSuperAdmin,
   loginUser,
   getMe,
+  updatePassword,
 };
