@@ -49,17 +49,23 @@ app.use("/api/auth/login", loginLimiter);
 // ─────────────────────────────────────────
 // GENERAL MIDDLEWARE
 // ─────────────────────────────────────────
+// CLIENT_URL can be a single origin or a comma-separated list (e.g. for
+// staging + production). In development, any localhost/127.0.0.1 port is
+// also allowed so the frontend dev server can bind to a fallback port
+// (Vite auto-increments) without breaking API calls.
+const configuredOrigins = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const isLocalDevOrigin = (origin) =>
+  process.env.NODE_ENV !== "production" && /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "http://192.168.0.101:5173",
-    ];
-
-    if (allowedOrigins.includes(origin)) {
+    if (configuredOrigins.includes(origin) || isLocalDevOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`CORS blocked: ${origin}`));
