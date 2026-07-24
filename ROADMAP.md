@@ -1,0 +1,223 @@
+# D-Inventory — Project Roadmap & Shared Memory
+
+> **If you are an AI assistant picking up this project in a new conversation, read this entire file before doing anything else.** It exists so no session has to start from zero. The person you're working with (Victor) may not remember every detail either — this file is the shared source of truth for both of you.
+
+> **Update this file after every implementation, every bug fix, every completed feature — before ending your turn.** Move finished items from "Next Up" into "Completed Work," add new findings to "Known Issues" as you discover them, and keep the status summary accurate. Treat this as part of the deliverable, not an afterthought. A stale roadmap is worse than no roadmap — it actively misleads the next session.
+
+---
+
+## 1. What this project is
+
+A personal project being built for the owner's father, so he can run inventory + sales tracking for **multiple small businesses** from one login, without needing to be technical himself. Anyone he authorizes (an "employee") should be able to record a sale and have stock/reporting update automatically.
+
+This is **not** a public SaaS product launching to strangers. It's a real tool for a real small business owner and a small number of staff per business. Design decisions should be right-sized for that: correctness, security of one business's data from another, and a UI a non-technical person can use confidently — not premature microservices, Kubernetes, or multi-region scaling.
+
+Core domain concepts:
+- A **SuperAdmin** (the business owner, e.g. the dad) owns one or more **Businesses**.
+- Each Business has **Warehouses** (stock locations), **Products**, **Team members** (ADMIN/EMPLOYEE), **Transactions** (sales), and **Stock Movements** (transfers between warehouses).
+- Sales are recorded against the business's **primary warehouse**, decrementing stock automatically.
+- Reporting (daily/weekly/monthly, by employee, by product, stock alerts) exists so the owner can see what's happening without being on-site.
+- A separate **Platform Admin** surface (master-key protected) lets the developer manage/delete SuperAdmin accounts directly — an internal ops tool, not a customer-facing feature.
+
+## 2. Current status (as of 2026-07-24)
+
+- **Backend**: A working Node.js/Express + Prisma (Postgres) API exists under `backend/`. It is functional but was hand-rolled without production hardening — see Known Issues below.
+- **Frontend**: Was deleted entirely (visible as staged deletions in `git status`, not yet committed) because it looked AI-generated and didn't match the visual quality wanted. There is currently **no frontend in the repo**. It will be rebuilt from scratch in React, using a dashboard screenshot (dark sidebar, card-based KPIs, tables) as the visual reference point, aiming for a modern, professional look rather than a generic AI-templated one.
+- No tests, no CI/CD, no Docker, no deployed environment yet exist.
+
+## 3. Backend architecture (as analyzed 2026-07-24)
+
+**Stack**: Express 5, Prisma 7 (`@prisma/adapter-pg` driver adapter, not the default Prisma engine), PostgreSQL, JWT auth (`jsonwebtoken`), `bcryptjs`, `helmet`, `express-rate-limit`, `zod` (installed but **not actually used anywhere** — dead dependency), `socket.io` (installed but **not wired up anywhere** — dead dependency, no realtime features exist yet), `date-fns` for report date math.
+
+**Structure**: classic layered Express app — `routes/` → `controllers/` (HTTP glue, validation-lite) → `services/` (business logic + Prisma calls) → `utils/`. No repository layer beyond Prisma itself; no DI container; this is fine at this scale.
+
+**Data model** (`backend/prisma/schema.prisma`): `User` (global identity, `Role` enum SUPERADMIN/ADMIN/EMPLOYEE) → `Business` (owned by a User) → `BusinessUser` (join table, per-business role — a user's role can differ per business) → `Warehouse` → `WarehouseStock` (per warehouse+product quantity) → `Product` → `Transaction`/`TransactionItem` (sales) → `StockMovement` (warehouse-to-warehouse transfers). Reasonable normalization; UUID PKs; sensible cascade deletes; a business's currency is auto-derived from its country via a static country→currency map (`utils/currencies.js`).
+
+**Auth flow**: username/password login → bcrypt compare → JWT (24h, or 30d with "remember me") signed with `JWT_SECRET`, returned both as a JSON field and as an httpOnly cookie. `authenticate` middleware reads `Authorization: Bearer` or the cookie. `authorize(...roles)` middleware checks the user's **global** `role` claim from the JWT. New team members get a deterministic default password (`Biz@{username}{last4ofphone}`) and `mustChangePassword: true`, forcing a change on first login.
+
+**Platform admin**: a separate `/api/platform/*` surface gated by a static `X-Master-Key` header (`masterkey.middleware.js`), used to list/delete SuperAdmin accounts. This is a developer/ops backdoor, not part of the customer-facing product.
+
+## 4. Known issues (ranked by severity)
+
+### 🔴 Critical — fix before this goes anywhere near real use with more than one business
+1. **Cross-business data access (IDOR) — the big one.** `role.middleware.js` defines a `belongsToBusiness` middleware that checks whether the authenticated user actually belongs to the `:businessId` in the URL — **but it is never imported or applied in any route file** (`grep` confirms zero usages outside its own definition). Every business-scoped route (`warehouses`, `team`, `products`, `stock`, `transactions`, `reports`) only checks the user's *global role* via `authorize()`, never that they belong to *this specific business*. Concretely: an ADMIN or EMPLOYEE authenticated for Business A can call `GET /api/businesses/<Business-B-id>/warehouses` (or team, products, transactions, reports) and read Business B's data, because the controller/service just does `where: { businessId }` with no ownership check. SUPERADMIN routes for `getOne`/`update` on `/api/businesses/:id` do correctly check `ownerId`, but that check is bypassed entirely for everything nested under `/businesses/:businessId/...`. **This is the top priority fix** — wire `belongsToBusiness` into every nested router (or bake the check into a shared helper) before onboarding a second business/employee.
+2. Secrets are weak defaults sitting in a real `.env` (not committed, correctly gitignored) but need rotating before any real deployment: `JWT_SECRET="business_webapp_jwt_secret"`, `MASTER_KEY="testing123"`.
+3. Ad-hoc one-off scripts (`check_users.js`, `reset_password.js`) exist at the backend root for manually inspecting/resetting user data via raw Prisma calls — a symptom of there being no proper password-reset flow (no email service exists at all yet).
+
+### 🟠 High
+4. No password reset / forgot-password flow, no email verification, no MFA. The only way to reset a password today is to SSH in and run `reset_password.js`.
+5. `zod` is a dependency but no request body is actually validated with it — validation is manual `if (!field)` checks scattered across controllers, inconsistent in coverage (e.g. `transaction.controller.js` validates item shape manually; most others barely validate types/ranges).
+6. No refresh-token rotation — a 30-day "remember me" JWT is a long-lived bearer token with no revocation mechanism (no server-side session/blacklist), so logout does not actually invalidate a token that's already been extracted.
+7. N+1 query patterns in `report.service.js` (`getEmployeeReport`, `product.service.js`'s `getProductReport`) — a `Promise.all` firing one query per employee/product instead of a single aggregated query. Fine at today's data volume, will not stay fine.
+8. Global rate limiter (100 req/15min) is applied uniformly to all of `/api`, including login — a login-specific stricter limiter (to slow brute force) doesn't exist, and legitimate dashboard polling could hit the same bucket.
+
+### 🟡 Medium
+9. No structured logging (`console.log`/`console.error` only) and no error tracking (Sentry or similar) — the global error handler just logs `err.stack` server-side and returns a generic message, so a production incident leaves no searchable trail.
+10. No automated tests anywhere (unit or integration) and no CI pipeline.
+11. `product.routes.js` imports `getStock`, `moveStockBetweenWarehouses`, `getMovements` from the product controller but never wires them to a route (dead imports) — those same operations are correctly exposed via `stock.routes.js` instead. Minor cleanup item.
+12. Hard deletes cascade through the schema (e.g. deleting a SuperAdmin deletes every business, product, transaction they own). No soft-delete/audit trail, so accidental deletion is unrecoverable and there's no historical record for a business that closes.
+13. CORS origin allowlist is hardcoded in `app.js` (`localhost:5173`, `localhost:3000`, one hardcoded LAN IP) rather than env-driven — will need updating for any real deployment.
+
+### ⚪ Not actually a problem yet, but flagged so nobody "fixes" it prematurely
+- No Redis, no queues, no horizontal scaling, no microservices — **correct** for the current real-world load (a handful of small businesses, a few staff each). Revisit only if usage genuinely grows past what a single small Postgres instance + single app instance can serve.
+
+## 5. What's good (keep as-is)
+
+- The service/controller/route layering is clean and consistent — easy to navigate, easy to extend.
+- Schema design is sound: sensible normalization, correct use of `@@unique`, cascade rules that make sense for the domain, currency auto-derived from country.
+- `sendSuccess`/`sendError` response envelope is consistent across every endpoint — good for a predictable frontend contract.
+- Transaction creation and stock movement correctly use `prisma.$transaction` to keep stock decrements atomic with the records that justify them.
+- `mustChangePassword` flow for new team members is a nice touch already in place.
+
+## 6. Decisions log
+
+Decisions Victor has confirmed (2026-07-24) — treat these as settled unless he says otherwise:
+- **Scale target: small.** A few businesses, a few staff each. Do **not** introduce Redis, message queues, microservices, or multi-region infra by default — it would be solving a problem this project doesn't have. Revisit only if real usage outgrows a single small Postgres + single app instance.
+- **Sequencing: plan fully before coding.** Phase 2 (target architecture) and Phase 3 (phased roadmap) are written below before any implementation starts. Implementation begins only after Victor reviews and approves the roadmap.
+- **Frontend design approach: both.** The `ui-ux-pro-max` skill is installed (`.claude/skills/` in this repo, via `uipro init --ai claude`) and should be used for design-system generation (palettes, type pairings, component patterns) — but the dashboard screenshot Victor provided (dark sidebar, KPI stat cards, clean data tables, rounded cards, soft shadows) is the concrete visual target it should be steered toward, not a generic style the skill picks on its own.
+
+## 7. Phase 2 — Target Production Architecture (right-sized)
+
+Everything below is scoped for "a real small business tool used by a family and a handful of staff," not a venture-scale SaaS. Where the standard production checklist would normally call for something heavier, that's called out explicitly so nobody adds it later out of habit.
+
+### Backend & API
+- **Keep the current shape**: Express + layered `routes → controllers → services → Prisma`. It's clean and it's right for this size — no rewrite to NestJS/microservices needed.
+- **Close the IDOR gap**: wire `belongsToBusiness` into every nested router (`warehouse`, `team`, `product`, `stock`, `transaction`, `report`), or fold the same check into a shared middleware applied once where those routers mount in `app.js`. This is the one non-negotiable structural change.
+- **Validation**: actually use the `zod` dependency already installed. One schema per endpoint (body/params/query), a small `validate(schema)` middleware, applied in the route definition. Replaces the scattered manual `if (!field)` checks and gets consistent 400 error shapes for free.
+- **Error handling**: introduce an `AppError` class (`statusCode` + `message`) and an `asyncHandler` wrapper so controllers stop repeating try/catch boilerplate; the existing global error handler in `app.js` becomes the single place that formats the response.
+- **Background jobs**: none needed yet (no email sending, no heavy async work). If/when transactional email is added, a simple `node-cron` scheduled task or a `pending_jobs` table is enough — full Redis+Bull is overkill at this scale.
+- **File uploads**: not present today; if product photos or receipt attachments are wanted later, target S3-compatible object storage (Cloudflare R2 — cheapest) rather than storing binaries in Postgres or on local disk.
+- **Notifications**: none exist. Low-stock alerts already compute server-side (`report.service.js`'s stock alert report) — surfacing them is a frontend dashboard concern, not a new backend subsystem, for now.
+
+### Database
+- Schema stays largely as-is — it's well-normalized. Add: an index on `Transaction(businessId, createdAt)` and `StockMovement(businessId, createdAt)` to keep report queries fast as transaction history grows.
+- Fix the N+1 patterns in `report.service.js` (`getEmployeeReport`) and `product.service.js` (`getProductReport`) — replace the per-row `Promise.all` with a single `groupBy`/aggregate query.
+- Migrations: keep using Prisma Migrate as-is (already in place, working).
+- Backups: nightly `pg_dump` to object storage (R2/S3), retained ~30 days. That's the entire backup strategy needed here — no multi-region replication.
+- Soft deletes: worth adding for `Business` (owner might want to "close" a business without losing its sales history) — not needed for every table.
+
+### Authentication & Authorization
+- Keep JWT + httpOnly cookie. Stop also returning the raw token in the JSON body on login — the frontend should rely on the cookie only, which removes the token from anywhere JS/localStorage could leak it to an XSS payload.
+- No refresh-token rotation needed at this scale — a 24h (or 30d "remember me") token with no revocation list is an acceptable tradeoff for a small trusted user base. Document this as an accepted risk rather than silently leaving it unaddressed.
+- Password reset: replace the ad-hoc `reset_password.js` script with a real admin action — an ADMIN/SUPERADMIN can reset a teammate's password from the Team screen (generates a new default password, sets `mustChangePassword`). For a SuperAdmin who forgets their own password, add one `POST /api/platform/superadmins/:userId/reset-password` endpoint behind the existing master-key gate, so you (the developer) can help your dad recover access without shelling into the database.
+- Email verification / MFA: not warranted yet — nobody is self-signing-up from the open internet; SuperAdmins are created deliberately (registration should probably become invite-only or admin-created rather than open `/api/auth/register`, worth confirming with Victor before launch).
+- RBAC stays as the existing three-role model (SUPERADMIN/ADMIN/EMPLOYEE), scoped per-business via `BusinessUser` — that's already the right shape, it just needs the IDOR fix to actually be enforced.
+
+### Infrastructure
+- Hosting: a single small PaaS instance (Railway or Render) for the API + a managed Postgres add-on. No Kubernetes, no load balancer beyond what the PaaS provides.
+- Frontend: deployed separately as a static build (Vercel, Netlify, or Cloudflare Pages free tier) — decouples frontend releases from backend releases.
+- Domain: one domain, PaaS-managed TLS.
+- Object storage: deferred until product images/attachments are actually wanted (see above).
+- Secrets: the hosting platform's built-in environment variable UI is sufficient — no need for Vault/AWS Secrets Manager. `JWT_SECRET` and `MASTER_KEY` must be rotated to strong random values before any real deployment (current `.env` values are placeholders).
+
+### Security
+- Fix IDOR (see above) — this is the headline security item.
+- Rotate `JWT_SECRET`/`MASTER_KEY` before going live.
+- Add a stricter rate limiter specifically on `/api/auth/login` (e.g. 5 attempts/15 min) separate from the general API limiter.
+- `zod` validation at every boundary (covered above) closes most injection/malformed-input risk; Prisma's parameterized queries already prevent SQL injection.
+- CSRF: `sameSite=strict` cookies + no state-changing GET requests already mitigate most CSRF risk for this app's threat model; a dedicated CSRF token is optional, not urgent, given the small trusted user base.
+- CORS allowlist should move from hardcoded strings in `app.js` to an env-driven list before deploying to a real domain.
+- Helmet is already applied with defaults — fine to leave as default CSP for now since there's no third-party script loading planned.
+
+### Performance
+- No Redis/caching layer needed yet — query volume is low. Revisit only if dashboard/report load times become noticeably slow.
+- Add pagination consistently (transactions already has it; extend to products/warehouses/team/stock-movement lists once they grow past a page or two).
+- Add `compression` middleware for API responses.
+- Frontend: Vite code-splitting/lazy-loaded routes, so the whole app isn't shipped on first load.
+
+### Scalability & Reliability
+- Stateless API (JWT, no server-side session memory) means horizontal scaling is trivial *if* ever needed — not needed now.
+- No event-driven architecture needed — nothing here is asynchronous enough to justify it yet.
+- Logging: replace `console.log`/`console.error` with structured logging (`pino`), so incidents are actually searchable.
+- Error tracking: Sentry free tier is enough to catch unhandled exceptions in production without building custom infra.
+- Health check: extend `/api/health` to also verify DB connectivity (`SELECT 1`), so uptime monitoring (UptimeRobot free tier is enough) actually means something.
+- Disaster recovery: nightly backups (above) + documented restore steps is proportionate; no active-active HA needed for this user base.
+
+### DevOps
+- Git workflow: trunk-based — `main` + short-lived feature branches + PRs. No need for full Git Flow with a single developer.
+- CI: GitHub Actions running lint + (new) test suite + a Prisma migration diff check on every PR.
+- Docker: containerize the backend (`Dockerfile` + a `docker-compose.yml` with Postgres for local dev) so environment drift stops being a source of bugs.
+- Staging: one cheap staging environment (same PaaS tier, separate DB) so changes are never tested against the real business's live data.
+- Testing strategy: unit tests for service-layer business logic (stock math, report aggregation), integration tests (Jest/Vitest + supertest) for the auth + business-scoping paths specifically — the IDOR class of bug is exactly what a "user A cannot read business B" integration test catches permanently.
+
+## 8. Phase 3 — Master Development Plan
+
+Phases run in order. Each is small enough to ship and verify independently; none blocks on infrastructure that isn't needed yet.
+
+### Phase A — Backend Hardening & Security Fix
+- **Objective**: Close the cross-business data leak, add real request validation, and clean up the auth/error-handling foundation everything else builds on.
+- **Why it exists**: This is a live data-isolation bug today. Every later phase (new frontend, new features) inherits this risk if it ships first — fix the foundation before building on it.
+- **Dependencies**: none — pure backend work on the existing codebase.
+- **Deliverables**: `belongsToBusiness` enforced on every nested route; `zod` validation on every endpoint; `AppError`/`asyncHandler` cleanup; login-specific rate limiting; rotated `JWT_SECRET`/`MASTER_KEY` (dev values, real secrets generated at deploy time); admin-driven password reset endpoint replacing `reset_password.js`; integration tests proving business A cannot read business B's data.
+- **Risks**: touching every route file is mechanical but easy to miss one — mitigate with the integration test suite as the actual proof, not manual review alone.
+- **Expected outcome**: the backend is safe to onboard a second real business/employee onto.
+
+### Phase B — Frontend Foundation
+- **Objective**: Stand up the new React app's skeleton — build tooling, routing, auth flow, layout shell, and the visual design system — before building individual feature screens.
+- **Why it exists**: Every screen after this depends on a shared layout (sidebar/navbar), a shared API client, and an established look — building screens before this exists means redoing them later.
+- **Dependencies**: Phase A's auth endpoints (cookie-only login) should be in place so the frontend is built against the corrected contract, not the old one.
+- **Deliverables**: Vite + React app scaffolded; Tailwind + design tokens generated via the `ui-ux-pro-max` skill, steered to match the reference screenshot (dark sidebar, KPI cards, clean tables); React Router routes for auth/dashboard/etc.; TanStack Query API client wired to the backend with cookie-based auth; login/register/change-password pages; the app shell (sidebar nav, top bar, business switcher for SuperAdmins with multiple businesses).
+- **Risks**: getting the visual direction wrong early is expensive to unwind — validate the shell + one real screen (Dashboard) with Victor before building the rest on the same patterns.
+- **Expected outcome**: a running, styled app shell with working login, ready to receive feature screens.
+
+### Phase C — Core Feature Screens
+- **Objective**: Build out the actual product surface: Dashboard (KPIs + alerts), Products, Warehouses/Stock, New Sale/Transactions, Team, Reports, Business management (SuperAdmin), Platform Admin.
+- **Why it exists**: This is the actual product your dad and his staff will use daily.
+- **Dependencies**: Phase B's shell and API client.
+- **Deliverables**: one screen at a time, each wired to its real backend endpoint, each covering the golden path and the obvious edge cases (empty states, low-stock warnings, insufficient-stock errors on sale, permission-gated actions per role).
+- **Risks**: scope creep — resist adding features not in the current backend just because they'd be "nice"; flag them as backlog instead.
+- **Expected outcome**: full feature parity with what the backend already supports, usable end-to-end.
+
+### Phase D — Polish & Reliability
+- **Objective**: Make the app feel trustworthy day-to-day — loading states, error boundaries, receipt printing (this existed before via `window.print`, restore it), responsive layout for tablet/phone use on a shop floor.
+- **Why it exists**: A tool your dad and his staff rely on daily needs to fail gracefully, not blank-screen or silently lose a sale.
+- **Dependencies**: Phase C screens need to exist first.
+- **Deliverables**: global error boundary, consistent loading/empty/error states across screens, receipt print flow, responsive breakpoints, basic accessibility pass (labels, focus states, contrast).
+- **Risks**: "polish" can expand indefinitely — timebox it to a fixed list agreed with Victor rather than open-ended.
+- **Expected outcome**: an app that feels finished, not a prototype.
+
+### Phase E — Deployment & Ops
+- **Objective**: Get the app actually running somewhere real, safely.
+- **Why it exists**: none of the above matters until your dad can actually use it outside your laptop.
+- **Dependencies**: Phases A–D functionally complete.
+- **Deliverables**: Dockerized backend, CI pipeline (lint/test/migration-check on PR), staging environment, chosen hosting (Railway/Render + managed Postgres, frontend on Vercel/Netlify/Cloudflare Pages), nightly backups, Sentry + uptime monitoring wired up, real secrets rotated and stored in the host's env config.
+- **Risks**: first real deployment always surfaces environment drift — the staging environment exists specifically to catch this before it hits the real business.
+- **Expected outcome**: a live, monitored, backed-up production deployment your dad can actually log into.
+
+### Phase F — Launch & Iterate
+- **Objective**: Onboard the real business(es), watch how it's actually used, fix what's actually wrong rather than what was guessed at.
+- **Why it exists**: the whole point of this project is that your dad uses it — real usage will surface gaps no amount of planning would have caught.
+- **Dependencies**: Phase E live.
+- **Deliverables**: onboarding the first real business + real staff accounts; a short feedback loop with Victor's dad; a backlog of real, observed issues (not hypothetical ones) to work through next.
+- **Risks**: none structural — this is where the plan meets reality and gets corrected.
+- **Expected outcome**: the tool is actually in daily use, and the roadmap's "Next Up" section reflects real, observed priorities instead of guesses.
+
+## 9. Completed work
+
+### Phase A — Backend Hardening & Security Fix (done 2026-07-24)
+
+All deliverables from the Phase 3 plan above are complete, verified by an automated test suite and a manual smoke test against the real dev database:
+
+- **Fixed the cross-business IDOR bug** — `belongsToBusiness` is now wired into all 6 nested routers (`warehouse`, `team`, `product`, `stock`, `transaction`, `report`) via `router.use(belongsToBusiness)` right after `router.use(authenticate)`. Regression-tested in `backend/tests/business-scoping.test.js` — proves a SuperAdmin can't access a business they don't own, and an employee/admin of business A gets 403 on every nested resource of business B while still being able to use their own business normally.
+- **Found and fixed a second, more serious pre-existing bug while building the test suite**: the migration named `20260501113108_add_must_change_password_flag` never actually contained the `ADD COLUMN` statement — its SQL only touched foreign key cascade rules. Both the real dev database and a freshly-migrated database were missing the `User.mustChangePassword` column despite `schema.prisma` and the generated Prisma Client expecting it. This meant **a fresh deploy anywhere (staging, production, a new machine) would have been unable to log in or register at all** — it only "worked" locally because the previously generated (stale) Prisma Client also didn't know about the column, so client and DB were consistently wrong together. Fixed with a new migration, `20260724142258_fix_missing_must_change_password_column`, applied to both the dev and test databases. Left the original broken migration file untouched (migrations are immutable once applied) and added the fix as a new one, per standard Prisma practice.
+- **Validation**: every endpoint across all 9 resource groups (auth, business, warehouse, team, product, stock, transaction, report, platform/superadmin) now validates via `zod` schemas in `backend/src/validators/*.js`, applied through a new `validate` middleware (`backend/src/middleware/validate.middleware.js`). Replaces the old scattered manual `if (!field)` checks.
+- **Centralized error handling**: added `AppError` (`backend/src/utils/AppError.js`) and `asyncHandler` (`backend/src/utils/asyncHandler.js`). Every controller is now a thin `asyncHandler`-wrapped function with no try/catch; every service throws `AppError(message, statusCode)` for expected failures. The global error handler in `app.js` now respects `err.statusCode` instead of always returning 500.
+- **Auth hardening**: login no longer echoes the JWT in the JSON response body — the httpOnly cookie is now the only place the token lives, so client-side JS (and thus XSS) can't read it. Added a login-specific rate limiter (10 attempts/15 min, successful logins don't count against it) separate from the general API limiter.
+- **Admin password reset**: added `POST /api/platform/superadmins/:userId/reset-password` (master-key gated), replacing the old `reset_password.js`/`check_users.js` ad-hoc scripts, which have been deleted.
+- **Secrets rotated**: `JWT_SECRET` and `MASTER_KEY` in the local `.env` are now strong random values (previously `"business_webapp_jwt_secret"` and `"testing123"`). Added `backend/.env.example` documenting required variables for future setup/deployment. Added `.env.test` (test-only dummy values) to `.gitignore` alongside `.env`.
+- **Performance**: fixed the two N+1 query patterns flagged in the Phase 2 review — `report.service.js`'s `getEmployeeReport` (was one query per team member, now two queries total + in-memory grouping) and `getProductReport`'s stock lookup (was one query per product, now one batched query).
+- **Cleanup**: removed dead imports in `product.routes.js` (`getStock`/`moveStockBetweenWarehouses`/`getMovements` were imported but never wired to a route there — they're correctly exposed via `stock.routes.js`).
+- **Tests**: Jest + Supertest set up against a dedicated `business_webapp_test` Postgres database (never the real dev data). `npm run test:migrate` applies migrations to it, `npm test` runs the suite (10 tests, all passing): `tests/auth.test.js` (register/login/validation/duplicate-username/auth-required) and `tests/business-scoping.test.js` (the IDOR regression suite). `tests/setup.js` truncates all tables between tests and refuses to run unless `DATABASE_URL` points at a `*_test` database, as a safety rail against ever running tests against real data.
+
+**Not done in Phase A, intentionally deferred**: the JWT-role-vs-BusinessUser-role inconsistency noted below, MFA/email verification (not warranted at this scale per Phase 2), and any frontend work (Phase B).
+
+## 10. Known issues (updated 2026-07-24)
+
+New item found during Phase A, not in the original Phase 1 review:
+
+- **JWT role vs. per-business role mismatch (latent, not yet triggered in practice)**: `authorize(...roles)` checks the *global* `role` field from the JWT (set once, at `User` creation). But `BusinessUser.role` is meant to be per-business — a user could in principle be an ADMIN in one business and an EMPLOYEE in another. Because the JWT only carries the global role, `authorize()` would use whichever role they had when their `User` row was first created, not their role in the specific business being accessed. This hasn't caused a real issue yet because in practice every user has so far belonged to exactly one business, but it's an architectural inconsistency worth resolving before someone is deliberately added to two businesses with different roles. Not fixed in Phase A to keep that phase scoped to the security fix + hardening; worth a decision (re-issue tokens per business context, or check `BusinessUser.role` instead of the JWT's role in `authorize`) before Phase C ships a business-switcher UI that would surface it.
+
+## 11. Next up (current)
+
+- [ ] Phase B — Frontend Foundation: scaffold the React app, wire up the design system via the `ui-ux-pro-max` skill steered by the reference screenshot, build the app shell (routing, API client, auth pages, sidebar/navbar layout).
+- [ ] Decide how to resolve the JWT-role-vs-BusinessUser-role inconsistency above before it's load-bearing (i.e. before any user is added to a second business with a different role).
