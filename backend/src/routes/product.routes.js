@@ -7,14 +7,19 @@ const {
   update,
   remove,
   addStockToWarehouse,
-  getStock,
-  moveStockBetweenWarehouses,
-  getMovements,
 } = require("../controllers/product.controller");
 const { authenticate } = require("../middleware/auth.middleware");
-const { authorize } = require("../middleware/role.middleware");
+const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
+const { validate } = require("../middleware/validate.middleware");
+const {
+  productIdParamSchema,
+  createProductSchema,
+  updateProductSchema,
+  addStockSchema,
+} = require("../validators/product.validators");
 
 router.use(authenticate);
+router.use(belongsToBusiness);
 
 // ─────────────────────────────────────────
 // PRODUCT ROUTES
@@ -22,14 +27,34 @@ router.use(authenticate);
 
 // All roles can view products
 router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getAll);
-router.get("/:productId", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getOne);
+router.get(
+  "/:productId",
+  authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
+  validate(productIdParamSchema),
+  getOne
+);
 
 // Only SuperAdmin and Admin can manage products
-router.post("/", authorize("SUPERADMIN", "ADMIN"), create);
-router.patch("/:productId", authorize("SUPERADMIN", "ADMIN"), update);
-router.delete("/:productId", authorize("SUPERADMIN", "ADMIN"), remove);
+router.post("/", authorize("SUPERADMIN", "ADMIN"), validate(createProductSchema), create);
+router.patch(
+  "/:productId",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(updateProductSchema),
+  update
+);
+router.delete(
+  "/:productId",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(productIdParamSchema),
+  remove
+);
 
 // Stock management
-router.post("/:productId/stock", authorize("SUPERADMIN", "ADMIN"), addStockToWarehouse);
+router.post(
+  "/:productId/stock",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(addStockSchema),
+  addStockToWarehouse
+);
 
 module.exports = router;

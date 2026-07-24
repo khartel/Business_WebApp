@@ -1,4 +1,5 @@
 const prisma = require("../utils/prisma");
+const AppError = require("../utils/AppError");
 
 /**
  * Create a new warehouse
@@ -10,7 +11,7 @@ const createWarehouse = async ({ businessId, name, location, isPrimary, userId }
   });
 
   if (!business) {
-    throw new Error("Business not found");
+    throw new AppError("Business not found", 404);
   }
 
   // If this warehouse is set as primary
@@ -115,7 +116,7 @@ const getWarehouseById = async (warehouseId, businessId) => {
   });
 
   if (!warehouse) {
-    throw new Error("Warehouse not found");
+    throw new AppError("Warehouse not found", 404);
   }
 
   return warehouse;
@@ -131,7 +132,7 @@ const setPrimaryWarehouse = async (warehouseId, businessId) => {
   });
 
   if (!warehouse) {
-    throw new Error("Warehouse not found");
+    throw new AppError("Warehouse not found", 404);
   }
 
   // Remove primary from all warehouses in this business
@@ -158,7 +159,7 @@ const updateWarehouse = async (warehouseId, businessId, { name, location }) => {
   });
 
   if (!warehouse) {
-    throw new Error("Warehouse not found");
+    throw new AppError("Warehouse not found", 404);
   }
 
   const updated = await prisma.warehouse.update({
@@ -181,11 +182,11 @@ const deleteWarehouse = async (warehouseId, businessId) => {
   });
 
   if (!warehouse) {
-    throw new Error("Warehouse not found");
+    throw new AppError("Warehouse not found", 404);
   }
 
   if (warehouse.isPrimary) {
-    throw new Error(
+    throw new AppError(
       "Cannot delete the primary warehouse. Set another warehouse as primary first."
     );
   }
@@ -196,7 +197,7 @@ const deleteWarehouse = async (warehouseId, businessId) => {
   });
 
   if (stockCount > 0) {
-    throw new Error(
+    throw new AppError(
       "Cannot delete a warehouse that has stock. Move stock to another warehouse first."
     );
   }

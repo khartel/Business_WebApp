@@ -7,16 +7,33 @@ const {
   updateRole,
 } = require("../controllers/team.controller");
 const { authenticate } = require("../middleware/auth.middleware");
-const { authorize } = require("../middleware/role.middleware");
+const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
+const { validate } = require("../middleware/validate.middleware");
+const {
+  addTeamMemberSchema,
+  businessUserIdParamSchema,
+  updateRoleSchema,
+} = require("../validators/team.validators");
 
 router.use(authenticate);
+router.use(belongsToBusiness);
 
 // All roles can view team
 router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getAll);
 
 // Only SuperAdmin and Admin can manage team
-router.post("/", authorize("SUPERADMIN", "ADMIN"), add);
-router.patch("/:businessUserId", authorize("SUPERADMIN", "ADMIN"), updateRole);
-router.delete("/:businessUserId", authorize("SUPERADMIN", "ADMIN"), remove);
+router.post("/", authorize("SUPERADMIN", "ADMIN"), validate(addTeamMemberSchema), add);
+router.patch(
+  "/:businessUserId",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(updateRoleSchema),
+  updateRole
+);
+router.delete(
+  "/:businessUserId",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(businessUserIdParamSchema),
+  remove
+);
 
 module.exports = router;

@@ -37,6 +37,15 @@ const limiter = rateLimit({
 });
 app.use("/api", limiter);
 
+// Stricter limiter specifically for login, to slow down credential brute-forcing
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts. Please try again later.",
+  skipSuccessfulRequests: true,
+});
+app.use("/api/auth/login", loginLimiter);
+
 // ─────────────────────────────────────────
 // GENERAL MIDDLEWARE
 // ─────────────────────────────────────────
@@ -94,8 +103,18 @@ app.use((req, res) => {
 // GLOBAL ERROR HANDLER
 // ─────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: "Internal server error" });
+  const statusCode = err.isOperational ? err.statusCode : 500;
+  const message = err.isOperational ? err.message : "Internal server error";
+
+  if (!err.isOperational) {
+    console.error(err.stack);
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+    errors: err.errors || null,
+  });
 });
 
 module.exports = app;

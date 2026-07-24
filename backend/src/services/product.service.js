@@ -1,4 +1,5 @@
 const prisma = require("../utils/prisma");
+const AppError = require("../utils/AppError");
 
 /**
  * Create a new product for a business
@@ -12,7 +13,7 @@ const createProduct = async ({ businessId, name, unit, price, description }) => 
   });
 
   if (existing) {
-    throw new Error("A product with this name already exists in this business");
+    throw new AppError("A product with this name already exists in this business", 409);
   }
 
   const product = await prisma.product.create({
@@ -119,7 +120,7 @@ const getProductById = async (productId, businessId) => {
   });
 
   if (!product) {
-    throw new Error("Product not found");
+    throw new AppError("Product not found", 404);
   }
 
   return {
@@ -138,7 +139,7 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
   });
 
   if (!product) {
-    throw new Error("Product not found");
+    throw new AppError("Product not found", 404);
   }
 
   if (name && name !== product.name) {
@@ -151,7 +152,7 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
     });
 
     if (existing) {
-      throw new Error("A product with this name already exists");
+      throw new AppError("A product with this name already exists", 409);
     }
   }
 
@@ -190,7 +191,7 @@ const deleteProduct = async (productId, businessId) => {
   });
 
   if (!product) {
-    throw new Error("Product not found");
+    throw new AppError("Product not found", 404);
   }
 
   // Check if product has been used in transactions
@@ -199,7 +200,7 @@ const deleteProduct = async (productId, businessId) => {
   });
 
   if (transactionCount > 0) {
-    throw new Error(
+    throw new AppError(
       "Cannot delete a product that has transaction history. Consider archiving it instead."
     );
   }
@@ -228,7 +229,7 @@ const addStock = async ({ productId, businessId, warehouseId, quantity, lowStock
   });
 
   if (!product) {
-    throw new Error("Product not found");
+    throw new AppError("Product not found", 404);
   }
 
   // Validate warehouse belongs to business
@@ -237,11 +238,11 @@ const addStock = async ({ productId, businessId, warehouseId, quantity, lowStock
   });
 
   if (!warehouse) {
-    throw new Error("Warehouse not found");
+    throw new AppError("Warehouse not found", 404);
   }
 
   if (quantity <= 0) {
-    throw new Error("Quantity must be greater than 0");
+    throw new AppError("Quantity must be greater than 0");
   }
 
   // Check if stock entry already exists for this product in this warehouse
@@ -372,11 +373,11 @@ const moveStock = async ({
   notes,
 }) => {
   if (fromWarehouseId === toWarehouseId) {
-    throw new Error("Cannot move stock to the same warehouse");
+    throw new AppError("Cannot move stock to the same warehouse");
   }
 
   if (quantity <= 0) {
-    throw new Error("Quantity must be greater than 0");
+    throw new AppError("Quantity must be greater than 0");
   }
 
   // Check source stock
@@ -394,11 +395,11 @@ const moveStock = async ({
   });
 
   if (!sourceStock) {
-    throw new Error("Product not found in source warehouse");
+    throw new AppError("Product not found in source warehouse", 404);
   }
 
   if (sourceStock.quantity < quantity) {
-    throw new Error(
+    throw new AppError(
       `Insufficient stock. Available: ${sourceStock.quantity} ${sourceStock.product.unit}`
     );
   }

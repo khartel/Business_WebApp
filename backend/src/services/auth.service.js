@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const prisma = require("../utils/prisma");
 const { generateToken } = require("../utils/jwt.utils");
 const { getCurrencyForCountry } = require("../utils/currencies");
+const AppError = require("../utils/AppError");
 
 /**
  * Register a new SuperAdmin
@@ -16,7 +17,7 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
   });
 
   if (existingUsername) {
-    throw new Error("Username is already taken");
+    throw new AppError("Username is already taken", 409);
   }
 
   // Check if email already exists (only if provided)
@@ -26,7 +27,7 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
     });
 
     if (existingEmail) {
-      throw new Error("Email is already registered");
+      throw new AppError("Email is already registered", 409);
     }
   }
 
@@ -91,14 +92,14 @@ const loginUser = async ({ username, password, rememberMe = false }) => {
   });
 
   if (!user) {
-    throw new Error("Invalid username or password");
+    throw new AppError("Invalid username or password", 401);
   }
 
   // Check password
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
   if (!isPasswordValid) {
-    throw new Error("Invalid username or password");
+    throw new AppError("Invalid username or password", 401);
   }
 
   // Generate token
@@ -182,7 +183,7 @@ const getMe = async (userId) => {
   });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new AppError("User not found", 404);
   }
 
   return user;
@@ -197,12 +198,12 @@ const updatePassword = async (userId, currentPassword, newPassword) => {
   });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new AppError("User not found", 404);
   }
 
   const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!isPasswordValid) {
-    throw new Error("Current password is incorrect");
+    throw new AppError("Current password is incorrect", 401);
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 12);

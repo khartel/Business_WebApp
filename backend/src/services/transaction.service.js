@@ -1,4 +1,5 @@
 const prisma = require("../utils/prisma");
+const AppError = require("../utils/AppError");
 
 /**
  * Create a new transaction (sale)
@@ -20,7 +21,7 @@ const createTransaction = async ({
   });
 
   if (!primaryWarehouse) {
-    throw new Error(
+    throw new AppError(
       "No primary warehouse found. Please set a primary warehouse before making sales."
     );
   }
@@ -36,7 +37,7 @@ const createTransaction = async ({
       });
 
       if (!product) {
-        throw new Error(`Product not found: ${item.productId}`);
+        throw new AppError(`Product not found: ${item.productId}`, 404);
       }
 
       const stock = await prisma.warehouseStock.findUnique({
@@ -49,7 +50,7 @@ const createTransaction = async ({
       });
 
       if (!stock || stock.quantity < item.quantitySold) {
-        throw new Error(
+        throw new AppError(
           `Insufficient stock for "${product.name}". ` +
           `Available: ${stock ? stock.quantity : 0} ${product.unit}, ` +
           `Requested: ${item.quantitySold} ${product.unit}`
@@ -57,11 +58,11 @@ const createTransaction = async ({
       }
 
       if (item.quantitySold <= 0) {
-        throw new Error(`Quantity for "${product.name}" must be greater than 0`);
+        throw new AppError(`Quantity for "${product.name}" must be greater than 0`);
       }
 
       if (item.unitPrice <= 0) {
-        throw new Error(`Price for "${product.name}" must be greater than 0`);
+        throw new AppError(`Price for "${product.name}" must be greater than 0`);
       }
 
       return {
@@ -283,7 +284,7 @@ const getTransactionById = async (transactionId, businessId) => {
   });
 
   if (!transaction) {
-    throw new Error("Transaction not found");
+    throw new AppError("Transaction not found", 404);
   }
 
   return transaction;

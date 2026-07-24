@@ -422,87 +422,95 @@ const getMonthlyReport = async (businessId, year, month) => {
 const getEmployeeReport = async (businessId, startDate, endDate) => {
   const dateRange = buildDateRange(startDate, endDate);
 
-  // Get all team members
-  const teamMembers = await prisma.businessUser.findMany({
-    where: { businessId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          username: true,
-          role: true,
+  // Single pass: fetch team members and all in-range transactions once,
+  // then group in memory instead of firing one query per employee.
+  const [teamMembers, transactions] = await Promise.all([
+    prisma.businessUser.findMany({
+      where: { businessId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            role: true,
+          },
         },
       },
-    },
-  });
-
-  // Get transactions for each employee
-  const employeeReports = await Promise.all(
-    teamMembers.map(async (member) => {
-      const transactions = await prisma.transaction.findMany({
-        where: {
-          businessId,
-          performedById: member.userId,
-          createdAt: dateRange,
-        },
-        include: {
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  unit: true,
-                },
+    }),
+    prisma.transaction.findMany({
+      where: {
+        businessId,
+        createdAt: dateRange,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
               },
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const transactionsByEmployee = {};
+  transactions.forEach((t) => {
+    if (!transactionsByEmployee[t.performedById]) {
+      transactionsByEmployee[t.performedById] = [];
+    }
+    transactionsByEmployee[t.performedById].push(t);
+  });
+
+  const employeeReports = teamMembers.map((member) => {
+    const memberTransactions = transactionsByEmployee[member.userId] || [];
+
+    const totalAmount = memberTransactions.reduce((sum, t) => sum + t.totalAmount, 0);
+    const cashTotal = memberTransactions
+      .filter((t) => t.paymentMethod === "CASH")
+      .reduce((sum, t) => sum + t.totalAmount, 0);
+    const transferTotal = memberTransactions
+      .filter((t) => t.paymentMethod === "TRANSFER")
+      .reduce((sum, t) => sum + t.totalAmount, 0);
+
+    // Products sold by this employee
+    const productMap = {};
+    memberTransactions.forEach((t) => {
+      t.items.forEach((item) => {
+        const key = item.productId;
+        if (!productMap[key]) {
+          productMap[key] = {
+            product: item.product,
+            totalQuantity: 0,
+            totalRevenue: 0,
+          };
+        }
+        productMap[key].totalQuantity += item.quantitySold;
+        productMap[key].totalRevenue += item.subtotal;
       });
+    });
 
-      const totalAmount = transactions.reduce((sum, t) => sum + t.totalAmount, 0);
-      const cashTotal = transactions
-        .filter((t) => t.paymentMethod === "CASH")
-        .reduce((sum, t) => sum + t.totalAmount, 0);
-      const transferTotal = transactions
-        .filter((t) => t.paymentMethod === "TRANSFER")
-        .reduce((sum, t) => sum + t.totalAmount, 0);
-
-      // Products sold by this employee
-      const productMap = {};
-      transactions.forEach((t) => {
-        t.items.forEach((item) => {
-          const key = item.productId;
-          if (!productMap[key]) {
-            productMap[key] = {
-              product: item.product,
-              totalQuantity: 0,
-              totalRevenue: 0,
-            };
-          }
-          productMap[key].totalQuantity += item.quantitySold;
-          productMap[key].totalRevenue += item.subtotal;
-        });
-      });
-
-      return {
-        employee: member.user,
-        businessRole: member.role,
-        summary: {
-          totalAmount,
-          transactionCount: transactions.length,
-          cashTotal,
-          transferTotal,
-        },
-        topProducts: Object.values(productMap).sort(
-          (a, b) => b.totalRevenue - a.totalRevenue
-        ),
-        transactions,
-      };
-    })
-  );
+    return {
+      employee: member.user,
+      businessRole: member.role,
+      summary: {
+        totalAmount,
+        transactionCount: memberTransactions.length,
+        cashTotal,
+        transferTotal,
+      },
+      topProducts: Object.values(productMap).sort(
+        (a, b) => b.totalRevenue - a.totalRevenue
+      ),
+      transactions: memberTransactions,
+    };
+  });
 
   return {
     startDate: format(new Date(dateRange.gte), "yyyy-MM-dd"),
@@ -573,33 +581,41 @@ const getProductReport = async (businessId, startDate, endDate) => {
     prices: undefined, // Remove prices array from response
   }));
 
-  // Get current stock for each product
-  const productsWithStock = await Promise.all(
-    products.map(async (p) => {
-      const stock = await prisma.warehouseStock.findMany({
-        where: { productId: p.product.id },
-        include: {
-          warehouse: {
-            select: {
-              id: true,
-              name: true,
-              isPrimary: true,
-            },
-          },
+  // Get current stock for all products in a single query instead of one per product
+  const productIds = products.map((p) => p.product.id);
+  const allStock = await prisma.warehouseStock.findMany({
+    where: { productId: { in: productIds } },
+    include: {
+      warehouse: {
+        select: {
+          id: true,
+          name: true,
+          isPrimary: true,
         },
-      });
+      },
+    },
+  });
 
-      const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
+  const stockByProduct = {};
+  allStock.forEach((s) => {
+    if (!stockByProduct[s.productId]) {
+      stockByProduct[s.productId] = [];
+    }
+    stockByProduct[s.productId].push(s);
+  });
 
-      return {
-        ...p,
-        currentStock: {
-          total: totalStock,
-          byWarehouse: stock,
-        },
-      };
-    })
-  );
+  const productsWithStock = products.map((p) => {
+    const stock = stockByProduct[p.product.id] || [];
+    const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
+
+    return {
+      ...p,
+      currentStock: {
+        total: totalStock,
+        byWarehouse: stock,
+      },
+    };
+  });
 
   return {
     startDate: format(new Date(dateRange.gte), "yyyy-MM-dd"),

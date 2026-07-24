@@ -7,20 +7,29 @@ const {
   getOne,
 } = require("../controllers/transaction.controller");
 const { authenticate } = require("../middleware/auth.middleware");
-const { authorize } = require("../middleware/role.middleware");
+const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
+const { validate } = require("../middleware/validate.middleware");
+const {
+  transactionIdParamSchema,
+  createTransactionSchema,
+  listTransactionsQuerySchema,
+} = require("../validators/transaction.validators");
 
 router.use(authenticate);
+router.use(belongsToBusiness);
 
 // All roles can make and view transactions
 router.post(
   "/",
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
+  validate(createTransactionSchema),
   create
 );
 
 router.get(
   "/",
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
+  validate(listTransactionsQuerySchema),
   getAll
 );
 
@@ -34,6 +43,7 @@ router.get(
 router.get(
   "/:transactionId",
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
+  validate(transactionIdParamSchema),
   getOne
 );
 

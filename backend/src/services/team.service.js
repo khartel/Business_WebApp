@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../utils/prisma");
+const AppError = require("../utils/AppError");
 
 /**
  * Add a new team member (Admin or Employee) to a business
@@ -7,7 +8,7 @@ const prisma = require("../utils/prisma");
 const addTeamMember = async ({ businessId, fullName, username, phone, email, role, addedById }) => {
   // Only ADMIN and EMPLOYEE roles can be added this way
   if (!["ADMIN", "EMPLOYEE"].includes(role)) {
-    throw new Error("Invalid role. Can only add ADMIN or EMPLOYEE");
+    throw new AppError("Invalid role. Can only add ADMIN or EMPLOYEE");
   }
 
   // Clean email — convert empty string to null
@@ -28,7 +29,7 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
     });
 
     if (alreadyInBusiness) {
-      throw new Error("This user is already a member of this business");
+      throw new AppError("This user is already a member of this business", 409);
     }
 
     // Add existing user to this business
@@ -62,7 +63,7 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
     });
 
     if (existingEmail) {
-      throw new Error("A user with this email already exists");
+      throw new AppError("A user with this email already exists", 409);
     }
   }
 
@@ -158,17 +159,17 @@ const removeTeamMember = async (businessUserId, businessId, requesterId) => {
   });
 
   if (!businessUser) {
-    throw new Error("Team member not found");
+    throw new AppError("Team member not found", 404);
   }
 
   // Cannot remove yourself
   if (businessUser.userId === requesterId) {
-    throw new Error("You cannot remove yourself from the business");
+    throw new AppError("You cannot remove yourself from the business");
   }
 
   // Cannot remove a SUPERADMIN
   if (businessUser.role === "SUPERADMIN") {
-    throw new Error("Cannot remove the business owner");
+    throw new AppError("Cannot remove the business owner", 403);
   }
 
   await prisma.businessUser.delete({
@@ -183,7 +184,7 @@ const removeTeamMember = async (businessUserId, businessId, requesterId) => {
  */
 const updateTeamMemberRole = async (businessUserId, businessId, role) => {
   if (!["ADMIN", "EMPLOYEE"].includes(role)) {
-    throw new Error("Invalid role. Can only set ADMIN or EMPLOYEE");
+    throw new AppError("Invalid role. Can only set ADMIN or EMPLOYEE");
   }
 
   const businessUser = await prisma.businessUser.findFirst({
@@ -194,11 +195,11 @@ const updateTeamMemberRole = async (businessUserId, businessId, role) => {
   });
 
   if (!businessUser) {
-    throw new Error("Team member not found");
+    throw new AppError("Team member not found", 404);
   }
 
   if (businessUser.role === "SUPERADMIN") {
-    throw new Error("Cannot change the role of the business owner");
+    throw new AppError("Cannot change the role of the business owner", 403);
   }
 
   const updated = await prisma.businessUser.update({

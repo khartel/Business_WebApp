@@ -1,4 +1,7 @@
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const prisma = require("../utils/prisma");
+const AppError = require("../utils/AppError");
 
 /**
  * Get all superadmins with their businesses
@@ -51,11 +54,11 @@ const removeSuperAdmin = async (userId) => {
   });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new AppError("User not found", 404);
   }
 
   if (user.role !== "SUPERADMIN") {
-    throw new Error("User is not a SuperAdmin");
+    throw new AppError("User is not a SuperAdmin", 400);
   }
 
   // Delete user - Prisma will handle the rest via cascading deletes defined in schema.prisma
@@ -64,4 +67,31 @@ const removeSuperAdmin = async (userId) => {
   return true;
 };
 
-module.exports = { fetchAllSuperAdmins, removeSuperAdmin };
+/**
+ * Reset a superadmin's password directly (developer/support action, master-key gated).
+ * Replaces the old approach of running a one-off script against the database.
+ * Generates a random password and forces a change on next login.
+ */
+const resetSuperAdminPassword = async (userId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.role !== "SUPERADMIN") {
+    throw new AppError("User is not a SuperAdmin", 400);
+  }
+
+  const newPassword = crypto.randomBytes(9).toString("base64url");
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash, mustChangePassword: true },
+  });
+
+  return { username: user.username, newPassword };
+};
+
+module.exports = { fetchAllSuperAdmins, removeSuperAdmin, resetSuperAdminPassword };

@@ -1,5 +1,6 @@
 const prisma = require("../utils/prisma");
 const { getCurrencyForCountry } = require("../utils/currencies");
+const AppError = require("../utils/AppError");
 
 /**
  * Create a new business (SuperAdmin only)
@@ -200,7 +201,7 @@ const getBusinessById = async (businessId, userId, role) => {
   }
 
   if (!business) {
-    throw new Error("Business not found or access denied");
+    throw new AppError("Business not found or access denied", 404);
   }
 
   return business;
