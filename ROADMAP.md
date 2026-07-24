@@ -22,8 +22,8 @@ Core domain concepts:
 ## 2. Current status (as of 2026-07-24)
 
 - **Backend**: A working Node.js/Express + Prisma (Postgres) API exists under `backend/`. It is functional but was hand-rolled without production hardening — see Known Issues below.
-- **Frontend**: Was deleted entirely (visible as staged deletions in `git status`, not yet committed) because it looked AI-generated and didn't match the visual quality wanted. There is currently **no frontend in the repo**. It will be rebuilt from scratch in React, using a dashboard screenshot (dark sidebar, card-based KPIs, tables) as the visual reference point, aiming for a modern, professional look rather than a generic AI-templated one.
-- No tests, no CI/CD, no Docker, no deployed environment yet exist.
+- **Frontend**: rebuilt from scratch in `frontend/` (React 19 + TypeScript + Vite + Tailwind v4 + shadcn/ui). Phase B (foundation: auth pages, app shell, routing) is done and verified in a real browser. Feature screens (Products, Warehouses, Stock, Sales, Team, Reports, Businesses) are Phase C — not built yet, currently "Coming soon" placeholders.
+- No CI/CD, no Docker, no deployed environment yet exist. Backend has a real test suite (see Phase A below); frontend does not have automated tests yet.
 
 ## 3. Backend architecture (as analyzed 2026-07-24)
 
@@ -217,7 +217,21 @@ New item found during Phase A, not in the original Phase 1 review:
 
 - **JWT role vs. per-business role mismatch (latent, not yet triggered in practice)**: `authorize(...roles)` checks the *global* `role` field from the JWT (set once, at `User` creation). But `BusinessUser.role` is meant to be per-business — a user could in principle be an ADMIN in one business and an EMPLOYEE in another. Because the JWT only carries the global role, `authorize()` would use whichever role they had when their `User` row was first created, not their role in the specific business being accessed. This hasn't caused a real issue yet because in practice every user has so far belonged to exactly one business, but it's an architectural inconsistency worth resolving before someone is deliberately added to two businesses with different roles. Not fixed in Phase A to keep that phase scoped to the security fix + hardening; worth a decision (re-issue tokens per business context, or check `BusinessUser.role` instead of the JWT's role in `authorize`) before Phase C ships a business-switcher UI that would surface it.
 
-## 11. Next up (current)
+### Phase B — Frontend Foundation (done 2026-07-24)
 
-- [ ] Phase B — Frontend Foundation: scaffold the React app, wire up the design system via the `ui-ux-pro-max` skill steered by the reference screenshot, build the app shell (routing, API client, auth pages, sidebar/navbar layout).
+Rebuilt from scratch in `frontend/`. Verified end-to-end with a headless-browser walkthrough (register → login → dashboard → nav) against the real backend, not just "it compiles."
+
+- **Stack decision**: TypeScript (Victor's call — better autocomplete/error-catching while learning, and shadcn/ui is TS-first). Vite + React 19 + React Router 7 + TanStack Query v5 + React Hook Form + zod + Tailwind CSS v4 + shadcn/ui (Radix primitives, `radix-ui` unified package, Nova preset as the component baseline).
+- **Design system**: generated via the `ui-ux-pro-max` skill for "internal inventory management sales dashboard, small business SaaS" (`--density 7 --variance 4 --motion 3`) — style **Soft UI Evolution** (soft shadows, WCAG AA+), palette **industrial slate + stock green** (`#334155` primary, `#059669` accent — reads naturally as "in stock"), type pairing **Poppins (headings) / Open Sans (body)**, both self-hosted via `@fontsource` (no runtime dependency on Google Fonts CDN — matters for a shop with unreliable Wi-Fi). The tool's marketing-site "Enterprise Gateway" page-pattern recommendation was ignored — that's for landing pages, not a logged-in dashboard. Layout direction (dark sidebar, light content, KPI cards) came from Victor's reference screenshot, not the tool.
+- **Auth wiring**: `AuthContext` backed by TanStack Query's `/auth/me`, login/logout mutations, `mustChangePassword` redirect handling, an `activeBusinessId` selection persisted in `localStorage` (UI preference only — the actual session token stays exclusively in the httpOnly cookie per Phase A's decision, never touched by frontend JS).
+- **App shell**: dark sidebar (Dashboard/Products/Warehouses/Stock Movements/Sales/Team/Reports, +Businesses for SuperAdmins only) with active-route highlighting, topbar with a business switcher + avatar menu (change password / log out).
+- **Pages built**: Login, Register, Change Password (all real, wired to the backend) and Dashboard (real data — fetches the active business's actual counts via `GET /businesses/:id`, not placeholder numbers). The other nav destinations (Products, Warehouses, Stock, Sales, Team, Reports, Businesses) route correctly but show a "Coming soon" placeholder — that's Phase C's job.
+- **Found and fixed a real bug along the way**: the backend's CORS allowlist was three hardcoded origins (including a stale LAN IP), which broke the moment Vite's dev server had to fall back to port 5174 (5173 was taken by an unrelated project already running on this machine). Replaced it with an env-driven `CLIENT_URL` allowlist plus "any localhost port" in non-production, in `backend/src/app.js`.
+- **Verification method**: no `chromium-cli`/project run-skill was available, so Playwright + Chromium were installed into the session scratchpad (not the repo) and used to drive the real flow — screenshots confirm the login card, the dark sidebar shell, and the empty-state dashboard all render as intended; `console --errors` came back clean (the one 401 logged is the expected pre-login `/auth/me` check, handled gracefully, not a bug).
+- **Known trade-off, not a bug**: production build shows a "chunk larger than 500kB" warning — expected with no route-level code-splitting yet. Deferred to Phase D/E (performance polish) rather than fixed now, per the roadmap's own phase boundaries.
+
+## 12. Next up (current)
+
+- [ ] Phase C — Core Feature Screens: Products, Warehouses, Stock Movements, Sales/Transactions, Team, Reports, Businesses (SuperAdmin), each wired to its real backend endpoint.
 - [ ] Decide how to resolve the JWT-role-vs-BusinessUser-role inconsistency above before it's load-bearing (i.e. before any user is added to a second business with a different role).
+- [ ] Route-level code-splitting (`React.lazy`) once there are enough screens for it to matter — noted in Phase B, deferred to D/E.
