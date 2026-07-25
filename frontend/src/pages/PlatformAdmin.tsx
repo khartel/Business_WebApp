@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api-client"
 import { formatDate } from "@/lib/format"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { AuthShell } from "@/components/auth/AuthShell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -35,38 +36,30 @@ function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-4">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-xl">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <ShieldAlert className="size-6" />
-          </div>
-          <h1 className="font-heading text-xl font-semibold">Platform admin</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Enter the master key to continue.</p>
+    <AuthShell title="Platform admin" description="Enter the master key to continue.">
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="master-key">Master key</Label>
+          <Input
+            id="master-key"
+            type="password"
+            autoFocus
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="••••••••••••"
+          />
         </div>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="master-key">Master key</Label>
-            <Input
-              id="master-key"
-              type="password"
-              autoFocus
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="••••••••••••"
-            />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={checking || !key}>
-            {checking && <Loader2 className="size-4 animate-spin" />}
-            Unlock
-          </Button>
-        </form>
-      </div>
-    </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <Button
+          type="submit"
+          className="w-full rounded-full bg-gradient-to-r from-primary to-success text-primary-foreground hover:opacity-90"
+          disabled={checking || !key}
+        >
+          {checking && <Loader2 className="size-4 animate-spin" />}
+          Unlock
+        </Button>
+      </form>
+    </AuthShell>
   )
 }
 
@@ -135,8 +128,8 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold">Platform admin</h1>
-          <p className="text-sm text-muted-foreground">Manage SuperAdmin accounts across the platform.</p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Platform admin</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage SuperAdmin accounts across the platform.</p>
         </div>
         <ThemeToggle />
       </div>

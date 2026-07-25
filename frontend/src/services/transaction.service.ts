@@ -1,12 +1,13 @@
 import { apiClient, apiRequest } from "@/lib/api-client"
 
-export type PaymentMethod = "CASH" | "TRANSFER"
+export type PaymentMethod = "CASH" | "TRANSFER" | "CREDIT"
 
 export interface TransactionItem {
   id: string
   quantitySold: number
   unitPrice: number
   subtotal: number
+  discountPercent: number | null
   product: { id: string; name: string; unit: string }
 }
 
@@ -28,7 +29,12 @@ export interface CreateTransactionInput {
   paymentMethod: PaymentMethod
   customerName?: string
   notes?: string
-  items: Array<{ productId: string; quantitySold: number; unitPrice: number }>
+  items: Array<{
+    productId: string
+    quantitySold: number
+    unitPrice: number
+    discountPercent?: number
+  }>
 }
 
 export interface ListTransactionsParams {

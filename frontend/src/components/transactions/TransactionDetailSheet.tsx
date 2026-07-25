@@ -88,7 +88,14 @@ export function TransactionDetailSheet({
                   <TableBody>
                     {transaction.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.product.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.product.name}
+                          {!!item.discountPercent && (
+                            <span className="ml-1.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success">
+                              -{item.discountPercent}%
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {item.quantitySold} {item.product.unit}
                         </TableCell>

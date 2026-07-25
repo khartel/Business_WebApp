@@ -60,7 +60,7 @@ export function WeeklyReportTab() {
               <span className="w-24 shrink-0 text-muted-foreground">{day.dayName}</span>
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-primary"
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-success"
                   style={{ width: `${(day.totalAmount / maxDayAmount) * 100}%` }}
                 />
               </div>

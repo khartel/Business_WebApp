@@ -93,7 +93,7 @@ const getDailyReport = async (businessId, date) => {
 
     if (t.paymentMethod === "CASH") {
       employeeMap[key].cashAmount += t.totalAmount;
-    } else {
+    } else if (t.paymentMethod === "TRANSFER") {
       employeeMap[key].transferAmount += t.totalAmount;
     }
   });
@@ -365,7 +365,7 @@ const getMonthlyReport = async (businessId, year, month) => {
 
     if (t.paymentMethod === "CASH") {
       employeeMap[key].cashAmount += t.totalAmount;
-    } else {
+    } else if (t.paymentMethod === "TRANSFER") {
       employeeMap[key].transferAmount += t.totalAmount;
     }
   });

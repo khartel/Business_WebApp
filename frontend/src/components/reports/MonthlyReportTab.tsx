@@ -49,7 +49,7 @@ export function MonthlyReportTab() {
             <div
               key={day.date}
               title={`${day.dayName}: ${formatMoney(day.totalAmount, currency)}`}
-              className="flex-1 rounded-t bg-primary/70 transition-colors hover:bg-primary"
+              className="flex-1 rounded-t bg-gradient-to-t from-primary to-success opacity-70 transition-opacity hover:opacity-100"
               style={{ height: `${Math.max((day.totalAmount / maxDayAmount) * 100, 2)}%` }}
             />
           ))}

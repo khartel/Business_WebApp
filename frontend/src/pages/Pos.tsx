@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronLeft, ChevronRight, Search, Store } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, Printer, Store } from "lucide-react"
 import { toast } from "sonner"
 import * as productService from "@/services/product.service"
 import * as transactionService from "@/services/transaction.service"
@@ -12,12 +12,12 @@ import { formatDateTime, formatMoney } from "@/lib/format"
 import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 import { PageHeader } from "@/components/PageHeader"
-import { ProductTile } from "@/components/pos/ProductTile"
+import { ProductSearch } from "@/components/pos/ProductSearch"
 import { CartTicket, type CartLine } from "@/components/pos/CartTicket"
 import { TransactionDetailSheet } from "@/components/transactions/TransactionDetailSheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -31,10 +31,13 @@ import {
 
 function RegisterTab({ businessId, currency }: { businessId: string; currency: string }) {
   const queryClient = useQueryClient()
-  const [search, setSearch] = useState("")
   const [cart, setCart] = useState<CartLine[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
   const [customerName, setCustomerName] = useState("")
+  const [transferNote, setTransferNote] = useState("")
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [completedSale, setCompletedSale] = useState<{ id: string; total: number } | null>(null)
+  const [printTransactionId, setPrintTransactionId] = useState<string | null>(null)
 
   const productsQuery = useQuery({
     queryKey: ["products", businessId],
@@ -42,27 +45,20 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   })
 
   const products = productsQuery.data ?? []
-  const filteredProducts = useMemo(
-    () => products.filter((p) => p.name.toLowerCase().includes(search.trim().toLowerCase())),
-    [products, search]
-  )
-
-  const cartQuantities = useMemo(
-    () => Object.fromEntries(cart.map((line) => [line.productId, line.quantity])),
-    [cart]
-  )
 
   const resetTicket = () => {
     setCart([])
     setPaymentMethod("CASH")
     setCustomerName("")
+    setTransferNote("")
+    setSubmitAttempted(false)
   }
 
-  const addToCart = (product: productService.Product) => {
+  const addToCart = (product: productService.Product, quantity: number) => {
     const availableStock = product.primaryStock?.quantity ?? 0
     setCart((prev) => {
       const existing = prev.find((line) => line.productId === product.id)
-      const nextQty = (existing?.quantity ?? 0) + 1
+      const nextQty = (existing?.quantity ?? 0) + quantity
       if (nextQty > availableStock) {
         toast.error(`Only ${availableStock} ${product.unit} of ${product.name} in stock`)
         return prev
@@ -78,7 +74,8 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           productId: product.id,
           name: product.name,
           unit: product.unit,
-          quantity: 1,
+          quantity,
+          catalogPrice: product.price,
           unitPrice: product.price,
           availableStock,
         },
@@ -86,22 +83,26 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     })
   }
 
+  const customerNameMissing = paymentMethod === "CREDIT" && !customerName.trim()
+
   const saleMutation = useMutation({
     mutationFn: () =>
       transactionService.createTransaction(businessId, {
         paymentMethod,
         customerName: customerName || undefined,
+        notes: paymentMethod === "TRANSFER" ? transferNote || undefined : undefined,
         items: cart.map((line) => ({
           productId: line.productId,
           quantitySold: line.quantity,
           unitPrice: line.unitPrice,
+          discountPercent: line.discountPercent,
         })),
       }),
     onSuccess: (transaction) => {
       queryClient.invalidateQueries({ queryKey: ["transactions", businessId] })
       queryClient.invalidateQueries({ queryKey: ["products", businessId] })
       queryClient.invalidateQueries({ queryKey: ["business", businessId] })
-      toast.success(`Sale recorded — ${formatMoney(transaction.totalAmount, currency)}`)
+      setCompletedSale({ id: transaction.id, total: transaction.totalAmount })
       resetTicket()
     },
     onError: (error) => {
@@ -109,49 +110,29 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     },
   })
 
+  const handleComplete = () => {
+    if (customerNameMissing) {
+      setSubmitAttempted(true)
+      return
+    }
+    saleMutation.mutate()
+  }
+
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_380px]">
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="rounded-xl pl-9"
-          />
-        </div>
-
         {productsQuery.isLoading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-2xl" />
-            ))}
-          </div>
+          <Skeleton className="h-14 rounded-2xl" />
         ) : productsQuery.isError ? (
           <ErrorState onRetry={() => productsQuery.refetch()} />
-        ) : filteredProducts.length === 0 ? (
+        ) : products.length === 0 ? (
           <EmptyState
             icon={<Store className="size-6" />}
-            title={products.length === 0 ? "No products yet" : "No matches"}
-            description={
-              products.length === 0
-                ? "Add products from the Products page to start selling."
-                : "Try a different search term."
-            }
+            title="No products yet"
+            description="Add products from the Products page to start selling."
           />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((product) => (
-              <ProductTile
-                key={product.id}
-                product={product}
-                currency={currency}
-                cartQuantity={cartQuantities[product.id] ?? 0}
-                onAdd={() => addToCart(product)}
-              />
-            ))}
-          </div>
+          <ProductSearch products={products} currency={currency} onAdd={addToCart} />
         )}
       </div>
 
@@ -163,6 +144,12 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           onPaymentMethodChange={setPaymentMethod}
           customerName={customerName}
           onCustomerNameChange={setCustomerName}
+          customerNameRequired={paymentMethod === "CREDIT"}
+          customerNameError={
+            submitAttempted && customerNameMissing ? "Customer name is required for credit sales" : undefined
+          }
+          transferNote={transferNote}
+          onTransferNoteChange={setTransferNote}
           onIncrement={(productId) =>
             setCart((prev) =>
               prev.map((line) => {
@@ -186,14 +173,68 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           }
           onPriceChange={(productId, price) =>
             setCart((prev) =>
-              prev.map((line) => (line.productId === productId ? { ...line, unitPrice: price } : line))
+              prev.map((line) =>
+                line.productId === productId
+                  ? { ...line, unitPrice: price, discountPercent: undefined }
+                  : line
+              )
+            )
+          }
+          onDiscountChange={(productId, percent) =>
+            setCart((prev) =>
+              prev.map((line) => {
+                if (line.productId !== productId) return line
+                if (percent === null) {
+                  return { ...line, unitPrice: line.catalogPrice, discountPercent: undefined }
+                }
+                return {
+                  ...line,
+                  discountPercent: percent,
+                  unitPrice: Math.round(line.catalogPrice * (1 - percent / 100) * 100) / 100,
+                }
+              })
             )
           }
           onRemove={(productId) => setCart((prev) => prev.filter((line) => line.productId !== productId))}
-          onComplete={() => saleMutation.mutate()}
+          onComplete={handleComplete}
           isSubmitting={saleMutation.isPending}
         />
       </div>
+
+      <Dialog open={!!completedSale} onOpenChange={(open) => !open && setCompletedSale(null)}>
+        <DialogContent showCloseButton={false} className="sm:max-w-xs">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-success text-primary-foreground shadow-[0_0_24px_var(--glow-primary)]">
+            <CheckCircle2 className="size-7" />
+          </div>
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg">Sale complete</DialogTitle>
+            <DialogDescription className="text-center">
+              {completedSale && formatMoney(completedSale.total, currency)} recorded successfully.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button
+              className="w-full rounded-xl bg-gradient-to-r from-primary to-success text-primary-foreground shadow-[0_0_16px_var(--glow-primary)] hover:opacity-90"
+              onClick={() => {
+                setPrintTransactionId(completedSale!.id)
+                setCompletedSale(null)
+              }}
+            >
+              <Printer className="size-4" />
+              Print receipt
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setCompletedSale(null)}>
+              New sale
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <TransactionDetailSheet
+        businessId={businessId}
+        transactionId={printTransactionId}
+        onOpenChange={(open) => !open && setPrintTransactionId(null)}
+      />
     </div>
   )
 }

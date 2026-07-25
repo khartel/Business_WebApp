@@ -71,6 +71,7 @@ const createTransaction = async ({
         quantitySold: item.quantitySold,
         unitPrice: item.unitPrice,
         subtotal: item.quantitySold * item.unitPrice,
+        discountPercent: item.discountPercent ?? null,
         currentStock: stock.quantity,
       };
     })
@@ -97,6 +98,7 @@ const createTransaction = async ({
             quantitySold: item.quantitySold,
             unitPrice: item.unitPrice,
             subtotal: item.subtotal,
+            discountPercent: item.discountPercent,
           })),
         },
       },
