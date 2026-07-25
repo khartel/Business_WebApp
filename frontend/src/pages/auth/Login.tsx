@@ -1,30 +1,16 @@
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Boxes, Loader2 } from "lucide-react"
+import { User, Lock, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { AuthShell } from "@/components/auth/AuthShell"
+import { AuthField } from "@/components/auth/AuthField"
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -42,7 +28,12 @@ export default function Login() {
 
   const from = (location.state as { from?: Location })?.from?.pathname ?? "/dashboard"
 
-  const form = useForm<LoginValues>({
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { username: "", password: "", rememberMe: false },
   })
@@ -58,74 +49,71 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Boxes className="size-5" />
-          </div>
-          <CardTitle className="font-heading text-xl">Welcome back</CardTitle>
-          <CardDescription>Sign in to manage your business</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input autoComplete="username" autoFocus {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" autoComplete="current-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="rememberMe"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <Label className="font-normal">Remember me for 30 days</Label>
-                  </FormItem>
-                )}
-              />
+    <AuthShell
+      title="Welcome back"
+      description="Sign in to manage your business"
+      footer={
+        <>
+          Setting up a new business?{" "}
+          <Link to="/register" className="font-medium text-primary hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <AuthField
+          icon={User}
+          label="Username"
+          placeholder="Username"
+          autoComplete="username"
+          autoFocus
+          error={errors.username?.message}
+          {...register("username")}
+        />
+        <AuthField
+          icon={Lock}
+          label="Password"
+          type="password"
+          placeholder="Password"
+          autoComplete="current-password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
 
-              {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+        <div className="flex items-center justify-between px-1">
+          <Controller
+            control={control}
+            name="rememberMe"
+            render={({ field }) => (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                Remember me
+              </label>
+            )}
+          />
+          <button
+            type="button"
+            onClick={() =>
+              toast.info("Ask your business owner or admin to reset your password from the Team page.")
+            }
+            className="text-sm text-primary hover:underline"
+          >
+            Forgot password?
+          </button>
+        </div>
 
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
-                Sign in
-              </Button>
-            </form>
-          </Form>
+        {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Setting up a new business?{" "}
-            <Link to="/register" className="font-medium text-primary hover:underline">
-              Create an account
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        <Button
+          type="submit"
+          className="w-full rounded-full bg-gradient-to-r from-primary to-success text-primary-foreground hover:opacity-90"
+          disabled={isSubmitting}
+        >
+          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+          Sign in
+        </Button>
+      </form>
+    </AuthShell>
   )
 }

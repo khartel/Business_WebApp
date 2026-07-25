@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,8 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-3">
+        <ThemeToggle />
+
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="size-4.5" />
         </Button>

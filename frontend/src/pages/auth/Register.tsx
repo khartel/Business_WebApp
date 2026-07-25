@@ -3,26 +3,12 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Link, useNavigate } from "react-router-dom"
-import { Boxes, Loader2 } from "lucide-react"
+import { UserRound, AtSign, Phone, Mail, Lock, Loader2 } from "lucide-react"
 import * as authService from "@/services/auth.service"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { AuthShell } from "@/components/auth/AuthShell"
+import { AuthField } from "@/components/auth/AuthField"
 
 const registerSchema = z
   .object({
@@ -44,7 +30,11 @@ export default function Register() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const form = useForm<RegisterValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { fullName: "", username: "", phone: "", email: "", password: "", confirmPassword: "" },
   })
@@ -61,114 +51,82 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Boxes className="size-5" />
-          </div>
-          <CardTitle className="font-heading text-xl">Create your account</CardTitle>
-          <CardDescription>Set up your business on D-Inventory</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full name</FormLabel>
-                    <FormControl>
-                      <Input autoFocus {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input autoComplete="username" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone number</FormLabel>
-                    <FormControl>
-                      <Input type="tel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email (optional)</FormLabel>
-                    <FormControl>
-                      <Input type="email" autoComplete="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" autoComplete="new-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
-                    <FormControl>
-                      <Input type="password" autoComplete="new-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+    <AuthShell
+      title="Create your account"
+      description="Set up your business on D-Inventory"
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <AuthField
+          icon={UserRound}
+          label="Full name"
+          placeholder="Full name"
+          autoFocus
+          error={errors.fullName?.message}
+          {...register("fullName")}
+        />
+        <AuthField
+          icon={AtSign}
+          label="Username"
+          placeholder="Username"
+          autoComplete="username"
+          error={errors.username?.message}
+          {...register("username")}
+        />
+        <AuthField
+          icon={Phone}
+          label="Phone number"
+          type="tel"
+          placeholder="Phone number"
+          error={errors.phone?.message}
+          {...register("phone")}
+        />
+        <AuthField
+          icon={Mail}
+          label="Email (optional)"
+          type="email"
+          placeholder="Email (optional)"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...register("email")}
+        />
+        <AuthField
+          icon={Lock}
+          label="Password"
+          type="password"
+          placeholder="Password"
+          autoComplete="new-password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        <AuthField
+          icon={Lock}
+          label="Confirm password"
+          type="password"
+          placeholder="Confirm password"
+          autoComplete="new-password"
+          error={errors.confirmPassword?.message}
+          {...register("confirmPassword")}
+        />
 
-              {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+        {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
-                Create account
-              </Button>
-            </form>
-          </Form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link to="/login" className="font-medium text-primary hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        <Button
+          type="submit"
+          className="w-full rounded-full bg-gradient-to-r from-primary to-success text-primary-foreground hover:opacity-90"
+          disabled={isSubmitting}
+        >
+          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+          Create account
+        </Button>
+      </form>
+    </AuthShell>
   )
 }
