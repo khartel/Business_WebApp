@@ -5,26 +5,34 @@ import Login from "@/pages/auth/Login"
 import Register from "@/pages/auth/Register"
 import ChangePassword from "@/pages/ChangePassword"
 import Dashboard from "@/pages/Dashboard"
-import ComingSoon from "@/pages/ComingSoon"
+import Businesses from "@/pages/Businesses"
+import Warehouses from "@/pages/Warehouses"
+import Products from "@/pages/Products"
+import Team from "@/pages/Team"
+import StockMovements from "@/pages/StockMovements"
+import Transactions from "@/pages/Transactions"
+import Reports from "@/pages/Reports"
+import PlatformAdmin from "@/pages/PlatformAdmin"
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/platform-admin" element={<PlatformAdmin />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/change-password" element={<ChangePassword />} />
 
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/products" element={<ComingSoon title="Products" />} />
-          <Route path="/warehouses" element={<ComingSoon title="Warehouses" />} />
-          <Route path="/stock" element={<ComingSoon title="Stock Movements" />} />
-          <Route path="/transactions" element={<ComingSoon title="Sales" />} />
-          <Route path="/team" element={<ComingSoon title="Team" />} />
-          <Route path="/reports" element={<ComingSoon title="Reports" />} />
-          <Route path="/businesses" element={<ComingSoon title="Businesses" />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/warehouses" element={<Warehouses />} />
+          <Route path="/stock" element={<StockMovements />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/businesses" element={<Businesses />} />
         </Route>
       </Route>
 

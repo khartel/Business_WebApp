@@ -1,0 +1,75 @@
+import { useQuery } from "@tanstack/react-query"
+import * as reportService from "@/services/report.service"
+import type { StockAlertItem } from "@/services/report.service"
+import { useAuth } from "@/context/AuthContext"
+import { EmptyState } from "@/components/EmptyState"
+import { SummaryStat } from "@/components/reports/SummaryStat"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { AlertTriangle } from "lucide-react"
+
+function AlertList({ items, tone }: { items: StockAlertItem[]; tone: "destructive" | "warning" }) {
+  return (
+    <ul className="space-y-2 text-sm">
+      {items.map((item) => (
+        <li key={item.id} className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">{item.product.name}</p>
+            <p className="text-xs text-muted-foreground">{item.warehouse.name}</p>
+          </div>
+          <Badge
+            variant={tone === "destructive" ? "destructive" : undefined}
+            className={tone === "warning" ? "bg-chart-4/15 text-chart-4" : undefined}
+          >
+            {item.quantity} / {item.lowStockThreshold} {item.product.unit}
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function StockAlertsTab() {
+  const { activeBusinessId } = useAuth()
+
+  const query = useQuery({
+    queryKey: ["report-stock-alerts", activeBusinessId],
+    queryFn: () => reportService.getStockAlertReport(activeBusinessId!),
+    enabled: !!activeBusinessId,
+  })
+
+  if (query.isLoading) return <Skeleton className="h-64 rounded-xl" />
+  const report = query.data
+  if (!report) return null
+
+  if (report.summary.outOfStockCount === 0 && report.summary.lowStockCount === 0) {
+    return (
+      <EmptyState icon={<AlertTriangle className="size-6" />} title="All stock is healthy" description="No products are low or out of stock right now." />
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <SummaryStat label="Out of stock" value={report.summary.outOfStockCount} />
+        <SummaryStat label="Low stock" value={report.summary.lowStockCount} />
+        <SummaryStat label="Healthy" value={report.summary.healthyCount} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {report.outOfStock.length > 0 && (
+          <div className="rounded-xl border border-border p-4">
+            <h3 className="mb-3 text-sm font-semibold">Out of stock</h3>
+            <AlertList items={report.outOfStock} tone="destructive" />
+          </div>
+        )}
+        {report.lowStock.length > 0 && (
+          <div className="rounded-xl border border-border p-4">
+            <h3 className="mb-3 text-sm font-semibold">Low stock</h3>
+            <AlertList items={report.lowStock} tone="warning" />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

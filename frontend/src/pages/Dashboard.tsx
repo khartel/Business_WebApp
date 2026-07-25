@@ -1,19 +1,39 @@
 import { useQuery } from "@tanstack/react-query"
-import { Package, Warehouse, Users, Receipt } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Package, Warehouse, Users, Receipt, AlertTriangle, ArrowRight } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { getBusinessById } from "@/services/business.service"
+import * as transactionService from "@/services/transaction.service"
+import * as reportService from "@/services/report.service"
+import { canManage } from "@/lib/permissions"
+import { formatDateTime, formatMoney } from "@/lib/format"
 import { StatCard } from "@/components/dashboard/StatCard"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/EmptyState"
 
 export default function Dashboard() {
   const { user, activeBusinessId } = useAuth()
+  const canSeeAlerts = canManage(user?.role)
 
   const businessQuery = useQuery({
     queryKey: ["business", activeBusinessId],
     queryFn: () => getBusinessById(activeBusinessId!),
     enabled: !!activeBusinessId,
+  })
+
+  const recentSalesQuery = useQuery({
+    queryKey: ["transactions", activeBusinessId, "recent"],
+    queryFn: () => transactionService.getTransactions(activeBusinessId!, { page: 1, limit: 5 }),
+    enabled: !!activeBusinessId,
+  })
+
+  const stockAlertsQuery = useQuery({
+    queryKey: ["report-stock-alerts", activeBusinessId],
+    queryFn: () => reportService.getStockAlertReport(activeBusinessId!),
+    enabled: !!activeBusinessId && canSeeAlerts,
   })
 
   if (!activeBusinessId) {
@@ -30,6 +50,9 @@ export default function Dashboard() {
   }
 
   const business = businessQuery.data
+  const currency = business?.currency ?? "USD"
+  const recentSales = recentSalesQuery.data?.transactions ?? []
+  const alerts = stockAlertsQuery.data
 
   return (
     <div className="space-y-6">
@@ -57,31 +80,89 @@ export default function Dashboard() {
         </div>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Warehouses</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {business && business.warehouses.length > 0 ? (
+      {canSeeAlerts && alerts && (alerts.summary.outOfStockCount > 0 || alerts.summary.lowStockCount > 0) && (
+        <Card className="border-chart-4/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="size-4 text-chart-4" />
+              Stock alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <ul className="divide-y divide-border">
-              {business.warehouses.map((w) => (
-                <li key={w.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-medium">{w.name}</span>
-                  <span className="text-muted-foreground">
-                    {w.isPrimary ? "Primary" : w.location ?? "—"}
-                  </span>
+              {[...alerts.outOfStock, ...alerts.lowStock].slice(0, 5).map((item) => (
+                <li key={item.id} className="flex items-center justify-between py-2 text-sm">
+                  <div>
+                    <span className="font-medium">{item.product.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{item.warehouse.name}</span>
+                  </div>
+                  <Badge
+                    variant={item.quantity === 0 ? "destructive" : undefined}
+                    className={item.quantity > 0 ? "bg-chart-4/15 text-chart-4" : undefined}
+                  >
+                    {item.quantity} {item.product.unit} left
+                  </Badge>
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No warehouses set up yet.</p>
-          )}
-        </CardContent>
-      </Card>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/reports">
+                View full report
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-      <p className="text-center text-xs text-muted-foreground">
-        Sales trends, stock alerts and employee reports land in the next build phase.
-      </p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent sales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentSalesQuery.isLoading ? (
+              <Skeleton className="h-32 rounded-lg" />
+            ) : recentSales.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {recentSales.map((tx) => (
+                  <li key={tx.id} className="flex items-center justify-between py-2 text-sm">
+                    <div>
+                      <p className="font-medium">{tx.customerName}</p>
+                      <p className="text-xs text-muted-foreground">{formatDateTime(tx.createdAt)}</p>
+                    </div>
+                    <span className="font-medium">{formatMoney(tx.totalAmount, currency)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No sales recorded yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Warehouses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {business && business.warehouses.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {business.warehouses.map((w) => (
+                  <li key={w.id} className="flex items-center justify-between py-2 text-sm">
+                    <span className="font-medium">{w.name}</span>
+                    <span className="text-muted-foreground">
+                      {w.isPrimary ? "Primary" : w.location ?? "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No warehouses set up yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
