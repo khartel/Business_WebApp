@@ -68,7 +68,7 @@ model Business {
   updatedAt DateTime @updatedAt
 
   // relations
-  owner         User           @relation("BusinessOwner", fields: [ownerId], references: [id])
+  owner         User           @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   businessUsers BusinessUser[]
   warehouses    Warehouse[]
   products      Product[]

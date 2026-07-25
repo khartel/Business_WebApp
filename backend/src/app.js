@@ -30,25 +30,10 @@ app.use((req, res, next) => {
 // ─────────────────────────────────────────
 app.use(helmet());
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests, please try again later.",
-});
-app.use("/api", limiter);
-
-// Stricter limiter specifically for login, to slow down credential brute-forcing
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: "Too many login attempts. Please try again later.",
-  skipSuccessfulRequests: true,
-});
-app.use("/api/auth/login", loginLimiter);
-
-// ─────────────────────────────────────────
-// GENERAL MIDDLEWARE
-// ─────────────────────────────────────────
+// CORS must run before the rate limiters (and everything else) so that
+// 429/404/error responses still carry Access-Control-Allow-Origin — otherwise
+// a rate-limited browser request surfaces as an opaque "CORS blocked" error
+// instead of the actual "too many requests" message.
 // CLIENT_URL can be a single origin or a comma-separated list (e.g. for
 // staging + production). In development, any localhost/127.0.0.1 port is
 // also allowed so the frontend dev server can bind to a fallback port
@@ -74,6 +59,25 @@ app.use(cors({
   credentials: true,
 }));
 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Too many requests, please try again later.",
+});
+app.use("/api", limiter);
+
+// Stricter limiter specifically for login, to slow down credential brute-forcing
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts. Please try again later.",
+  skipSuccessfulRequests: true,
+});
+app.use("/api/auth/login", loginLimiter);
+
+// ─────────────────────────────────────────
+// GENERAL MIDDLEWARE
+// ─────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

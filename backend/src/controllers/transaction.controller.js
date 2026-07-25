@@ -42,7 +42,7 @@ const getAll = asyncHandler(async (req, res) => {
     endDate,
     page,
     limit,
-  } = req.query;
+  } = req.validatedQuery;
 
   const result = await getTransactions({
     businessId: req.params.businessId,

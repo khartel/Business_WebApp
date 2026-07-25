@@ -14,7 +14,11 @@ const validate = (schema) => (req, res, next) => {
       req.params = { ...req.params, ...schema.params.parse(req.params) };
     }
     if (schema.query) {
-      req.query = { ...req.query, ...schema.query.parse(req.query) };
+      // Express 5 turned req.query into a getter-only property, so
+      // reassigning it (as we used to) silently no-ops and coerced values
+      // (e.g. z.coerce.number() on page/limit) never reach the controller.
+      // Expose the parsed/coerced result separately instead.
+      req.validatedQuery = schema.query.parse(req.query);
     }
     next();
   } catch (error) {

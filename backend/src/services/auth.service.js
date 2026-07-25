@@ -186,7 +186,30 @@ const getMe = async (userId) => {
     throw new AppError("User not found", 404);
   }
 
-  return user;
+  // Build the same normalized `businesses` array shape as loginUser, so the
+  // frontend can rely on it regardless of whether the session came from a
+  // fresh login or a /auth/me refetch (e.g. after a page reload).
+  let businesses = [];
+
+  if (user.role === "SUPERADMIN") {
+    businesses = user.ownedBusinesses;
+  } else {
+    businesses = user.businessUsers.map((bu) => ({
+      id: bu.business.id,
+      name: bu.business.name,
+      country: bu.business.country,
+      currency: bu.business.currency,
+      location: bu.business.location,
+      roleInBusiness: bu.role,
+    }));
+  }
+
+  const { ownedBusinesses, businessUsers, ...userWithoutRaw } = user;
+
+  return {
+    ...userWithoutRaw,
+    businesses,
+  };
 };
 
 /**
