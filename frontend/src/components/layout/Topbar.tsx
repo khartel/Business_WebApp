@@ -1,6 +1,8 @@
-import { Bell, ChevronDown, LogOut, KeyRound } from "lucide-react"
+import { useState } from "react"
+import { Bell, ChevronDown, LogOut, KeyRound, Menu } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
+import { SidebarBrand, SidebarNav } from "@/components/layout/Sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
@@ -12,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
   Select,
   SelectContent,
@@ -32,6 +35,7 @@ function initials(fullName: string) {
 export function Topbar() {
   const { user, activeBusinessId, setActiveBusinessId, logout } = useAuth()
   const navigate = useNavigate()
+  const [navOpen, setNavOpen] = useState(false)
 
   if (!user) return null
 
@@ -41,11 +45,32 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/60 px-6 backdrop-blur-xl">
-      <div>
+    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/60 px-4 backdrop-blur-xl sm:px-6">
+      <div className="flex min-w-0 items-center gap-2">
+        <Sheet open={navOpen} onOpenChange={setNavOpen}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Open navigation"
+            className="lg:hidden"
+            onClick={() => setNavOpen(true)}
+          >
+            <Menu className="size-5" />
+          </Button>
+          <SheetContent
+            side="left"
+            showCloseButton={false}
+            className="flex w-64 flex-col gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+          >
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <SidebarBrand />
+            <SidebarNav onNavigate={() => setNavOpen(false)} />
+          </SheetContent>
+        </Sheet>
+
         {user.businesses.length > 0 ? (
           <Select value={activeBusinessId ?? undefined} onValueChange={setActiveBusinessId}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-[160px] sm:w-[220px]">
               <SelectValue placeholder="Select a business" />
             </SelectTrigger>
             <SelectContent>
@@ -61,10 +86,10 @@ export function Topbar() {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <ThemeToggle />
 
-        <Button variant="ghost" size="icon" aria-label="Notifications">
+        <Button variant="ghost" size="icon" aria-label="Notifications" className="hidden sm:inline-flex">
           <Bell className="size-4.5" />
         </Button>
 
@@ -78,7 +103,7 @@ export function Topbar() {
                 <p className="text-sm font-medium leading-none">{user.fullName}</p>
                 <p className="text-xs text-muted-foreground">{user.role}</p>
               </div>
-              <ChevronDown className="size-4 text-muted-foreground" />
+              <ChevronDown className="hidden size-4 text-muted-foreground sm:block" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

@@ -9,6 +9,7 @@ import { BusinessCard } from "@/components/businesses/BusinessCard"
 import { CreateBusinessDialog } from "@/components/businesses/CreateBusinessDialog"
 import { EditBusinessDialog } from "@/components/businesses/EditBusinessDialog"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -111,6 +112,8 @@ export default function SelectBusiness() {
               <Skeleton key={i} className="h-56 rounded-3xl" />
             ))}
           </div>
+        ) : isSuperAdmin && businessesQuery.isError ? (
+          <ErrorState onRetry={() => businessesQuery.refetch()} />
         ) : businesses.length === 0 ? (
           isSuperAdmin ? (
             <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-border py-20 text-center">

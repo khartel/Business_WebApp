@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 
 export default function Dashboard() {
   const { user, activeBusinessId } = useAuth()
@@ -47,6 +48,10 @@ export default function Dashboard() {
         }
       />
     )
+  }
+
+  if (businessQuery.isError) {
+    return <ErrorState onRetry={() => businessQuery.refetch()} />
   }
 
   const business = businessQuery.data
@@ -123,6 +128,8 @@ export default function Dashboard() {
           <CardContent>
             {recentSalesQuery.isLoading ? (
               <Skeleton className="h-32 rounded-lg" />
+            ) : recentSalesQuery.isError ? (
+              <p className="text-sm text-destructive">Couldn't load recent sales.</p>
             ) : recentSales.length > 0 ? (
               <ul className="divide-y divide-border">
                 {recentSales.map((tx) => (

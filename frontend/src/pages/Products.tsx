@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api-client"
 import { formatMoney } from "@/lib/format"
 import { PageHeader } from "@/components/PageHeader"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { ProductFormDialog } from "@/components/products/ProductFormDialog"
 import { AddStockDialog } from "@/components/products/AddStockDialog"
@@ -70,6 +71,8 @@ export default function Products() {
 
       {productsQuery.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
+      ) : productsQuery.isError ? (
+        <ErrorState onRetry={() => productsQuery.refetch()} />
       ) : products.length === 0 ? (
         <EmptyState
           icon={<Package className="size-6" />}
@@ -77,7 +80,7 @@ export default function Products() {
           description="Add your first product to start tracking stock and sales."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>

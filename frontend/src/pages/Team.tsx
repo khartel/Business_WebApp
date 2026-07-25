@@ -8,6 +8,7 @@ import { canManage } from "@/lib/permissions"
 import { ApiError } from "@/lib/api-client"
 import { PageHeader } from "@/components/PageHeader"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { AddTeamMemberDialog } from "@/components/team/AddTeamMemberDialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -92,10 +93,12 @@ export default function Team() {
 
       {teamQuery.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
+      ) : teamQuery.isError ? (
+        <ErrorState onRetry={() => teamQuery.refetch()} />
       ) : members.length === 0 ? (
         <EmptyState icon={<Users className="size-6" />} title="No team members yet" />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>

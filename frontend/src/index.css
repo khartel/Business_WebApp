@@ -176,3 +176,32 @@
   .animate-aurora-2 { animation: aurora-2 26s ease-in-out infinite; }
   .animate-aurora-3 { animation: aurora-3 24s ease-in-out infinite; }
 }
+
+/* Receipt printing: hide the whole app by default when printing, reveal only
+   the element flagged .receipt-print-area, and strip glass/blur effects that
+   don't render usefully on paper. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible;
+  }
+  .receipt-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: #fff !important;
+    color: #000 !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .receipt-print-area * {
+    background: transparent !important;
+    color: #000 !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+}

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { formatMoney } from "@/lib/format"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Package } from "lucide-react"
 
@@ -40,6 +41,7 @@ export function ProductReportTab() {
   })
 
   if (query.isLoading) return <Skeleton className="h-64 rounded-xl" />
+  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />
   const report = query.data
   if (!report) return null
 

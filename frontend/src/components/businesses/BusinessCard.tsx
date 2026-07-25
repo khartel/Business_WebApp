@@ -39,6 +39,7 @@ export function BusinessCard({
       className={cn(
         "group relative flex flex-col gap-5 overflow-hidden rounded-3xl border p-6 text-left shadow-sm backdrop-blur-xl transition-all duration-200",
         "bg-card/60 ring-1 ring-foreground/10 hover:-translate-y-1 hover:shadow-2xl hover:ring-primary/30 dark:bg-card/40 dark:ring-white/10",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isActive ? "border-success/50 ring-2 ring-success/40" : "border-transparent"
       )}
     >

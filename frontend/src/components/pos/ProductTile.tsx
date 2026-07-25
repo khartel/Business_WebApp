@@ -25,6 +25,7 @@ export function ProductTile({
       className={cn(
         "group relative flex flex-col items-start gap-2 overflow-hidden rounded-2xl border p-4 text-left shadow-sm backdrop-blur-xl transition-all duration-150",
         "bg-card/60 ring-1 ring-foreground/10 dark:bg-card/40 dark:ring-white/10",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isOutOfStock
           ? "cursor-not-allowed opacity-40"
           : "hover:-translate-y-0.5 hover:shadow-lg hover:ring-success/40 active:translate-y-0 active:scale-[0.98]"

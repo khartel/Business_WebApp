@@ -72,7 +72,7 @@ export function CartTicket({
                   type="button"
                   onClick={() => onRemove(line.productId)}
                   aria-label={`Remove ${line.name}`}
-                  className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                  className="shrink-0 rounded text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -82,7 +82,7 @@ export function CartTicket({
                   <button
                     type="button"
                     onClick={() => onDecrement(line.productId)}
-                    className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="size-3" />
@@ -94,7 +94,7 @@ export function CartTicket({
                     type="button"
                     onClick={() => onIncrement(line.productId)}
                     disabled={line.quantity >= line.availableStock}
-                    className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
+                    className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
                     aria-label="Increase quantity"
                   >
                     <Plus className="size-3" />
@@ -131,7 +131,7 @@ export function CartTicket({
             type="button"
             onClick={() => onPaymentMethodChange("CASH")}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition-all",
+              "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               paymentMethod === "CASH"
                 ? "border-transparent bg-gradient-to-r from-primary to-success text-primary-foreground shadow-[0_0_16px_var(--glow-primary)]"
                 : "border-border/60 text-muted-foreground hover:bg-muted"
@@ -144,7 +144,7 @@ export function CartTicket({
             type="button"
             onClick={() => onPaymentMethodChange("TRANSFER")}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition-all",
+              "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               paymentMethod === "TRANSFER"
                 ? "border-transparent bg-gradient-to-r from-primary to-success text-primary-foreground shadow-[0_0_16px_var(--glow-primary)]"
                 : "border-border/60 text-muted-foreground hover:bg-muted"

@@ -8,6 +8,7 @@ import { canManage } from "@/lib/permissions"
 import { ApiError } from "@/lib/api-client"
 import { PageHeader } from "@/components/PageHeader"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { WarehouseFormDialog } from "@/components/warehouses/WarehouseFormDialog"
 import { Badge } from "@/components/ui/badge"
@@ -79,6 +80,8 @@ export default function Warehouses() {
 
       {warehousesQuery.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
+      ) : warehousesQuery.isError ? (
+        <ErrorState onRetry={() => warehousesQuery.refetch()} />
       ) : warehouses.length === 0 ? (
         <EmptyState
           icon={<WarehouseIcon className="size-6" />}
@@ -86,7 +89,7 @@ export default function Warehouses() {
           description="Create your first warehouse to start adding stock."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>

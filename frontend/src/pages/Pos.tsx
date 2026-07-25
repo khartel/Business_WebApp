@@ -10,6 +10,7 @@ import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { ApiError } from "@/lib/api-client"
 import { formatDateTime, formatMoney } from "@/lib/format"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { PageHeader } from "@/components/PageHeader"
 import { ProductTile } from "@/components/pos/ProductTile"
 import { CartTicket, type CartLine } from "@/components/pos/CartTicket"
@@ -127,6 +128,8 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
               <Skeleton key={i} className="h-28 rounded-2xl" />
             ))}
           </div>
+        ) : productsQuery.isError ? (
+          <ErrorState onRetry={() => productsQuery.refetch()} />
         ) : filteredProducts.length === 0 ? (
           <EmptyState
             icon={<Store className="size-6" />}
@@ -211,6 +214,8 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
     <div className="space-y-4">
       {transactionsQuery.isLoading ? (
         <Skeleton className="h-64 rounded-2xl" />
+      ) : transactionsQuery.isError ? (
+        <ErrorState onRetry={() => transactionsQuery.refetch()} />
       ) : transactions.length === 0 ? (
         <EmptyState
           icon={<Store className="size-6" />}
@@ -219,7 +224,7 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
         />
       ) : (
         <>
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl dark:bg-card/40">
+          <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl dark:bg-card/40">
             <Table>
               <TableHeader>
                 <TableRow>

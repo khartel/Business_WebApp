@@ -6,6 +6,7 @@ import { canManage } from "@/lib/permissions"
 import { formatDateTime } from "@/lib/format"
 import { PageHeader } from "@/components/PageHeader"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { MoveStockDialog } from "@/components/stock/MoveStockDialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -49,6 +50,8 @@ export default function StockMovements() {
 
       {movementsQuery.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
+      ) : movementsQuery.isError ? (
+        <ErrorState onRetry={() => movementsQuery.refetch()} />
       ) : movements.length === 0 ? (
         <EmptyState
           icon={<ArrowLeftRight className="size-6" />}
@@ -56,7 +59,7 @@ export default function StockMovements() {
           description="Transfers between warehouses will show up here."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>

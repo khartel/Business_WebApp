@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 
 function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
   const [key, setKey] = useState("")
@@ -142,6 +143,8 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
 
       {query.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
+      ) : query.isError ? (
+        <ErrorState onRetry={() => query.refetch()} />
       ) : superAdmins.length === 0 ? (
         <EmptyState icon={<ShieldAlert className="size-6" />} title="No SuperAdmins" description="No SuperAdmin accounts exist yet." />
       ) : (

@@ -3,6 +3,7 @@ import * as reportService from "@/services/report.service"
 import type { StockAlertItem } from "@/services/report.service"
 import { useAuth } from "@/context/AuthContext"
 import { EmptyState } from "@/components/EmptyState"
+import { ErrorState } from "@/components/ErrorState"
 import { SummaryStat } from "@/components/reports/SummaryStat"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,6 +40,7 @@ export function StockAlertsTab() {
   })
 
   if (query.isLoading) return <Skeleton className="h-64 rounded-xl" />
+  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />
   const report = query.data
   if (!report) return null
 

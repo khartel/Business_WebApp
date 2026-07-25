@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
+import { Printer } from "lucide-react"
 import * as transactionService from "@/services/transaction.service"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { formatDateTime, formatMoney } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Sheet,
@@ -54,7 +56,7 @@ export function TransactionDetailSheet({
           {transactionQuery.isLoading || !transaction ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
-            <>
+            <div className="receipt-print-area space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Customer</p>
@@ -111,10 +113,15 @@ export function TransactionDetailSheet({
                 </span>
               </div>
 
-              <p className="text-center text-xs text-muted-foreground print:hidden">
-                Use your browser's print option (Ctrl/Cmd+P) to print this receipt.
-              </p>
-            </>
+              <Button
+                variant="outline"
+                className="w-full print:hidden"
+                onClick={() => window.print()}
+              >
+                <Printer className="size-4" />
+                Print receipt
+              </Button>
+            </div>
           )}
         </div>
       </SheetContent>
