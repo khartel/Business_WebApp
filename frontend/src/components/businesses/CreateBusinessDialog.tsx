@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -37,7 +37,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-export function CreateBusinessDialog({ onCreated }: { onCreated?: (businessId: string) => void }) {
+export function CreateBusinessDialog({
+  onCreated,
+  trigger,
+}: {
+  onCreated?: (businessId: string) => void
+  trigger?: ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -80,10 +86,12 @@ export function CreateBusinessDialog({ onCreated }: { onCreated?: (businessId: s
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
-          New business
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="size-4" />
+            New business
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

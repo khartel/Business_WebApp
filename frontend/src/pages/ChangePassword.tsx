@@ -45,7 +45,7 @@ export default function ChangePassword() {
       await authService.changePassword(values)
       await refetchMe()
       toast.success("Password updated successfully")
-      navigate("/dashboard", { replace: true })
+      navigate("/", { replace: true })
     } catch (error) {
       setServerError(error instanceof ApiError ? error.message : "Could not update password")
     }

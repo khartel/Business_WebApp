@@ -4,13 +4,13 @@ import { ProtectedRoute } from "@/components/ProtectedRoute"
 import Login from "@/pages/auth/Login"
 import Register from "@/pages/auth/Register"
 import ChangePassword from "@/pages/ChangePassword"
+import SelectBusiness from "@/pages/SelectBusiness"
+import Pos from "@/pages/Pos"
 import Dashboard from "@/pages/Dashboard"
-import Businesses from "@/pages/Businesses"
 import Warehouses from "@/pages/Warehouses"
 import Products from "@/pages/Products"
 import Team from "@/pages/Team"
 import StockMovements from "@/pages/StockMovements"
-import Transactions from "@/pages/Transactions"
 import Reports from "@/pages/Reports"
 import PlatformAdmin from "@/pages/PlatformAdmin"
 
@@ -23,21 +23,20 @@ function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/" element={<SelectBusiness />} />
 
         <Route element={<AppLayout />}>
+          <Route path="/pos" element={<Pos />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/warehouses" element={<Warehouses />} />
           <Route path="/stock" element={<StockMovements />} />
-          <Route path="/transactions" element={<Transactions />} />
           <Route path="/team" element={<Team />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/businesses" element={<Businesses />} />
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

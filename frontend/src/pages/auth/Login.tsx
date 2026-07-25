@@ -26,7 +26,7 @@ export default function Login() {
   const location = useLocation()
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const from = (location.state as { from?: Location })?.from?.pathname ?? "/dashboard"
+  const from = (location.state as { from?: Location })?.from?.pathname ?? "/"
 
   const {
     register,

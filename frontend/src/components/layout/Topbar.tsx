@@ -41,7 +41,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/60 px-6 backdrop-blur-xl">
       <div>
         {user.businesses.length > 0 ? (
           <Select value={activeBusinessId ?? undefined} onValueChange={setActiveBusinessId}>

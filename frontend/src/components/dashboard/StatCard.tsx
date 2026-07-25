@@ -11,19 +11,21 @@ interface StatCardProps {
 
 export function StatCard({ label, value, icon: Icon, accent = "primary" }: StatCardProps) {
   return (
-    <Card>
+    <Card className="group">
       <CardContent className="flex items-center gap-4">
         <div
           className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-xl",
-            accent === "success" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"
+            "flex size-12 shrink-0 items-center justify-center rounded-2xl transition-shadow duration-200",
+            accent === "success"
+              ? "bg-success/10 text-success shadow-[0_0_0px_var(--glow-primary)] group-hover:shadow-[0_0_18px_var(--glow-primary)]"
+              : "bg-primary/10 text-primary shadow-[0_0_0px_var(--glow-secondary)] group-hover:shadow-[0_0_18px_var(--glow-secondary)]"
           )}
         >
-          <Icon className="size-5" />
+          <Icon className="size-5.5" />
         </div>
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="font-heading text-2xl font-semibold">{value}</p>
+          <p className="font-heading text-3xl font-bold tabular-nums">{value}</p>
         </div>
       </CardContent>
     </Card>
