@@ -6,6 +6,7 @@ import Register from "@/pages/auth/Register"
 import ChangePassword from "@/pages/ChangePassword"
 import SelectBusiness from "@/pages/SelectBusiness"
 import Pos from "@/pages/Pos"
+import Customers from "@/pages/Customers"
 import Dashboard from "@/pages/Dashboard"
 import Warehouses from "@/pages/Warehouses"
 import Products from "@/pages/Products"
@@ -27,6 +28,7 @@ function App() {
 
         <Route element={<AppLayout />}>
           <Route path="/pos" element={<Pos />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/warehouses" element={<Warehouses />} />

@@ -29,6 +29,11 @@ enum MovementStatus {
   CANCELLED
 }
 
+enum MovementType {
+  RESTOCK
+  TRANSFER
+}
+
 // ─────────────────────────────────────────
 // USERS
 // ─────────────────────────────────────────
@@ -50,6 +55,7 @@ model User {
   businessUsers   BusinessUser[]
   transactions    Transaction[]
   stockMovements  StockMovement[]
+  creditPayments  CreditPayment[]
 }
 
 // ─────────────────────────────────────────
@@ -73,6 +79,7 @@ model Business {
   businessUsers BusinessUser[]
   warehouses    Warehouse[]
   products      Product[]
+  customers     Customer[]
   transactions  Transaction[]
 }
 
@@ -124,6 +131,7 @@ model Product {
   unit        String
   price       Float    @default(0)
   description String?
+  shortCode   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -131,6 +139,8 @@ model Product {
   stock            WarehouseStock[]
   transactionItems TransactionItem[]
   stockMovements   StockMovement[]
+
+  @@unique([businessId, shortCode])
 }
 
 // ─────────────────────────────────────────
@@ -153,6 +163,24 @@ model WarehouseStock {
 }
 
 // ─────────────────────────────────────────
+// CUSTOMERS
+// ─────────────────────────────────────────
+
+model Customer {
+  id         String   @id @default(uuid())
+  businessId String
+  name       String
+  phone      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([businessId, name])
+}
+
+// ─────────────────────────────────────────
 // TRANSACTIONS
 // ─────────────────────────────────────────
 
@@ -161,16 +189,35 @@ model Transaction {
   businessId    String
   warehouseId   String
   performedById String
+  customerId    String?
   paymentMethod PaymentMethod
   totalAmount   Float
   customerName  String        @default("Casual Customer")
   notes         String?
+  paidAt        DateTime?
   createdAt     DateTime      @default(now())
 
   business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   warehouse     Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   performedBy   User            @relation(fields: [performedById], references: [id], onDelete: Cascade)
+  customer      Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items         TransactionItem[]
+  payments      CreditPayment[]
+}
+
+// ─────────────────────────────────────────
+// CREDIT PAYMENTS
+// ─────────────────────────────────────────
+
+model CreditPayment {
+  id            String   @id @default(uuid())
+  transactionId String
+  amount        Float
+  recordedById  String
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  recordedBy  User        @relation(fields: [recordedById], references: [id], onDelete: Cascade)
 }
 
 // ─────────────────────────────────────────
@@ -197,17 +244,18 @@ model TransactionItem {
 model StockMovement {
   id              String         @id @default(uuid())
   businessId      String
-  fromWarehouseId String
+  fromWarehouseId String?
   toWarehouseId   String
   productId       String
   quantity        Float
+  type            MovementType   @default(TRANSFER)
   status          MovementStatus @default(COMPLETED)
   movedById       String
   notes           String?
   createdAt       DateTime       @default(now())
 
-  movedBy       User      @relation(fields: [movedById], references: [id], onDelete: Cascade)
-  fromWarehouse Warehouse @relation("MovementFrom", fields: [fromWarehouseId], references: [id], onDelete: Cascade)
-  toWarehouse   Warehouse @relation("MovementTo", fields: [toWarehouseId], references: [id], onDelete: Cascade)
-  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movedBy       User       @relation(fields: [movedById], references: [id], onDelete: Cascade)
+  fromWarehouse Warehouse? @relation("MovementFrom", fields: [fromWarehouseId], references: [id], onDelete: Cascade)
+  toWarehouse   Warehouse  @relation("MovementTo", fields: [toWarehouseId], references: [id], onDelete: Cascade)
+  product       Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

@@ -4,11 +4,12 @@ const {
   getStock,
   moveStockBetweenWarehouses,
   getMovements,
+  receiveStockController,
 } = require("../controllers/product.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
 const { validate } = require("../middleware/validate.middleware");
-const { moveStockSchema } = require("../validators/stock.validators");
+const { moveStockSchema, receiveStockSchema } = require("../validators/stock.validators");
 
 router.use(authenticate);
 router.use(belongsToBusiness);
@@ -17,12 +18,18 @@ router.use(belongsToBusiness);
 router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getStock);
 router.get("/movements", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getMovements);
 
-// Only SuperAdmin and Admin can move stock
+// Only SuperAdmin and Admin can move or receive stock
 router.post(
   "/move",
   authorize("SUPERADMIN", "ADMIN"),
   validate(moveStockSchema),
   moveStockBetweenWarehouses
+);
+router.post(
+  "/receive",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(receiveStockSchema),
+  receiveStockController
 );
 
 module.exports = router;

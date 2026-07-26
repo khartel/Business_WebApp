@@ -45,10 +45,18 @@ const listTransactionsQuerySchema = {
   query: z.object({
     performedById: z.string().uuid().optional(),
     paymentMethod: z.enum(["CASH", "TRANSFER", "CREDIT"]).optional(),
+    paid: z.enum(["true", "false"]).optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+  }),
+};
+
+const recordPaymentSchema = {
+  params: transactionIdParamSchema.params,
+  body: z.object({
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
   }),
 };
 
@@ -57,4 +65,5 @@ module.exports = {
   transactionIdParamSchema,
   createTransactionSchema,
   listTransactionsQuerySchema,
+  recordPaymentSchema,
 };

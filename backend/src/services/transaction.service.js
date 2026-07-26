@@ -1,6 +1,43 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
 
+// Shared include shape so every read path (create/list/get-one) returns the
+// same structure, including the credit-payment history needed to compute
+// amountPaid/balanceDue.
+const TRANSACTION_INCLUDE = {
+  items: {
+    include: {
+      product: {
+        select: { id: true, name: true, unit: true },
+      },
+    },
+  },
+  performedBy: {
+    select: { id: true, fullName: true, username: true, role: true },
+  },
+  warehouse: {
+    select: { id: true, name: true, isPrimary: true },
+  },
+  payments: {
+    include: {
+      recordedBy: { select: { id: true, fullName: true, username: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  },
+};
+
+/**
+ * Attach computed amountPaid/balanceDue (only meaningful for CREDIT sales,
+ * but harmless — 0 paid / balanceDue === totalAmount — for others).
+ */
+const withCreditStats = (transaction) => {
+  const amountPaid =
+    Math.round(transaction.payments.reduce((sum, p) => sum + p.amount, 0) * 100) / 100;
+  const balanceDue = Math.round((transaction.totalAmount - amountPaid) * 100) / 100;
+
+  return { ...transaction, amountPaid, balanceDue };
+};
+
 /**
  * Create a new transaction (sale)
  */
@@ -82,15 +119,32 @@ const createTransaction = async ({
     0
   );
 
+  const trimmedCustomerName = customerName?.trim();
+
   const transaction = await prisma.$transaction(async (tx) => {
+    // Recognize a returning customer by exact (case-insensitive) name match,
+    // or quietly create a lightweight record for a new one — this is what
+    // powers the register's autocomplete and the Customers/Credit tracking
+    // page, without requiring anyone to pre-register a customer first.
+    let customerId = null;
+    if (trimmedCustomerName) {
+      const existingCustomer = await tx.customer.findFirst({
+        where: { businessId, name: { equals: trimmedCustomerName, mode: "insensitive" } },
+      });
+      customerId = existingCustomer
+        ? existingCustomer.id
+        : (await tx.customer.create({ data: { businessId, name: trimmedCustomerName } })).id;
+    }
+
     const newTransaction = await tx.transaction.create({
       data: {
         businessId,
         warehouseId: primaryWarehouse.id,
         performedById,
+        customerId,
         paymentMethod,
         totalAmount,
-        customerName: customerName || "Casual Customer",
+        customerName: trimmedCustomerName || "Casual Customer",
         notes,
         items: {
           create: itemsWithDetails.map((item) => ({
@@ -102,34 +156,7 @@ const createTransaction = async ({
           })),
         },
       },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                unit: true,
-              },
-            },
-          },
-        },
-        performedBy: {
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-            role: true,
-          },
-        },
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-            isPrimary: true,
-          },
-        },
-      },
+      include: TRANSACTION_INCLUDE,
     });
 
     await Promise.all(
@@ -151,7 +178,7 @@ const createTransaction = async ({
     return newTransaction;
   });
 
-  return transaction;
+  return withCreditStats(transaction);
 };
 
 /**
@@ -162,6 +189,7 @@ const getTransactions = async ({
   businessId,
   performedById,
   paymentMethod,
+  paid,
   startDate,
   endDate,
   page = 1,
@@ -178,6 +206,13 @@ const getTransactions = async ({
   // Filter by payment method
   if (paymentMethod) {
     where.paymentMethod = paymentMethod;
+  }
+
+  // Filter by credit-settlement status (only meaningful alongside paymentMethod=CREDIT)
+  if (paid === "true") {
+    where.paidAt = { not: null };
+  } else if (paid === "false") {
+    where.paidAt = null;
   }
 
   // Filter by date range
@@ -202,41 +237,14 @@ const getTransactions = async ({
   // Fetch transactions
   const transactions = await prisma.transaction.findMany({
     where,
-    include: {
-      items: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              unit: true,
-            },
-          },
-        },
-      },
-      performedBy: {
-        select: {
-          id: true,
-          fullName: true,
-          username: true,
-          role: true,
-        },
-      },
-      warehouse: {
-        select: {
-          id: true,
-          name: true,
-          isPrimary: true,
-        },
-      },
-    },
+    include: TRANSACTION_INCLUDE,
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * limit,
     take: limit,
   });
 
   return {
-    transactions,
+    transactions: transactions.map(withCreditStats),
     pagination: {
       total,
       page,
@@ -255,41 +263,66 @@ const getTransactionById = async (transactionId, businessId) => {
       id: transactionId,
       businessId,
     },
-    include: {
-      items: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              unit: true,
-            },
-          },
-        },
-      },
-      performedBy: {
-        select: {
-          id: true,
-          fullName: true,
-          username: true,
-          role: true,
-        },
-      },
-      warehouse: {
-        select: {
-          id: true,
-          name: true,
-          isPrimary: true,
-        },
-      },
-    },
+    include: TRANSACTION_INCLUDE,
   });
 
   if (!transaction) {
     throw new AppError("Transaction not found", 404);
   }
 
-  return transaction;
+  return withCreditStats(transaction);
+};
+
+/**
+ * Record a payment against a CREDIT sale — either the full remaining
+ * balance in one go, or a partial amount if the customer is paying it off
+ * over time. Once cumulative payments cover the total, the sale is marked
+ * settled (paidAt).
+ */
+const recordCreditPayment = async (transactionId, businessId, { amount, recordedById }) => {
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, businessId },
+    include: { payments: true },
+  });
+
+  if (!transaction) {
+    throw new AppError("Transaction not found", 404);
+  }
+
+  if (transaction.paymentMethod !== "CREDIT") {
+    throw new AppError("Only credit sales can have payments recorded against them");
+  }
+
+  const amountPaidSoFar = transaction.payments.reduce((sum, p) => sum + p.amount, 0);
+  const balanceDue = Math.round((transaction.totalAmount - amountPaidSoFar) * 100) / 100;
+
+  if (balanceDue <= 0) {
+    throw new AppError("This sale has already been fully paid");
+  }
+
+  if (amount <= 0) {
+    throw new AppError("Payment amount must be greater than 0");
+  }
+
+  if (amount > balanceDue + 0.01) {
+    throw new AppError(`Payment can't exceed the outstanding balance of ${balanceDue}`);
+  }
+
+  const isNowSettled = amount >= balanceDue - 0.01;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.creditPayment.create({
+      data: { transactionId, amount, recordedById },
+    });
+
+    return tx.transaction.update({
+      where: { id: transactionId },
+      data: isNowSettled ? { paidAt: new Date() } : {},
+      include: TRANSACTION_INCLUDE,
+    });
+  });
+
+  return withCreditStats(updated);
 };
 
 /**
@@ -441,4 +474,5 @@ module.exports = {
   getTransactions,
   getTransactionById,
   getTransactionSummary,
+  recordCreditPayment,
 };

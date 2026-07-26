@@ -2,9 +2,28 @@ const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
 
 /**
+ * Ensure a short code isn't already used by another product in this business
+ */
+const assertShortCodeAvailable = async (businessId, shortCode, excludeProductId) => {
+  if (!shortCode) return;
+
+  const existing = await prisma.product.findFirst({
+    where: {
+      businessId,
+      shortCode: { equals: shortCode, mode: "insensitive" },
+      ...(excludeProductId && { NOT: { id: excludeProductId } }),
+    },
+  });
+
+  if (existing) {
+    throw new AppError(`Short code "${shortCode}" is already used by another product`, 409);
+  }
+};
+
+/**
  * Create a new product for a business
  */
-const createProduct = async ({ businessId, name, unit, price, description }) => {
+const createProduct = async ({ businessId, name, unit, price, description, shortCode }) => {
   const existing = await prisma.product.findFirst({
     where: {
       businessId,
@@ -16,6 +35,8 @@ const createProduct = async ({ businessId, name, unit, price, description }) => 
     throw new AppError("A product with this name already exists in this business", 409);
   }
 
+  await assertShortCodeAvailable(businessId, shortCode);
+
   const product = await prisma.product.create({
     data: {
       businessId,
@@ -23,6 +44,7 @@ const createProduct = async ({ businessId, name, unit, price, description }) => 
       unit,
       price: price ? parseFloat(price) : 0,
       description,
+      shortCode,
     },
     include: {
       stock: {
@@ -133,7 +155,7 @@ const getProductById = async (productId, businessId) => {
 /**
  * Update a product
  */
-const updateProduct = async (productId, businessId, { name, unit, price, description }) => {
+const updateProduct = async (productId, businessId, { name, unit, price, description, shortCode }) => {
   const product = await prisma.product.findFirst({
     where: { id: productId, businessId },
   });
@@ -156,6 +178,10 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
     }
   }
 
+  if (shortCode && shortCode !== product.shortCode) {
+    await assertShortCodeAvailable(businessId, shortCode, productId);
+  }
+
   const updated = await prisma.product.update({
     where: { id: productId },
     data: {
@@ -163,6 +189,7 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
       ...(unit && { unit }),
       ...(price !== undefined && { price: parseFloat(price) }),
       ...(description !== undefined && { description }),
+      ...(shortCode !== undefined && { shortCode }),
     },
     include: {
       stock: {
@@ -220,19 +247,11 @@ const deleteProduct = async (productId, businessId) => {
 };
 
 /**
- * Add stock to a warehouse for a product
+ * Receive incoming stock (a restock/delivery) into one warehouse, for one or more
+ * products at once. Logs a RESTOCK movement per product line so it shows up in
+ * the stock movements report.
  */
-const addStock = async ({ productId, businessId, warehouseId, quantity, lowStockThreshold }) => {
-  // Validate product belongs to business
-  const product = await prisma.product.findFirst({
-    where: { id: productId, businessId },
-  });
-
-  if (!product) {
-    throw new AppError("Product not found", 404);
-  }
-
-  // Validate warehouse belongs to business
+const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }) => {
   const warehouse = await prisma.warehouse.findFirst({
     where: { id: warehouseId, businessId },
   });
@@ -241,81 +260,68 @@ const addStock = async ({ productId, businessId, warehouseId, quantity, lowStock
     throw new AppError("Warehouse not found", 404);
   }
 
-  if (quantity <= 0) {
-    throw new AppError("Quantity must be greater than 0");
-  }
-
-  // Check if stock entry already exists for this product in this warehouse
-  const existingStock = await prisma.warehouseStock.findUnique({
-    where: {
-      warehouseId_productId: {
-        warehouseId,
-        productId,
-      },
-    },
+  const productIds = items.map((item) => item.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds }, businessId },
   });
 
-  let stock;
-
-  if (existingStock) {
-    // Update existing stock (add to it)
-    stock = await prisma.warehouseStock.update({
-      where: {
-        warehouseId_productId: {
-          warehouseId,
-          productId,
-        },
-      },
-      data: {
-        quantity: existingStock.quantity + quantity,
-        ...(lowStockThreshold && { lowStockThreshold }),
-      },
-      include: {
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-            isPrimary: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            name: true,
-            unit: true,
-          },
-        },
-      },
-    });
-  } else {
-    // Create new stock entry
-    stock = await prisma.warehouseStock.create({
-      data: {
-        warehouseId,
-        productId,
-        quantity,
-        lowStockThreshold: lowStockThreshold || 10,
-      },
-      include: {
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-            isPrimary: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            name: true,
-            unit: true,
-          },
-        },
-      },
-    });
+  if (products.length !== new Set(productIds).size) {
+    throw new AppError("One or more products were not found in this business", 404);
   }
 
-  return stock;
+  const movements = await prisma.$transaction(async (tx) => {
+    const created = [];
+
+    for (const { productId, quantity, lowStockThreshold } of items) {
+      const existingStock = await tx.warehouseStock.findUnique({
+        where: { warehouseId_productId: { warehouseId, productId } },
+      });
+
+      if (existingStock) {
+        await tx.warehouseStock.update({
+          where: { warehouseId_productId: { warehouseId, productId } },
+          data: {
+            quantity: existingStock.quantity + quantity,
+            ...(lowStockThreshold !== undefined && { lowStockThreshold }),
+          },
+        });
+      } else {
+        await tx.warehouseStock.create({
+          data: {
+            warehouseId,
+            productId,
+            quantity,
+            lowStockThreshold: lowStockThreshold ?? 10,
+          },
+        });
+      }
+
+      const movement = await tx.stockMovement.create({
+        data: {
+          businessId,
+          fromWarehouseId: null,
+          toWarehouseId: warehouseId,
+          productId,
+          quantity,
+          type: "RESTOCK",
+          status: "COMPLETED",
+          movedById,
+          notes,
+        },
+        include: {
+          toWarehouse: { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, unit: true } },
+          movedBy: { select: { id: true, fullName: true, username: true } },
+        },
+      });
+
+      created.push(movement);
+    }
+
+    return created;
+  });
+
+  return movements;
 };
 
 /**
@@ -461,6 +467,7 @@ const moveStock = async ({
         quantity,
         movedById,
         notes,
+        type: "TRANSFER",
         status: "COMPLETED",
       },
       include: {
@@ -517,7 +524,7 @@ module.exports = {
   getProductById,
   updateProduct,
   deleteProduct,
-  addStock,
+  receiveStock,
   getAllStock,
   moveStock,
   getStockMovements,

@@ -4,7 +4,7 @@ const {
   getProductById,
   updateProduct,
   deleteProduct,
-  addStock,
+  receiveStock,
   getAllStock,
   moveStock,
   getStockMovements,
@@ -16,7 +16,7 @@ const asyncHandler = require("../utils/asyncHandler");
  * POST /api/businesses/:businessId/products
  */
 const create = asyncHandler(async (req, res) => {
-  const { name, unit, price, description } = req.body;
+  const { name, unit, price, description, shortCode } = req.body;
 
   const product = await createProduct({
     businessId: req.params.businessId,
@@ -24,6 +24,7 @@ const create = asyncHandler(async (req, res) => {
     unit,
     price,
     description,
+    shortCode,
   });
 
   return sendSuccess(res, {
@@ -64,12 +65,12 @@ const getOne = asyncHandler(async (req, res) => {
  * PATCH /api/businesses/:businessId/products/:productId
  */
 const update = asyncHandler(async (req, res) => {
-  const { name, unit, price, description } = req.body;
+  const { name, unit, price, description, shortCode } = req.body;
 
   const product = await updateProduct(
     req.params.productId,
     req.params.businessId,
-    { name, unit, price, description }
+    { name, unit, price, description, shortCode }
   );
 
   return sendSuccess(res, {
@@ -93,24 +94,24 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 /**
- * POST /api/businesses/:businessId/products/:productId/stock
- * Add stock to a warehouse for a product
+ * POST /api/businesses/:businessId/stock/receive
+ * Receive incoming stock (a restock/delivery) into one warehouse for one or more products
  */
-const addStockToWarehouse = asyncHandler(async (req, res) => {
-  const { warehouseId, quantity, lowStockThreshold } = req.body;
-  const { businessId, productId } = req.params;
+const receiveStockController = asyncHandler(async (req, res) => {
+  const { warehouseId, items, notes } = req.body;
+  const { businessId } = req.params;
 
-  const stock = await addStock({
-    productId,
+  const movements = await receiveStock({
     businessId,
     warehouseId,
-    quantity,
-    lowStockThreshold,
+    items,
+    movedById: req.user.id,
+    notes,
   });
 
   return sendSuccess(res, {
-    message: "Stock added successfully",
-    data: stock,
+    message: "Stock received successfully",
+    data: movements,
     statusCode: 201,
   });
 });
@@ -172,7 +173,7 @@ module.exports = {
   getOne,
   update,
   remove,
-  addStockToWarehouse,
+  receiveStockController,
   getStock,
   moveStockBetweenWarehouses,
   getMovements,

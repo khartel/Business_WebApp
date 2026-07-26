@@ -11,6 +11,13 @@ const productIdParamSchema = {
   }),
 };
 
+const shortCodeField = z
+  .string()
+  .trim()
+  .max(20, "Short code must be 20 characters or fewer")
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 const createProductSchema = {
   params: businessIdParamSchema.params,
   body: z.object({
@@ -18,6 +25,7 @@ const createProductSchema = {
     unit: z.string().trim().min(1, "Unit is required"),
     price: z.coerce.number().nonnegative("Price cannot be negative").optional(),
     description: z.string().trim().optional(),
+    shortCode: shortCodeField,
   }),
 };
 
@@ -28,15 +36,7 @@ const updateProductSchema = {
     unit: z.string().trim().min(1).optional(),
     price: z.coerce.number().nonnegative("Price cannot be negative").optional(),
     description: z.string().trim().optional(),
-  }),
-};
-
-const addStockSchema = {
-  params: productIdParamSchema.params,
-  body: z.object({
-    warehouseId: z.string().uuid("Invalid warehouse id"),
-    quantity: z.coerce.number().positive("Quantity must be greater than 0"),
-    lowStockThreshold: z.coerce.number().nonnegative().optional(),
+    shortCode: shortCodeField,
   }),
 };
 
@@ -45,5 +45,4 @@ module.exports = {
   productIdParamSchema,
   createProductSchema,
   updateProductSchema,
-  addStockSchema,
 };

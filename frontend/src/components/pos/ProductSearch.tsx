@@ -24,7 +24,9 @@ export function ProductSearch({
   const results = useMemo(() => {
     if (selected || !query.trim()) return []
     const q = query.trim().toLowerCase()
-    return products.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 6)
+    return products
+      .filter((p) => p.name.toLowerCase().includes(q) || p.shortCode?.toLowerCase().includes(q))
+      .slice(0, 6)
   }, [products, query, selected])
 
   useEffect(() => {
@@ -103,7 +105,14 @@ export function ProductSearch({
                   )}
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{product.name}</p>
+                    <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                      {product.name}
+                      {product.shortCode && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          {product.shortCode}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {outOfStock ? "Out of stock" : `${productStock} ${product.unit} left`}
                     </p>

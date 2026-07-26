@@ -12,7 +12,7 @@ export interface Warehouse {
     id: string
     quantity: number
     lowStockThreshold: number
-    product: { id: string; name: string; unit: string }
+    product: { id: string; name: string; unit: string; description?: string | null }
   }>
   _count?: { stock: number; transactions: number }
 }

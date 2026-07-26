@@ -3,6 +3,7 @@ const {
   getTransactions,
   getTransactionById,
   getTransactionSummary,
+  recordCreditPayment,
 } = require("../services/transaction.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
@@ -38,6 +39,7 @@ const getAll = asyncHandler(async (req, res) => {
   const {
     performedById,
     paymentMethod,
+    paid,
     startDate,
     endDate,
     page,
@@ -48,6 +50,7 @@ const getAll = asyncHandler(async (req, res) => {
     businessId: req.params.businessId,
     performedById,
     paymentMethod,
+    paid,
     startDate,
     endDate,
     page: page || 1,
@@ -89,4 +92,24 @@ const getOne = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { create, getAll, getSummary, getOne };
+/**
+ * POST /api/businesses/:businessId/transactions/:transactionId/payments
+ * Record a full or partial payment against a credit sale
+ */
+const recordPayment = asyncHandler(async (req, res) => {
+  const { amount } = req.body;
+
+  const transaction = await recordCreditPayment(
+    req.params.transactionId,
+    req.params.businessId,
+    { amount, recordedById: req.user.id }
+  );
+
+  return sendSuccess(res, {
+    message: "Payment recorded",
+    data: transaction,
+    statusCode: 201,
+  });
+});
+
+module.exports = { create, getAll, getSummary, getOne, recordPayment };

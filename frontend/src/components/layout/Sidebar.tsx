@@ -6,6 +6,7 @@ import {
   Warehouse,
   ArrowLeftRight,
   Users,
+  Contact,
   BarChart3,
   Boxes,
 } from "lucide-react"
@@ -18,8 +19,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/pos", label: "Register", icon: Store },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/pos", label: "Register", icon: Store },
+  { to: "/customers", label: "Customers", icon: Contact },
   { to: "/products", label: "Products", icon: Package },
   { to: "/warehouses", label: "Warehouses", icon: Warehouse },
   { to: "/stock", label: "Stock Movements", icon: ArrowLeftRight },

@@ -5,6 +5,7 @@ const {
   getAll,
   getSummary,
   getOne,
+  recordPayment,
 } = require("../controllers/transaction.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
@@ -13,6 +14,7 @@ const {
   transactionIdParamSchema,
   createTransactionSchema,
   listTransactionsQuerySchema,
+  recordPaymentSchema,
 } = require("../validators/transaction.validators");
 
 router.use(authenticate);
@@ -45,6 +47,14 @@ router.get(
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
   validate(transactionIdParamSchema),
   getOne
+);
+
+// Recording a credit payment is an operational action, same roles as making a sale
+router.post(
+  "/:transactionId/payments",
+  authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
+  validate(recordPaymentSchema),
+  recordPayment
 );
 
 module.exports = router;

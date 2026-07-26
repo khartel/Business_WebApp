@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Star, Trash2, Warehouse as WarehouseIcon } from "lucide-react"
 import { toast } from "sonner"
@@ -11,6 +12,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { WarehouseFormDialog } from "@/components/warehouses/WarehouseFormDialog"
+import { WarehouseDetailSheet } from "@/components/warehouses/WarehouseDetailSheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -28,6 +30,7 @@ export default function Warehouses() {
   const activeBusiness = useActiveBusiness()
   const queryClient = useQueryClient()
   const canEdit = canManage(user?.role)
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null)
 
   const warehousesQuery = useQuery({
     queryKey: ["warehouses", activeBusinessId],
@@ -101,7 +104,11 @@ export default function Warehouses() {
             </TableHeader>
             <TableBody>
               {warehouses.map((warehouse) => (
-                <TableRow key={warehouse.id}>
+                <TableRow
+                  key={warehouse.id}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedWarehouseId(warehouse.id)}
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {warehouse.name}
@@ -115,7 +122,7 @@ export default function Warehouses() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{warehouse.location || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{warehouse._count?.stock ?? 0}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     {canEdit && (
                       <div className="flex justify-end gap-2">
                         {!warehouse.isPrimary && (
@@ -150,6 +157,12 @@ export default function Warehouses() {
           </Table>
         </div>
       )}
+
+      <WarehouseDetailSheet
+        businessId={activeBusinessId}
+        warehouseId={selectedWarehouseId}
+        onOpenChange={(open) => !open && setSelectedWarehouseId(null)}
+      />
     </div>
   )
 }

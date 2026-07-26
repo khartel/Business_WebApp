@@ -3,7 +3,7 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 const pg = require("pg");
 
 // Load env
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const connectionString = process.env.DATABASE_URL;
 

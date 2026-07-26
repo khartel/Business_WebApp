@@ -3,7 +3,7 @@ import { defineConfig } from "prisma/config";
 import * as dotenv from "dotenv";
 
 // Load .env from the current directory
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export default defineConfig({
   earlyAccess: true,

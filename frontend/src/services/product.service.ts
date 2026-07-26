@@ -14,6 +14,7 @@ export interface Product {
   unit: string
   price: number
   description: string | null
+  shortCode: string | null
   createdAt: string
   updatedAt: string
   stock: ProductStockEntry[]
@@ -26,15 +27,10 @@ export interface CreateProductInput {
   unit: string
   price?: number
   description?: string
+  shortCode?: string
 }
 
 export type UpdateProductInput = Partial<CreateProductInput>
-
-export interface AddStockInput {
-  warehouseId: string
-  quantity: number
-  lowStockThreshold?: number
-}
 
 export const getProducts = (businessId: string) =>
   apiRequest<Product[]>(apiClient.get(`/businesses/${businessId}/products`))
@@ -50,6 +46,3 @@ export const updateProduct = (businessId: string, productId: string, input: Upda
 
 export const deleteProduct = (businessId: string, productId: string) =>
   apiRequest<null>(apiClient.delete(`/businesses/${businessId}/products/${productId}`))
-
-export const addStock = (businessId: string, productId: string, input: AddStockInput) =>
-  apiRequest<ProductStockEntry>(apiClient.post(`/businesses/${businessId}/products/${productId}/stock`, input))

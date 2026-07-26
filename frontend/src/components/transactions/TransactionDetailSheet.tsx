@@ -113,12 +113,43 @@ export function TransactionDetailSheet({
                 </div>
               )}
 
+              {transaction.paymentMethod === "CREDIT" && transaction.payments.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Payments recorded</p>
+                  <ul className="space-y-1 text-sm">
+                    {transaction.payments.map((payment) => (
+                      <li key={payment.id} className="flex justify-between text-muted-foreground">
+                        <span>
+                          {formatDateTime(payment.createdAt)} · {payment.recordedBy.fullName}
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formatMoney(payment.amount, currency)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="flex items-center justify-between rounded-lg bg-muted px-4 py-3">
                 <span className="text-sm font-medium">Total</span>
                 <span className="font-heading text-lg font-semibold">
                   {formatMoney(transaction.totalAmount, currency)}
                 </span>
               </div>
+
+              {transaction.paymentMethod === "CREDIT" && (
+                <div className="flex items-center justify-between rounded-lg bg-destructive/10 px-4 py-3">
+                  <span className="text-sm font-medium text-destructive">
+                    {transaction.balanceDue > 0 ? "Balance due" : "Fully paid"}
+                  </span>
+                  {transaction.balanceDue > 0 && (
+                    <span className="font-heading text-lg font-semibold text-destructive">
+                      {formatMoney(transaction.balanceDue, currency)}
+                    </span>
+                  )}
+                </div>
+              )}
 
               <Button
                 variant="outline"

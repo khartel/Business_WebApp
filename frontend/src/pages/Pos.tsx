@@ -13,7 +13,8 @@ import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 import { PageHeader } from "@/components/PageHeader"
 import { ProductSearch } from "@/components/pos/ProductSearch"
-import { CartTicket, type CartLine } from "@/components/pos/CartTicket"
+import { CartItemsPanel, type CartLine } from "@/components/pos/CartItemsPanel"
+import { SaleSummaryPanel } from "@/components/pos/SaleSummaryPanel"
 import { TransactionDetailSheet } from "@/components/transactions/TransactionDetailSheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -119,25 +120,84 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_380px]">
-      <div className="space-y-4">
-        {productsQuery.isLoading ? (
-          <Skeleton className="h-14 rounded-2xl" />
-        ) : productsQuery.isError ? (
-          <ErrorState onRetry={() => productsQuery.refetch()} />
-        ) : products.length === 0 ? (
-          <EmptyState
-            icon={<Store className="size-6" />}
-            title="No products yet"
-            description="Add products from the Products page to start selling."
+    <div className="grid grid-cols-1 gap-5 lg:h-[calc(100svh-8.5rem)] lg:grid-cols-[1fr_360px]">
+      <div className="flex flex-col gap-4 lg:min-h-0">
+        <div className="shrink-0">
+          {productsQuery.isLoading ? (
+            <Skeleton className="h-14 rounded-2xl" />
+          ) : productsQuery.isError ? (
+            <ErrorState onRetry={() => productsQuery.refetch()} />
+          ) : products.length === 0 ? (
+            <EmptyState
+              icon={<Store className="size-6" />}
+              title="No products yet"
+              description="Add products from the Products page to start selling."
+            />
+          ) : (
+            <ProductSearch products={products} currency={currency} onAdd={addToCart} />
+          )}
+        </div>
+
+        <div className="flex-1 lg:min-h-0">
+          <CartItemsPanel
+            cart={cart}
+            currency={currency}
+            onIncrement={(productId) =>
+              setCart((prev) =>
+                prev.map((line) => {
+                  if (line.productId !== productId) return line
+                  if (line.quantity >= line.availableStock) {
+                    toast.error(`Only ${line.availableStock} ${line.unit} in stock`)
+                    return line
+                  }
+                  return { ...line, quantity: line.quantity + 1 }
+                })
+              )
+            }
+            onDecrement={(productId) =>
+              setCart((prev) =>
+                prev
+                  .map((line) =>
+                    line.productId === productId ? { ...line, quantity: line.quantity - 1 } : line
+                  )
+                  .filter((line) => line.quantity > 0)
+              )
+            }
+            onPriceChange={(productId, price) =>
+              setCart((prev) =>
+                prev.map((line) => {
+                  if (line.productId !== productId) return line
+                  const discountPercent =
+                    line.catalogPrice > 0 && price < line.catalogPrice
+                      ? Math.round((1 - price / line.catalogPrice) * 1000) / 10
+                      : undefined
+                  return { ...line, unitPrice: price, discountPercent }
+                })
+              )
+            }
+            onDiscountChange={(productId, percent) =>
+              setCart((prev) =>
+                prev.map((line) => {
+                  if (line.productId !== productId) return line
+                  if (percent === null) {
+                    return { ...line, unitPrice: line.catalogPrice, discountPercent: undefined }
+                  }
+                  return {
+                    ...line,
+                    discountPercent: percent,
+                    unitPrice: Math.round(line.catalogPrice * (1 - percent / 100) * 100) / 100,
+                  }
+                })
+              )
+            }
+            onRemove={(productId) => setCart((prev) => prev.filter((line) => line.productId !== productId))}
           />
-        ) : (
-          <ProductSearch products={products} currency={currency} onAdd={addToCart} />
-        )}
+        </div>
       </div>
 
-      <div className="lg:sticky lg:top-0 lg:h-[calc(100svh-8.5rem)]">
-        <CartTicket
+      <div className="lg:min-h-0">
+        <SaleSummaryPanel
+          businessId={businessId}
           cart={cart}
           currency={currency}
           paymentMethod={paymentMethod}
@@ -150,52 +210,6 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           }
           transferNote={transferNote}
           onTransferNoteChange={setTransferNote}
-          onIncrement={(productId) =>
-            setCart((prev) =>
-              prev.map((line) => {
-                if (line.productId !== productId) return line
-                if (line.quantity >= line.availableStock) {
-                  toast.error(`Only ${line.availableStock} ${line.unit} in stock`)
-                  return line
-                }
-                return { ...line, quantity: line.quantity + 1 }
-              })
-            )
-          }
-          onDecrement={(productId) =>
-            setCart((prev) =>
-              prev
-                .map((line) =>
-                  line.productId === productId ? { ...line, quantity: line.quantity - 1 } : line
-                )
-                .filter((line) => line.quantity > 0)
-            )
-          }
-          onPriceChange={(productId, price) =>
-            setCart((prev) =>
-              prev.map((line) =>
-                line.productId === productId
-                  ? { ...line, unitPrice: price, discountPercent: undefined }
-                  : line
-              )
-            )
-          }
-          onDiscountChange={(productId, percent) =>
-            setCart((prev) =>
-              prev.map((line) => {
-                if (line.productId !== productId) return line
-                if (percent === null) {
-                  return { ...line, unitPrice: line.catalogPrice, discountPercent: undefined }
-                }
-                return {
-                  ...line,
-                  discountPercent: percent,
-                  unitPrice: Math.round(line.catalogPrice * (1 - percent / 100) * 100) / 100,
-                }
-              })
-            )
-          }
-          onRemove={(productId) => setCart((prev) => prev.filter((line) => line.productId !== productId))}
           onComplete={handleComplete}
           isSubmitting={saleMutation.isPending}
         />

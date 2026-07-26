@@ -1,49 +1,44 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
-const {
-  create,
-  getAll,
-  getOne,
-  update,
-  remove,
-} = require("../controllers/product.controller");
+const { create, getAll, getOne, update, remove } = require("../controllers/customer.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
 const { validate } = require("../middleware/validate.middleware");
 const {
-  productIdParamSchema,
-  createProductSchema,
-  updateProductSchema,
-} = require("../validators/product.validators");
+  customerIdParamSchema,
+  createCustomerSchema,
+  updateCustomerSchema,
+  listCustomersQuerySchema,
+} = require("../validators/customer.validators");
 
 router.use(authenticate);
 router.use(belongsToBusiness);
 
 // ─────────────────────────────────────────
-// PRODUCT ROUTES
+// CUSTOMER ROUTES
 // ─────────────────────────────────────────
 
-// All roles can view products
-router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getAll);
+// All roles can view/search customers (needed for register autocomplete)
+router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), validate(listCustomersQuerySchema), getAll);
 router.get(
-  "/:productId",
+  "/:customerId",
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
-  validate(productIdParamSchema),
+  validate(customerIdParamSchema),
   getOne
 );
 
-// Only SuperAdmin and Admin can manage products
-router.post("/", authorize("SUPERADMIN", "ADMIN"), validate(createProductSchema), create);
+// Only SuperAdmin and Admin can manage the customer directory directly
+router.post("/", authorize("SUPERADMIN", "ADMIN"), validate(createCustomerSchema), create);
 router.patch(
-  "/:productId",
+  "/:customerId",
   authorize("SUPERADMIN", "ADMIN"),
-  validate(updateProductSchema),
+  validate(updateCustomerSchema),
   update
 );
 router.delete(
-  "/:productId",
+  "/:customerId",
   authorize("SUPERADMIN", "ADMIN"),
-  validate(productIdParamSchema),
+  validate(customerIdParamSchema),
   remove
 );
 
