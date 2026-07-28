@@ -13,6 +13,8 @@ import Products from "@/pages/Products"
 import Team from "@/pages/Team"
 import StockMovements from "@/pages/StockMovements"
 import Reports from "@/pages/Reports"
+import Businesses from "@/pages/Businesses"
+import Settings from "@/pages/Settings"
 import PlatformAdmin from "@/pages/PlatformAdmin"
 
 function App() {
@@ -35,6 +37,8 @@ function App() {
           <Route path="/stock" element={<StockMovements />} />
           <Route path="/team" element={<Team />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/businesses" element={<Businesses />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
 

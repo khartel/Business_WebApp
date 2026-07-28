@@ -1,8 +1,6 @@
 import { BarChart3 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { canManage } from "@/lib/permissions"
-import { PageHeader } from "@/components/PageHeader"
 import { EmptyState } from "@/components/EmptyState"
 import { DailyReportTab } from "@/components/reports/DailyReportTab"
 import { WeeklyReportTab } from "@/components/reports/WeeklyReportTab"
@@ -14,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function Reports() {
   const { user, activeBusinessId } = useAuth()
-  const activeBusiness = useActiveBusiness()
 
   if (!canManage(user?.role)) {
     return (
@@ -38,8 +35,6 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" description={activeBusiness ? `Insights for ${activeBusiness.name}` : undefined} />
-
       <Tabs defaultValue="daily">
         <TabsList>
           <TabsTrigger value="daily">Daily</TabsTrigger>

@@ -5,6 +5,7 @@ const {
   getAll,
   getOne,
   update,
+  remove,
   getCountries,
 } = require("../controllers/business.controller");
 const { authenticate } = require("../middleware/auth.middleware");
@@ -26,6 +27,7 @@ router.use(authenticate);
 router.post("/", authorize("SUPERADMIN"), validate(createBusinessSchema), create);
 router.get("/", authorize("SUPERADMIN"), getAll);
 router.patch("/:id", authorize("SUPERADMIN"), validate(updateBusinessSchema), update);
+router.delete("/:id", authorize("SUPERADMIN"), validate(businessIdParamSchema), remove);
 
 // SuperAdmin, Admin, Employee (must belong to business)
 router.get("/:id", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), validate(businessIdParamSchema), getOne);

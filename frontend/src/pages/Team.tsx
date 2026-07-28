@@ -3,7 +3,6 @@ import { Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 import * as teamService from "@/services/team.service"
 import { useAuth } from "@/context/AuthContext"
-import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { canManage } from "@/lib/permissions"
 import { ApiError } from "@/lib/api-client"
 import { PageHeader } from "@/components/PageHeader"
@@ -37,7 +36,6 @@ function initials(fullName: string) {
 
 export default function Team() {
   const { user, activeBusinessId } = useAuth()
-  const activeBusiness = useActiveBusiness()
   const queryClient = useQueryClient()
   const canEdit = canManage(user?.role)
 
@@ -85,11 +83,7 @@ export default function Team() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Team"
-        description={activeBusiness ? `Everyone with access to ${activeBusiness.name}` : undefined}
-        action={canEdit && <AddTeamMemberDialog />}
-      />
+      <PageHeader action={canEdit && <AddTeamMemberDialog />} />
 
       {teamQuery.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />

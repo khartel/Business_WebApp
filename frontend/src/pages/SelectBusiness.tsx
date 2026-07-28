@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { Building2, KeyRound, LogOut, Plus } from "lucide-react"
+import { Building2, KeyRound, LogOut, Plus, Settings as SettingsIcon } from "lucide-react"
 import * as businessService from "@/services/business.service"
 import { useAuth } from "@/context/AuthContext"
 import { AuthBackground } from "@/components/auth/AuthBackground"
@@ -81,6 +81,10 @@ export default function SelectBusiness() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <SettingsIcon className="size-4" />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/change-password")}>
                 <KeyRound className="size-4" />
                 Change password

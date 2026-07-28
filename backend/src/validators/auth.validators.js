@@ -31,4 +31,12 @@ const changePasswordSchema = {
   }),
 };
 
-module.exports = { registerSchema, loginSchema, changePasswordSchema };
+const updateProfileSchema = {
+  body: z.object({
+    fullName: z.string().trim().min(1, "Full name is required").optional(),
+    phone: z.string().trim().min(7, "Phone number is required").optional(),
+    email: emailOrEmpty,
+  }),
+};
+
+module.exports = { registerSchema, loginSchema, changePasswordSchema, updateProfileSchema };

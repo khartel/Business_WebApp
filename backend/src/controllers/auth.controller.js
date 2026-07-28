@@ -1,4 +1,10 @@
-const { registerSuperAdmin, loginUser, getMe, updatePassword } = require("../services/auth.service");
+const {
+  registerSuperAdmin,
+  loginUser,
+  getMe,
+  updatePassword,
+  updateProfile: updateProfileService,
+} = require("../services/auth.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
 
@@ -82,4 +88,19 @@ const changePassword = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { register, login, logout, me, changePassword };
+/**
+ * PATCH /api/auth/me
+ * Update the current user's own profile (fullName, phone, email)
+ */
+const updateProfile = asyncHandler(async (req, res) => {
+  const { fullName, phone, email } = req.body;
+
+  const user = await updateProfileService(req.user.id, { fullName, phone, email });
+
+  return sendSuccess(res, {
+    message: "Profile updated successfully",
+    data: user,
+  });
+});
+
+module.exports = { register, login, logout, me, changePassword, updateProfile };

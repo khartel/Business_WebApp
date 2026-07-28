@@ -9,16 +9,20 @@ import {
   Contact,
   BarChart3,
   Boxes,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/context/AuthContext"
+import type { Role } from "@/types"
 
 interface NavItem {
   to: string
   label: string
   icon: typeof LayoutDashboard
+  roles?: Role[]
 }
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/pos", label: "Register", icon: Store },
   { to: "/customers", label: "Customers", icon: Contact },
@@ -27,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/stock", label: "Stock Movements", icon: ArrowLeftRight },
   { to: "/team", label: "Team", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/businesses", label: "Businesses", icon: Building2, roles: ["SUPERADMIN"] },
 ]
 
 export function SidebarBrand() {
@@ -41,9 +46,12 @@ export function SidebarBrand() {
 }
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth()
+  const items = NAV_ITEMS.filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-      {NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

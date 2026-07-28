@@ -73,3 +73,6 @@ export const createBusiness = (input: CreateBusinessInput) =>
 
 export const updateBusiness = (businessId: string, input: UpdateBusinessInput) =>
   apiRequest<BusinessDetail>(apiClient.patch(`/businesses/${businessId}`, input))
+
+export const deleteBusiness = (businessId: string) =>
+  apiRequest<null>(apiClient.delete(`/businesses/${businessId}`))

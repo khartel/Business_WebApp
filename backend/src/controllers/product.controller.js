@@ -159,7 +159,7 @@ const moveStockBetweenWarehouses = asyncHandler(async (req, res) => {
  * Get stock movement history
  */
 const getMovements = asyncHandler(async (req, res) => {
-  const movements = await getStockMovements(req.params.businessId);
+  const movements = await getStockMovements(req.params.businessId, req.validatedQuery);
 
   return sendSuccess(res, {
     message: "Stock movements fetched successfully",

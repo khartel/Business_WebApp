@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Printer } from "lucide-react"
 import * as transactionService from "@/services/transaction.service"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
-import { formatDateTime, formatMoney } from "@/lib/format"
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -44,7 +44,7 @@ export function TransactionDetailSheet({
 
   return (
     <Sheet open={!!transactionId} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="data-[side=right]:sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>Sale receipt</SheetTitle>
           <SheetDescription>
@@ -56,100 +56,136 @@ export function TransactionDetailSheet({
           {transactionQuery.isLoading || !transaction ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
-            <div className="receipt-print-area space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Customer</p>
-                  <p className="font-medium">{transaction.customerName}</p>
+            <div className="space-y-3">
+              <div className="receipt-print-area rounded-xl border border-slate-200 bg-white p-6 text-slate-900">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-heading text-base font-bold">{activeBusiness?.name}</p>
+                    {activeBusiness?.location && (
+                      <p className="text-sm text-slate-500">{activeBusiness.location}</p>
+                    )}
+                  </div>
+                  <p className="text-2xl font-bold tracking-[0.2em] text-slate-800">RECEIPT</p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Payment method</p>
-                  <Badge variant="secondary">{transaction.paymentMethod}</Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Served by</p>
-                  <p className="font-medium">{transaction.performedBy.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Warehouse</p>
-                  <p className="font-medium">{transaction.warehouse.name}</p>
-                </div>
-              </div>
 
-              <div className="overflow-hidden rounded-lg border border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead className="text-right">Subtotal</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transaction.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          {item.product.name}
-                          {!!item.discountPercent && (
-                            <span className="ml-1.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success">
-                              -{item.discountPercent}%
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.quantitySold} {item.product.unit}
-                        </TableCell>
-                        <TableCell className="text-right">{formatMoney(item.subtotal, currency)}</TableCell>
+                <div className="mt-6 flex items-start justify-between gap-4 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Billed To</p>
+                    <p className="font-medium">{transaction.customerName}</p>
+                  </div>
+                  <div className="text-right">
+                    <p>
+                      <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                        Receipt #{" "}
+                      </span>
+                      <span className="font-medium">{transaction.id.slice(0, 8).toUpperCase()}</span>
+                    </p>
+                    <p>
+                      <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                        Receipt date{" "}
+                      </span>
+                      <span className="font-medium">{formatDate(transaction.createdAt)}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-none hover:bg-transparent">
+                        <TableHead className="bg-slate-800 text-white">Qty</TableHead>
+                        <TableHead className="bg-slate-800 text-white">Description</TableHead>
+                        <TableHead className="bg-slate-800 text-right text-white">Unit price</TableHead>
+                        <TableHead className="bg-slate-800 text-right text-white">Amount</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {transaction.items.map((item) => (
+                        <TableRow key={item.id} className="border-slate-200 hover:bg-transparent">
+                          <TableCell>
+                            {item.quantitySold} {item.product.unit}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {item.product.name}
+                            {!!item.discountPercent && (
+                              <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                -{item.discountPercent}%
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">{formatMoney(item.unitPrice, currency)}</TableCell>
+                          <TableCell className="text-right">{formatMoney(item.subtotal, currency)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <div className="w-full max-w-56 space-y-1.5 text-sm">
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-2 font-bold">
+                      <span>Total ({currency})</span>
+                      <span>{formatMoney(transaction.totalAmount, currency)}</span>
+                    </div>
+                    {transaction.paymentMethod === "CREDIT" && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>{transaction.balanceDue > 0 ? "Balance due" : "Fully paid"}</span>
+                        {transaction.balanceDue > 0 && (
+                          <span className="font-medium">{formatMoney(transaction.balanceDue, currency)}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                  <span>Payment method:</span>
+                  <Badge variant="secondary" className="border-slate-200 bg-slate-100 text-slate-700">
+                    {transaction.paymentMethod}
+                  </Badge>
+                  <span className="ml-auto">Served by {transaction.performedBy.fullName}</span>
+                </div>
+
+                {transaction.paymentMethod === "CREDIT" && transaction.payments.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                      Payments recorded
+                    </p>
+                    <ul className="space-y-1 text-sm">
+                      {transaction.payments.map((payment) => (
+                        <li key={payment.id} className="flex justify-between text-slate-500">
+                          <span>
+                            {formatDateTime(payment.createdAt)} · {payment.recordedBy.fullName}
+                          </span>
+                          <span className="font-medium text-slate-900">
+                            {formatMoney(payment.amount, currency)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {transaction.notes && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Notes</p>
+                    <p className="text-sm">{transaction.notes}</p>
+                  </div>
+                )}
+
+                <div className="mt-10 grid grid-cols-2 gap-8 text-sm">
+                  <div>
+                    <div className="h-8 border-b border-slate-400" />
+                    <p className="mt-1.5 text-xs text-slate-500">Customer signature</p>
+                  </div>
+                  <div>
+                    <div className="h-8 border-b border-slate-400" />
+                    <p className="mt-1.5 text-xs text-slate-500">Received by</p>
+                  </div>
+                </div>
+
+                <p className="mt-8 text-center text-xs text-slate-400">Thank you for your business!</p>
               </div>
-
-              {transaction.notes && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Notes</p>
-                  <p className="text-sm">{transaction.notes}</p>
-                </div>
-              )}
-
-              {transaction.paymentMethod === "CREDIT" && transaction.payments.length > 0 && (
-                <div>
-                  <p className="mb-1.5 text-xs text-muted-foreground">Payments recorded</p>
-                  <ul className="space-y-1 text-sm">
-                    {transaction.payments.map((payment) => (
-                      <li key={payment.id} className="flex justify-between text-muted-foreground">
-                        <span>
-                          {formatDateTime(payment.createdAt)} · {payment.recordedBy.fullName}
-                        </span>
-                        <span className="font-medium text-foreground">
-                          {formatMoney(payment.amount, currency)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between rounded-lg bg-muted px-4 py-3">
-                <span className="text-sm font-medium">Total</span>
-                <span className="font-heading text-lg font-semibold">
-                  {formatMoney(transaction.totalAmount, currency)}
-                </span>
-              </div>
-
-              {transaction.paymentMethod === "CREDIT" && (
-                <div className="flex items-center justify-between rounded-lg bg-destructive/10 px-4 py-3">
-                  <span className="text-sm font-medium text-destructive">
-                    {transaction.balanceDue > 0 ? "Balance due" : "Fully paid"}
-                  </span>
-                  {transaction.balanceDue > 0 && (
-                    <span className="font-heading text-lg font-semibold text-destructive">
-                      {formatMoney(transaction.balanceDue, currency)}
-                    </span>
-                  )}
-                </div>
-              )}
 
               <Button
                 variant="outline"

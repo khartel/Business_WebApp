@@ -11,7 +11,6 @@ import { ApiError } from "@/lib/api-client"
 import { formatDateTime, formatMoney } from "@/lib/format"
 import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
-import { PageHeader } from "@/components/PageHeader"
 import { ProductSearch } from "@/components/pos/ProductSearch"
 import { CartItemsPanel, type CartLine } from "@/components/pos/CartItemsPanel"
 import { SaleSummaryPanel } from "@/components/pos/SaleSummaryPanel"
@@ -363,11 +362,6 @@ export default function Pos() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Register"
-        description={activeBusiness ? activeBusiness.name : undefined}
-      />
-
       <Tabs defaultValue="register">
         <TabsList>
           <TabsTrigger value="register">Register</TabsTrigger>

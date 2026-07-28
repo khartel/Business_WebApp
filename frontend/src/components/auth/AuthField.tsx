@@ -1,5 +1,6 @@
-import { forwardRef, useId } from "react"
+import { forwardRef, useId, useState } from "react"
 import type { LucideIcon } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AuthFieldProps extends React.ComponentProps<"input"> {
@@ -9,9 +10,11 @@ interface AuthFieldProps extends React.ComponentProps<"input"> {
 }
 
 export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
-  ({ icon: Icon, label, error, id, className, ...props }, ref) => {
+  ({ icon: Icon, label, error, id, className, type, ...props }, ref) => {
     const autoId = useId()
     const inputId = id ?? autoId
+    const isPassword = type === "password"
+    const [visible, setVisible] = useState(false)
 
     return (
       <div className="space-y-1.5">
@@ -32,6 +35,7 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
           <input
             id={inputId}
             ref={ref}
+            type={isPassword ? (visible ? "text" : "password") : type}
             aria-invalid={!!error}
             className={cn(
               "w-full bg-transparent py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/70",
@@ -39,6 +43,16 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
             )}
             {...props}
           />
+          {isPassword && (
+            <button
+              type="button"
+              onClick={() => setVisible((v) => !v)}
+              aria-label={visible ? "Hide password" : "Show password"}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/50 hover:text-foreground/80"
+            >
+              {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          )}
         </div>
         {error && <p className="pl-4 text-xs text-destructive">{error}</p>}
       </div>

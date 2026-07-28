@@ -76,8 +76,6 @@ export default function Products() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Products"
-        description={activeBusiness ? `Catalog for ${activeBusiness.name}` : undefined}
         action={
           canEdit && (
             <div className="flex gap-2">

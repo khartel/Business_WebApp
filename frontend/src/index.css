@@ -178,8 +178,9 @@
 }
 
 /* Receipt printing: hide the whole app by default when printing, reveal only
-   the element flagged .receipt-print-area, and strip glass/blur effects that
-   don't render usefully on paper. */
+   the element flagged .receipt-print-area. The receipt itself is styled as a
+   plain white document (see TransactionDetailSheet), so printing just needs to
+   drop the app chrome and any glass/blur/shadow around it. */
 @media print {
   body * {
     visibility: hidden;
@@ -188,20 +189,21 @@
   .receipt-print-area * {
     visibility: visible;
   }
+  /* The receipt sits inside a fixed-position Sheet panel, which would otherwise
+     confine the absolutely-positioned receipt to the panel's width. Dropping the
+     Sheet back into normal flow lets the receipt use the full printable page. */
+  [data-slot="sheet-overlay"] {
+    display: none !important;
+  }
+  [data-slot="sheet-content"] {
+    position: static !important;
+  }
   .receipt-print-area {
     position: absolute;
     inset: 0;
     width: 100%;
-    background: #fff !important;
-    color: #000 !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
     border: none !important;
-  }
-  .receipt-print-area * {
-    background: transparent !important;
-    color: #000 !important;
-    backdrop-filter: none !important;
-    box-shadow: none !important;
   }
 }

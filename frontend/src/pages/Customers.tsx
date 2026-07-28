@@ -253,11 +253,7 @@ export default function Customers() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Customers"
-        description={activeBusiness ? activeBusiness.name : undefined}
-        action={canEdit && <CustomerFormDialog />}
-      />
+      <PageHeader action={canEdit && <CustomerFormDialog />} />
 
       <Tabs defaultValue="customers">
         <TabsList>

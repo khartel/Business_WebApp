@@ -35,8 +35,19 @@ export interface ReceiveStockInput {
   notes?: string
 }
 
-export const getStockMovements = (businessId: string) =>
-  apiRequest<StockMovement[]>(apiClient.get(`/businesses/${businessId}/stock/movements`))
+export interface StockMovementFilters {
+  startDate?: string
+  endDate?: string
+  fromWarehouseId?: string
+  toWarehouseId?: string
+  productId?: string
+  type?: MovementType
+}
+
+export const getStockMovements = (businessId: string, filters?: StockMovementFilters) =>
+  apiRequest<StockMovement[]>(
+    apiClient.get(`/businesses/${businessId}/stock/movements`, { params: filters })
+  )
 
 export const moveStock = (businessId: string, input: MoveStockInput) =>
   apiRequest<StockMovement>(apiClient.post(`/businesses/${businessId}/stock/move`, input))

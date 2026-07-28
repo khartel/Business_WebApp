@@ -1,8 +1,9 @@
 import { useState } from "react"
-import { Bell, ChevronDown, LogOut, KeyRound, Menu } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { Bell, ChevronDown, LogOut, KeyRound, Menu, Settings as SettingsIcon } from "lucide-react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
-import { SidebarBrand, SidebarNav } from "@/components/layout/Sidebar"
+import { useActiveBusiness } from "@/hooks/useActiveBusiness"
+import { SidebarBrand, SidebarNav, NAV_ITEMS } from "@/components/layout/Sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
@@ -15,13 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 function initials(fullName: string) {
   return fullName
@@ -33,11 +27,17 @@ function initials(fullName: string) {
 }
 
 export function Topbar() {
-  const { user, activeBusinessId, setActiveBusinessId, logout } = useAuth()
+  const { user, logout } = useAuth()
+  const activeBusiness = useActiveBusiness()
+  const location = useLocation()
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
 
   if (!user) return null
+
+  const pageLabel =
+    NAV_ITEMS.find((item) => item.to === location.pathname)?.label ??
+    (location.pathname === "/settings" ? "Settings" : undefined)
 
   const handleLogout = async () => {
     await logout()
@@ -68,21 +68,13 @@ export function Topbar() {
           </SheetContent>
         </Sheet>
 
-        {user.businesses.length > 0 ? (
-          <Select value={activeBusinessId ?? undefined} onValueChange={setActiveBusinessId}>
-            <SelectTrigger className="w-[160px] sm:w-[220px]">
-              <SelectValue placeholder="Select a business" />
-            </SelectTrigger>
-            <SelectContent>
-              {user.businesses.map((business) => (
-                <SelectItem key={business.id} value={business.id}>
-                  {business.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {activeBusiness ? (
+          <p className="min-w-0 truncate text-sm font-semibold">
+            {activeBusiness.name}
+            {pageLabel && <span className="font-normal text-muted-foreground"> · {pageLabel}</span>}
+          </p>
         ) : (
-          <span className="text-sm text-muted-foreground">No businesses yet</span>
+          <span className="text-sm text-muted-foreground">No business selected</span>
         )}
       </div>
 
@@ -109,6 +101,10 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
+              <SettingsIcon className="size-4" />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/change-password")}>
               <KeyRound className="size-4" />
               Change password

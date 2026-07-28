@@ -4,7 +4,6 @@ import { Star, Trash2, Warehouse as WarehouseIcon } from "lucide-react"
 import { toast } from "sonner"
 import * as warehouseService from "@/services/warehouse.service"
 import { useAuth } from "@/context/AuthContext"
-import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { canManage } from "@/lib/permissions"
 import { ApiError } from "@/lib/api-client"
 import { PageHeader } from "@/components/PageHeader"
@@ -27,7 +26,6 @@ import {
 
 export default function Warehouses() {
   const { user, activeBusinessId } = useAuth()
-  const activeBusiness = useActiveBusiness()
   const queryClient = useQueryClient()
   const canEdit = canManage(user?.role)
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null)
@@ -75,11 +73,7 @@ export default function Warehouses() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Warehouses"
-        description={activeBusiness ? `Stock locations for ${activeBusiness.name}` : undefined}
-        action={canEdit && <WarehouseFormDialog />}
-      />
+      <PageHeader action={canEdit && <WarehouseFormDialog />} />
 
       {warehousesQuery.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />

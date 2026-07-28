@@ -1,5 +1,6 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
+const { startOfDay, endOfDay } = require("date-fns");
 
 /**
  * Ensure a short code isn't already used by another product in this business
@@ -495,9 +496,22 @@ const moveStock = async ({
 /**
  * Get stock movement history for a business
  */
-const getStockMovements = async (businessId) => {
+const getStockMovements = async (businessId, filters = {}) => {
+  const { startDate, endDate, fromWarehouseId, toWarehouseId, productId, type } = filters;
+
+  const where = { businessId };
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) where.createdAt.gte = startOfDay(new Date(startDate));
+    if (endDate) where.createdAt.lte = endOfDay(new Date(endDate));
+  }
+  if (fromWarehouseId) where.fromWarehouseId = fromWarehouseId;
+  if (toWarehouseId) where.toWarehouseId = toWarehouseId;
+  if (productId) where.productId = productId;
+  if (type) where.type = type;
+
   const movements = await prisma.stockMovement.findMany({
-    where: { businessId },
+    where,
     include: {
       fromWarehouse: {
         select: { id: true, name: true },

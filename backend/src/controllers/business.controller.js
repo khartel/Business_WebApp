@@ -3,6 +3,7 @@ const {
   getMyBusinesses,
   getBusinessById,
   updateBusiness,
+  deleteBusiness,
 } = require("../services/business.service");
 const { getAllCountries, getCurrencyForCountry } = require("../utils/currencies");
 const { sendSuccess } = require("../utils/response.utils");
@@ -81,6 +82,18 @@ const update = asyncHandler(async (req, res) => {
 });
 
 /**
+ * DELETE /api/businesses/:id
+ * Delete a business (SuperAdmin, owner only)
+ */
+const remove = asyncHandler(async (req, res) => {
+  const result = await deleteBusiness(req.params.id, req.user.id);
+
+  return sendSuccess(res, {
+    message: result.message,
+  });
+});
+
+/**
  * GET /api/countries
  * Get all countries and their currencies (for dropdown on frontend)
  */
@@ -98,4 +111,4 @@ const getCountries = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { create, getAll, getOne, update, getCountries };
+module.exports = { create, getAll, getOne, update, remove, getCountries };

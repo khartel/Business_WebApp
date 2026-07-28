@@ -9,14 +9,19 @@ const {
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
 const { validate } = require("../middleware/validate.middleware");
-const { moveStockSchema, receiveStockSchema } = require("../validators/stock.validators");
+const { moveStockSchema, receiveStockSchema, movementsQuerySchema } = require("../validators/stock.validators");
 
 router.use(authenticate);
 router.use(belongsToBusiness);
 
 // All roles can view stock
 router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getStock);
-router.get("/movements", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getMovements);
+router.get(
+  "/movements",
+  authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
+  validate(movementsQuerySchema),
+  getMovements
+);
 
 // Only SuperAdmin and Admin can move or receive stock
 router.post(

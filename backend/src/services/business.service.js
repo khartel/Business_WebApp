@@ -233,9 +233,27 @@ const updateBusiness = async (businessId, ownerId, { name, phone, email, locatio
   return updated;
 };
 
+/**
+ * Delete a business and everything under it (products, warehouses, sales, team access)
+ */
+const deleteBusiness = async (businessId, ownerId) => {
+  const existing = await prisma.business.findFirst({
+    where: { id: businessId, ownerId },
+  });
+
+  if (!existing) {
+    throw new AppError("Business not found or access denied", 404);
+  }
+
+  await prisma.business.delete({ where: { id: businessId } });
+
+  return { message: "Business deleted successfully" };
+};
+
 module.exports = {
   createBusiness,
   getMyBusinesses,
   getBusinessById,
   updateBusiness,
+  deleteBusiness,
 };

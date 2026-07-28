@@ -20,6 +20,12 @@ export interface ChangePasswordInput {
   newPassword: string
 }
 
+export interface UpdateProfileInput {
+  fullName?: string
+  phone?: string
+  email?: string
+}
+
 export const login = (input: LoginInput) =>
   apiRequest<{ user: AuthUser }>(apiClient.post("/auth/login", input))
 
@@ -32,3 +38,6 @@ export const getMe = () => apiRequest<AuthUser>(apiClient.get("/auth/me"))
 
 export const changePassword = (input: ChangePasswordInput) =>
   apiRequest<null>(apiClient.post("/auth/change-password", input))
+
+export const updateProfile = (input: UpdateProfileInput) =>
+  apiRequest<AuthUser>(apiClient.patch("/auth/me", input))

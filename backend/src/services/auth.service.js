@@ -242,9 +242,41 @@ const updatePassword = async (userId, currentPassword, newPassword) => {
   return true;
 };
 
+/**
+ * Update the current user's own profile fields (fullName, phone, email).
+ * All fields are optional/partial - only provided ones are updated.
+ */
+const updateProfile = async (userId, { fullName, phone, email }) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const data = {};
+  if (fullName !== undefined) data.fullName = fullName;
+  if (phone !== undefined) data.phone = phone;
+
+  if (email !== undefined) {
+    const cleanEmail = email.trim() !== "" ? email.trim() : null;
+    if (cleanEmail && cleanEmail !== user.email) {
+      const existingEmail = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (existingEmail) {
+        throw new AppError("Email is already registered", 409);
+      }
+    }
+    data.email = cleanEmail;
+  }
+
+  await prisma.user.update({ where: { id: userId }, data });
+
+  return getMe(userId);
+};
+
 module.exports = {
   registerSuperAdmin,
   loginUser,
   getMe,
   updatePassword,
+  updateProfile,
 };

@@ -61,15 +61,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold tracking-tight">
-          {business ? business.name : <Skeleton className="h-9 w-48" />}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {business ? `${business.location}, ${business.country}` : "Loading business details..."}
-        </p>
-      </div>
-
       {businessQuery.isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (

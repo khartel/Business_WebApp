@@ -15,6 +15,18 @@ const moveStockSchema = {
   }),
 };
 
+const movementsQuerySchema = {
+  params: businessIdParamSchema.params,
+  query: z.object({
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    fromWarehouseId: z.string().uuid("Invalid source warehouse id").optional(),
+    toWarehouseId: z.string().uuid("Invalid destination warehouse id").optional(),
+    productId: z.string().uuid("Invalid product id").optional(),
+    type: z.enum(["RESTOCK", "TRANSFER"]).optional(),
+  }),
+};
+
 const receiveStockSchema = {
   params: businessIdParamSchema.params,
   body: z.object({
@@ -32,4 +44,4 @@ const receiveStockSchema = {
   }),
 };
 
-module.exports = { businessIdParamSchema, moveStockSchema, receiveStockSchema };
+module.exports = { businessIdParamSchema, moveStockSchema, receiveStockSchema, movementsQuerySchema };
