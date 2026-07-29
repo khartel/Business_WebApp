@@ -6,6 +6,14 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+/**
+ * POS product picker: a search box with a live filtered dropdown (matches
+ * against product name or short code, client-side against the in-memory
+ * `products` list — no network call), and, once a product is selected, a
+ * quantity input + "Add" button that calls `onAdd(product, quantity)` to
+ * push it into the cart. Enforces that quantity is within available stock
+ * (`canAdd`) and disables adding out-of-stock products entirely.
+ */
 export function ProductSearch({
   products,
   currency,
@@ -21,6 +29,9 @@ export function ProductSearch({
   const searchRef = useRef<HTMLInputElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
 
+  // Client-side filter of `products` by name/short code, capped to 6
+  // suggestions. Hidden once a product is selected (query then shows the
+  // selected product's name instead of live-filtering).
   const results = useMemo(() => {
     if (selected || !query.trim()) return []
     const q = query.trim().toLowerCase()
@@ -29,6 +40,8 @@ export function ProductSearch({
       .slice(0, 6)
   }, [products, query, selected])
 
+  // As soon as a product is selected, jump focus to the quantity field and
+  // select its text so the cashier can immediately type a new quantity.
   useEffect(() => {
     if (selected) {
       qtyRef.current?.focus()
@@ -41,6 +54,8 @@ export function ProductSearch({
   const isOutOfStock = !!selected && stock <= 0
   const canAdd = !!selected && qtyNum > 0 && qtyNum <= stock
 
+  // Resets the picker back to its empty state and refocuses the search box,
+  // used both after adding to cart and when the user clears the search.
   const clear = () => {
     setSelected(null)
     setQuery("")

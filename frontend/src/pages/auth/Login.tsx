@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { User, Lock, Loader2 } from "lucide-react"
+import { User, Lock, Loader2, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
@@ -20,11 +20,35 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>
 
+/**
+ * Login page — a two-step sign-in flow rendered as a single component:
+ *
+ * 1. Credentials step: username + password form (react-hook-form + zod via
+ *    `loginSchema`), submitted through `login()` from AuthContext.
+ * 2. Two-factor step: if `login()` resolves with `requires2FA` (i.e. the
+ *    account has 2FA enabled), `tempToken` is stored and the component
+ *    renders a second, separate form asking for the 6-digit authenticator
+ *    code, submitted through `verifyTwoFactor()`.
+ *
+ * Both steps reuse the same `AuthShell` wrapper but are given different
+ * `key` props ("credentials" vs "two-factor"). This is deliberate, not
+ * decorative: without distinct keys, React would reconcile the two forms
+ * as "the same" component across the state transition (since they render
+ * from the same call site) and could carry over stale internal state
+ * (e.g. focus/animation/mounted-input state) from one step into the next.
+ * The `key` change forces a clean remount when switching steps.
+ *
+ * On success, both steps navigate to `location.state.from` (the page the
+ * user was redirected from) or "/" by default.
+ */
 export default function Login() {
-  const { login } = useAuth()
+  const { login, verifyTwoFactor } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [tempToken, setTempToken] = useState<string | null>(null)
+  const [code, setCode] = useState("")
+  const [verifying, setVerifying] = useState(false)
 
   const from = (location.state as { from?: Location })?.from?.pathname ?? "/"
 
@@ -38,18 +62,89 @@ export default function Login() {
     defaultValues: { username: "", password: "", rememberMe: false },
   })
 
+  // Step 1 submit: attempts username/password login. If the account
+  // requires 2FA, stashes the temp token and lets the component re-render
+  // into the code-entry step instead of navigating away.
   const onSubmit = async (values: LoginValues) => {
     setServerError(null)
     try {
-      await login(values)
+      const result = await login(values)
+      if ("requires2FA" in result) {
+        setTempToken(result.tempToken)
+        return
+      }
       navigate(from, { replace: true })
     } catch (error) {
       setServerError(error instanceof ApiError ? error.message : "Login failed")
     }
   }
 
+  // Step 2 submit: verifies the 6-digit code against the temp token from
+  // step 1 and completes the login.
+  const handleVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tempToken) return
+    setServerError(null)
+    setVerifying(true)
+    try {
+      await verifyTwoFactor(tempToken, code)
+      navigate(from, { replace: true })
+    } catch (error) {
+      setServerError(error instanceof ApiError ? error.message : "Invalid code")
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  if (tempToken) {
+    return (
+      <AuthShell
+        key="two-factor"
+        title="Two-factor authentication"
+        description="Enter the 6-digit code from your authenticator app"
+      >
+        <form onSubmit={handleVerifyTwoFactor} className="space-y-4">
+          <AuthField
+            icon={ShieldCheck}
+            label="Authentication code"
+            placeholder="6-digit code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            autoFocus
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+          />
+
+          {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+
+          <Button
+            type="submit"
+            className="w-full rounded-full bg-gradient-to-r from-primary to-success text-primary-foreground hover:opacity-90"
+            disabled={verifying || code.length !== 6}
+          >
+            {verifying && <Loader2 className="size-4 animate-spin" />}
+            Verify
+          </Button>
+          <button
+            type="button"
+            onClick={() => {
+              setTempToken(null)
+              setCode("")
+              setServerError(null)
+            }}
+            className="w-full text-center text-sm text-muted-foreground hover:underline"
+          >
+            Back to sign in
+          </button>
+        </form>
+      </AuthShell>
+    )
+  }
+
   return (
     <AuthShell
+      key="credentials"
       title="Welcome back"
       description="Sign in to manage your business"
       footer={

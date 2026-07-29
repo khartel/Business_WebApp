@@ -11,6 +11,9 @@ const {
   listCustomersQuerySchema,
 } = require("../validators/customer.validators");
 
+// Mounted under /api/businesses/:businessId/customers (mergeParams gives
+// access to :businessId). Every route requires a valid session and
+// membership of the business (`belongsToBusiness`).
 router.use(authenticate);
 router.use(belongsToBusiness);
 

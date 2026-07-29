@@ -1,11 +1,26 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
 
+/**
+ * Computes how much of a transaction's total is still unpaid, by summing
+ * any recorded CreditPayments and subtracting from the total. Rounded to
+ * 2 decimal places to avoid floating-point cent drift. Meaningful mainly
+ * for CREDIT sales, but safe to call on any transaction (payments will
+ * simply be empty).
+ */
 const balanceDueOf = (transaction) => {
   const amountPaid = (transaction.payments || []).reduce((sum, p) => sum + p.amount, 0);
   return Math.round((transaction.totalAmount - amountPaid) * 100) / 100;
 };
 
+/**
+ * Derives a customer's summary stats from their loaded transaction history:
+ * total number of transactions, lifetime amount spent, and outstanding
+ * credit — the sum of balances still owed on CREDIT sales that haven't
+ * been marked fully paid (`paidAt` is null). Strips the raw `transactions`
+ * array out of the returned object in favor of these aggregates, since
+ * list views only need the summary, not every line item.
+ */
 const withStats = (customer) => {
   const { transactions, ...rest } = customer;
   const totalSpent = transactions.reduce((sum, t) => sum + t.totalAmount, 0);
@@ -22,7 +37,13 @@ const withStats = (customer) => {
 };
 
 /**
- * Create a new customer for a business
+ * Create a new customer record for a business. Returns it pre-shaped with
+ * zeroed stats (transactionCount/totalSpent/outstandingCredit) so the
+ * response matches the shape of `getCustomers`/`getCustomerById` without an
+ * extra round-trip, since a brand-new customer has no transactions yet.
+ *
+ * @param {{businessId: string, name: string, phone?: string}} params
+ * @returns {Promise<object>} The created customer with zeroed stats.
  */
 const createCustomer = async ({ businessId, name, phone }) => {
   const customer = await prisma.customer.create({
@@ -33,7 +54,14 @@ const createCustomer = async ({ businessId, name, phone }) => {
 };
 
 /**
- * Get all customers for a business, with aggregated spend/credit stats
+ * List customers for a business, each annotated with aggregated spend/credit
+ * stats (via `withStats`). Supports an optional case-insensitive name search
+ * and a result limit, used to power the register's customer autocomplete as
+ * well as the full Customers page.
+ *
+ * @param {string} businessId
+ * @param {{search?: string, limit?: number}} [options]
+ * @returns {Promise<object[]>} Customers sorted alphabetically by name.
  */
 const getCustomers = async (businessId, { search, limit } = {}) => {
   const customers = await prisma.customer.findMany({
@@ -59,7 +87,15 @@ const getCustomers = async (businessId, { search, limit } = {}) => {
 };
 
 /**
- * Get a single customer with full transaction history
+ * Get a single customer with their full transaction history, each
+ * transaction annotated with `amountPaid`/`balanceDue` so the UI can show
+ * a running credit ledger per sale (not just the aggregate outstanding
+ * total that `withStats` provides).
+ *
+ * @param {string} customerId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @returns {Promise<object>} Customer with stats and a `transactions` array.
+ * @throws {AppError} 404 if not found in this business.
  */
 const getCustomerById = async (customerId, businessId) => {
   const customer = await prisma.customer.findFirst({
@@ -95,7 +131,15 @@ const getCustomerById = async (customerId, businessId) => {
 };
 
 /**
- * Update a customer
+ * Update a customer's name and/or phone. Only provided fields are changed;
+ * name is required to be truthy to apply (falsy values are ignored, not
+ * cleared), while phone can be explicitly cleared via `undefined` check.
+ *
+ * @param {string} customerId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @param {{name?: string, phone?: string}} fields
+ * @returns {Promise<object>} The updated customer.
+ * @throws {AppError} 404 if not found in this business.
  */
 const updateCustomer = async (customerId, businessId, { name, phone }) => {
   const customer = await prisma.customer.findFirst({

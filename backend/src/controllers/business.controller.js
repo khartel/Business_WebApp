@@ -67,12 +67,12 @@ const getOne = asyncHandler(async (req, res) => {
  * Update a business (SuperAdmin only)
  */
 const update = asyncHandler(async (req, res) => {
-  const { name, phone, email, location } = req.body;
+  const { name, phone, email, location, receiptTitle, receiptFooterNote, receiptShowSignature } = req.body;
 
   const business = await updateBusiness(
     req.params.id,
     req.user.id,
-    { name, phone, email, location }
+    { name, phone, email, location, receiptTitle, receiptFooterNote, receiptShowSignature }
   );
 
   return sendSuccess(res, {

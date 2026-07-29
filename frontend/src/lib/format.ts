@@ -12,6 +12,7 @@ export function formatMoney(amount: number, currencyCode: string) {
   }
 }
 
+/** Formats a date as a short human-readable string (e.g. "Jul 29, 2026") using the browser's locale. */
 export function formatDate(date: string | Date) {
   return new Date(date).toLocaleDateString(undefined, {
     year: "numeric",
@@ -20,6 +21,7 @@ export function formatDate(date: string | Date) {
   })
 }
 
+/** Formats a date+time as a short human-readable string including hour:minute, using the browser's locale. */
 export function formatDateTime(date: string | Date) {
   return new Date(date).toLocaleString(undefined, {
     year: "numeric",

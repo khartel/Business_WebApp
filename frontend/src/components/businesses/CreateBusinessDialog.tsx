@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+// Validation for the new-business form. Email is optional (empty string allowed).
 const schema = z.object({
   name: z.string().trim().min(1, "Business name is required"),
   phone: z.string().trim().min(7, "Phone number is required"),
@@ -37,6 +38,21 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/**
+ * Dialog + form for creating a new business. Renders its own trigger button
+ * (or a custom `trigger` node) that opens the dialog.
+ *
+ * Props:
+ * - onCreated: called with the new business id after a successful create.
+ * - trigger: optional custom element to open the dialog instead of the default "New business" button.
+ *
+ * Behavior:
+ * - The country dropdown is populated from `businessService.getCountries`, which is only
+ *   fetched while the dialog is `open` (query is `enabled: open`) and cached indefinitely.
+ * - On success, invalidates the businesses list and the current-user ("auth/me") query
+ *   (since creating a business can affect the user's business memberships), closes the
+ *   dialog, and resets the form.
+ */
 export function CreateBusinessDialog({
   onCreated,
   trigger,

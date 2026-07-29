@@ -9,6 +9,13 @@ interface ErrorStateProps {
   onRetry?: () => void
 }
 
+/**
+ * Inline error placeholder for a section/query that failed to load (distinct
+ * from `ErrorBoundary`, which catches render-time crashes at the app level).
+ * Shows an icon, title, and description with sensible defaults, plus an
+ * optional `onRetry` button — pass it a query's `refetch` to let the user
+ * retry without a full page reload.
+ */
 export function ErrorState({
   title = "Something went wrong",
   description = "Could not load this data. Please try again.",

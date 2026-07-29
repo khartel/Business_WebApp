@@ -10,13 +10,25 @@ interface ErrorBoundaryState {
   hasError: boolean
 }
 
+/**
+ * Class-based React error boundary that wraps `children` and catches any
+ * unhandled render/lifecycle errors thrown beneath it in the tree. Once
+ * tripped, it permanently swaps the subtree for a full-screen "Something
+ * went wrong" fallback with a reload button — there is no retry-without-
+ * reload path, since React error boundaries don't support silently
+ * un-tripping themselves. Errors are logged to the console for debugging.
+ */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false }
 
+  // React lifecycle hook: called during render when a descendant throws.
+  // Returning new state here triggers the fallback UI on the next render.
   static getDerivedStateFromError() {
     return { hasError: true }
   }
 
+  // React lifecycle hook: called after an error is caught, used only for
+  // side effects (logging) since state is already updated above.
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled error caught by ErrorBoundary:", error, info.componentStack)
   }

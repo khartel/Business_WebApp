@@ -3,7 +3,17 @@ const AppError = require("../utils/AppError");
 const { startOfDay, endOfDay } = require("date-fns");
 
 /**
- * Ensure a short code isn't already used by another product in this business
+ * Ensure a short code isn't already used by another product in this
+ * business. Short codes are used for fast barcode/keyboard lookups at the
+ * register, so they must be unique per business (case-insensitively).
+ * No-ops if `shortCode` is falsy, since it's an optional field.
+ *
+ * @param {string} businessId
+ * @param {string} shortCode
+ * @param {string} [excludeProductId] - When updating a product, excludes it
+ *   from the uniqueness check so a product keeping its own code doesn't
+ *   collide with itself.
+ * @throws {AppError} 409 if another product already uses this short code.
  */
 const assertShortCodeAvailable = async (businessId, shortCode, excludeProductId) => {
   if (!shortCode) return;
@@ -22,7 +32,20 @@ const assertShortCodeAvailable = async (businessId, shortCode, excludeProductId)
 };
 
 /**
- * Create a new product for a business
+ * Create a new product for a business. Enforces a case-insensitive unique
+ * product name per business (in addition to the short-code uniqueness check
+ * delegated to `assertShortCodeAvailable`), and defaults price to 0 if not
+ * given rather than leaving it null.
+ *
+ * @param {object} params
+ * @param {string} params.businessId
+ * @param {string} params.name - Must be unique within the business.
+ * @param {string} params.unit - Unit of measure (e.g. "kg", "pcs").
+ * @param {number|string} [params.price] - Parsed to a float; defaults to 0.
+ * @param {string} [params.description]
+ * @param {string} [params.shortCode] - Optional fast-lookup code, must be unique.
+ * @returns {Promise<object>} The created product including its (empty) stock relation.
+ * @throws {AppError} 409 if the name or short code is already taken.
  */
 const createProduct = async ({ businessId, name, unit, price, description, shortCode }) => {
   const existing = await prisma.product.findFirst({
@@ -66,7 +89,13 @@ const createProduct = async ({ businessId, name, unit, price, description, short
 };
 
 /**
- * Get all products for a business
+ * List all products for a business, each annotated with `totalQuantity`
+ * (summed across every warehouse) and `primaryStock` (the stock row at the
+ * business's primary warehouse, or null if none), so list views don't need
+ * to re-derive these from the raw per-warehouse stock array.
+ *
+ * @param {string} businessId
+ * @returns {Promise<object[]>} Products ordered alphabetically by name.
  */
 const getProducts = async (businessId) => {
   const products = await prisma.product.findMany({
@@ -99,7 +128,14 @@ const getProducts = async (businessId) => {
 };
 
 /**
- * Get a single product
+ * Get a single product with its per-warehouse stock and its 10 most recent
+ * sale line items (for a quick "recent activity" view), plus the same
+ * derived `totalQuantity`/`primaryStock` fields as `getProducts`.
+ *
+ * @param {string} productId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @returns {Promise<object>} The product with stock and recent transaction items.
+ * @throws {AppError} 404 if not found in this business.
  */
 const getProductById = async (productId, businessId) => {
   const product = await prisma.product.findFirst({
@@ -154,7 +190,17 @@ const getProductById = async (productId, businessId) => {
 };
 
 /**
- * Update a product
+ * Update a product's fields. Re-validates uniqueness of `name` and
+ * `shortCode` only when they're actually changing (comparing against the
+ * current value first), to avoid a product tripping over its own existing
+ * value during an update.
+ *
+ * @param {string} productId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @param {{name?: string, unit?: string, price?: number|string, description?: string, shortCode?: string}} fields
+ * @returns {Promise<object>} The updated product including stock.
+ * @throws {AppError} 404 if not found; 409 if the new name/shortCode collides
+ *   with another product in the business.
  */
 const updateProduct = async (productId, businessId, { name, unit, price, description, shortCode }) => {
   const product = await prisma.product.findFirst({
@@ -211,7 +257,17 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
 };
 
 /**
- * Delete a product
+ * Delete a product, but only if it has never been sold. This protects the
+ * integrity of historical sales/reports, which reference products by ID —
+ * deleting a product with transaction history would orphan or corrupt past
+ * reporting data, so such products must be "archived" conceptually rather
+ * than deleted. On success, removes the product's stock rows first (in a
+ * transaction with the product delete) so no stock records are left behind.
+ *
+ * @param {string} productId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @returns {Promise<{message: string}>}
+ * @throws {AppError} 404 if not found; a plain error if it has sales history.
  */
 const deleteProduct = async (productId, businessId) => {
   const product = await prisma.product.findFirst({
@@ -248,9 +304,22 @@ const deleteProduct = async (productId, businessId) => {
 };
 
 /**
- * Receive incoming stock (a restock/delivery) into one warehouse, for one or more
- * products at once. Logs a RESTOCK movement per product line so it shows up in
- * the stock movements report.
+ * Receive incoming stock (a restock/delivery) into one warehouse, for one or
+ * more products at once. For each line item: increments existing stock (or
+ * creates a new WarehouseStock row if the product has never stocked there),
+ * optionally updates the low-stock threshold, then records a RESTOCK
+ * StockMovement — all inside one `$transaction` so a delivery of several
+ * products either fully applies or not at all, and the movement log always
+ * matches the resulting stock levels.
+ *
+ * @param {object} params
+ * @param {string} params.businessId
+ * @param {string} params.warehouseId - Destination warehouse; must belong to businessId.
+ * @param {Array<{productId: string, quantity: number, lowStockThreshold?: number}>} params.items
+ * @param {string} params.movedById - User who logged the delivery.
+ * @param {string} [params.notes]
+ * @returns {Promise<object[]>} One StockMovement record per item received.
+ * @throws {AppError} 404 if the warehouse or any product doesn't belong to this business.
  */
 const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }) => {
   const warehouse = await prisma.warehouse.findFirst({
@@ -326,7 +395,14 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
 };
 
 /**
- * Get all stock across all warehouses for a business
+ * Get all stock across all warehouses for a business, with each stock line
+ * flagged `isLowStock` (quantity at or below its configured threshold) and
+ * `isOutOfStock` (quantity exactly 0), so the frontend doesn't need to
+ * recompute alert logic itself.
+ *
+ * @param {string} businessId
+ * @returns {Promise<object[]>} Warehouses (primary first), each with its
+ *   flagged stock list sorted lowest-quantity first.
  */
 const getAllStock = async (businessId) => {
   const warehouses = await prisma.warehouse.findMany({
@@ -368,7 +444,26 @@ const getAllStock = async (businessId) => {
 };
 
 /**
- * Move stock between warehouses
+ * Move a quantity of one product from one warehouse to another (an internal
+ * TRANSFER, distinct from a RESTOCK). Validates the source warehouse has
+ * enough quantity before moving anything. The actual move — decrementing
+ * the source, incrementing (or creating) the destination stock row, and
+ * logging a TRANSFER StockMovement — happens inside a single
+ * `$transaction` so stock can never end up deducted from the source
+ * without also landing in the destination (or vice versa).
+ *
+ * @param {object} params
+ * @param {string} params.businessId
+ * @param {string} params.fromWarehouseId
+ * @param {string} params.toWarehouseId - Must differ from fromWarehouseId.
+ * @param {string} params.productId
+ * @param {number} params.quantity - Must be > 0 and <= current source stock.
+ * @param {string} params.movedById
+ * @param {string} [params.notes]
+ * @returns {Promise<object>} The created StockMovement record.
+ * @throws {AppError} If source/destination are the same, quantity is
+ *   invalid, the product has no stock at the source, or source stock is
+ *   insufficient.
  */
 const moveStock = async ({
   businessId,
@@ -494,7 +589,14 @@ const moveStock = async ({
 };
 
 /**
- * Get stock movement history for a business
+ * Get stock movement history for a business (both RESTOCK and TRANSFER
+ * entries), with optional filters for date range, source/destination
+ * warehouse, product, and movement type — powers the stock-movements
+ * report/audit trail screen.
+ *
+ * @param {string} businessId
+ * @param {{startDate?: string, endDate?: string, fromWarehouseId?: string, toWarehouseId?: string, productId?: string, type?: string}} [filters]
+ * @returns {Promise<object[]>} Movements newest first.
  */
 const getStockMovements = async (businessId, filters = {}) => {
   const { startDate, endDate, fromWarehouseId, toWarehouseId, productId, type } = filters;

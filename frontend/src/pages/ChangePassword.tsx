@@ -25,6 +25,22 @@ const changePasswordSchema = z
 
 type ChangePasswordValues = z.infer<typeof changePasswordSchema>
 
+/**
+ * ChangePassword page — a standalone form (rendered inside the auth shell)
+ * that lets a signed-in user change their password by re-entering their
+ * current password and picking a new one (with confirmation).
+ *
+ * Also serves as the forced first-login flow: when `user.mustChangePassword`
+ * is true (e.g. after an admin resets a temp password), the copy adapts to
+ * explain that a new password is required to continue.
+ *
+ * Data: no queries; submits via `authService.changePassword`, then calls
+ * `refetchMe()` (from AuthContext) to refresh the cached user before
+ * redirecting to `/`.
+ *
+ * Validation: zod schema requires the current password, a new password of
+ * at least 6 characters, and a matching confirmation field.
+ */
 export default function ChangePassword() {
   const { user, refetchMe } = useAuth()
   const navigate = useNavigate()

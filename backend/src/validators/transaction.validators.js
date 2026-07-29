@@ -1,9 +1,15 @@
+/**
+ * Zod request-validation schemas for the transaction/sale endpoints
+ * (creating sales, listing/filtering them, and recording credit payments).
+ */
 const { z } = require("zod");
 
+/** Validates routes scoped to a business only. */
 const businessIdParamSchema = {
   params: z.object({ businessId: z.string().uuid("Invalid business id") }),
 };
 
+/** Validates routes that target a specific transaction (e.g. recording a payment against it). */
 const transactionIdParamSchema = {
   params: z.object({
     businessId: z.string().uuid("Invalid business id"),
@@ -11,6 +17,12 @@ const transactionIdParamSchema = {
   }),
 };
 
+/**
+ * Validates POST .../transactions - creates a sale with one or more line
+ * items. `customerName` is conditionally required: the refine() enforces it
+ * whenever paymentMethod is "CREDIT", since a credit sale needs a customer
+ * to bill later.
+ */
 const createTransactionSchema = {
   params: businessIdParamSchema.params,
   body: z
@@ -40,6 +52,7 @@ const createTransactionSchema = {
     ),
 };
 
+/** Validates GET .../transactions - filters by performer, payment method, paid status, date range, plus pagination. */
 const listTransactionsQuerySchema = {
   params: businessIdParamSchema.params,
   query: z.object({
@@ -53,6 +66,7 @@ const listTransactionsQuerySchema = {
   }),
 };
 
+/** Validates POST .../transactions/:transactionId/payments - records a payment amount against a credit sale. */
 const recordPaymentSchema = {
   params: transactionIdParamSchema.params,
   body: z.object({

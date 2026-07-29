@@ -15,10 +15,13 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarRange } from "lucide-react"
 
+// Today's date as YYYY-MM-DD, used as the default value for the date picker (any day
+// within the desired week can be picked; the backend resolves the containing week).
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// Builds CSV rows for the "Items sold" export: per-product quantity/revenue plus a total row.
 function itemsSoldCsvRows(report: WeeklyReport, currency: string) {
   return [
     ["Items sold", `${report.weekStart} to ${report.weekEnd}`],
@@ -31,6 +34,8 @@ function itemsSoldCsvRows(report: WeeklyReport, currency: string) {
   ]
 }
 
+// Builds CSV rows for the "Full report" export: summary totals, a daily breakdown,
+// and breakdowns by employee and by product.
 function fullReportCsvRows(report: WeeklyReport, currency: string) {
   return [
     ["Weekly report", `${report.weekStart} to ${report.weekEnd}`],
@@ -55,6 +60,12 @@ function fullReportCsvRows(report: WeeklyReport, currency: string) {
   ]
 }
 
+/**
+ * Reports tab showing sales for the calendar week containing the selected date:
+ * total sales, transaction count, average per day, best day, a per-day bar chart
+ * (built from simple `<li>` bars sized by relative amount), and breakdowns by
+ * employee and by product. Includes "Items sold" and "Full report" exports (CSV/PDF).
+ */
 export function WeeklyReportTab() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
@@ -67,6 +78,7 @@ export function WeeklyReportTab() {
     enabled: !!activeBusinessId,
   })
 
+  // Shared header fields for every PDF export below.
   const pdfHeader = () => ({
     businessName: activeBusiness?.name ?? "",
     businessLocation: activeBusiness?.location,
@@ -181,6 +193,8 @@ export function WeeklyReportTab() {
     )
   }
 
+  // Denominator for the daily-breakdown bar widths; floored at 1 to avoid divide-by-zero
+  // when every day in the week had zero sales.
   const maxDayAmount = Math.max(...report.dailyBreakdown.map((d) => d.totalAmount), 1)
 
   return (

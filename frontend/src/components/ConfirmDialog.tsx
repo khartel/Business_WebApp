@@ -24,6 +24,14 @@ interface ConfirmDialogProps {
   onConfirm: () => void
 }
 
+/**
+ * Reusable "are you sure?" confirmation modal built on shadcn's AlertDialog.
+ * The caller supplies `trigger` (the element that opens the dialog) and
+ * `onConfirm` (called when the user accepts). `destructive` (default true)
+ * styles the confirm button as a destructive action; set it to false for
+ * non-destructive confirmations. `isLoading` disables the confirm button and
+ * shows a spinner while an async `onConfirm` is in flight.
+ */
 export function ConfirmDialog({
   trigger,
   title,

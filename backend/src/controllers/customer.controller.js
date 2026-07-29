@@ -10,6 +10,8 @@ const asyncHandler = require("../utils/asyncHandler");
 
 /**
  * POST /api/businesses/:businessId/customers
+ * Creates a customer record (name + phone) for the business, used for
+ * attaching sales/credit to a known customer. Returns the created customer.
  */
 const create = asyncHandler(async (req, res) => {
   const { name, phone } = req.body;
@@ -29,6 +31,9 @@ const create = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/customers
+ * Lists customers for the business, optionally filtered by a `search` query
+ * string (name/phone) and capped by `limit` — used for register autocomplete
+ * as well as a full customer directory view.
  */
 const getAll = asyncHandler(async (req, res) => {
   const { search, limit } = req.validatedQuery;
@@ -43,6 +48,7 @@ const getAll = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/customers/:customerId
+ * Fetches a single customer's details by id, scoped to the business.
  */
 const getOne = asyncHandler(async (req, res) => {
   const customer = await getCustomerById(req.params.customerId, req.params.businessId);
@@ -55,6 +61,7 @@ const getOne = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/businesses/:businessId/customers/:customerId
+ * Updates a customer's name and/or phone. Returns the updated customer.
  */
 const update = asyncHandler(async (req, res) => {
   const { name, phone } = req.body;
@@ -72,6 +79,7 @@ const update = asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/businesses/:businessId/customers/:customerId
+ * Deletes a customer record from the business's directory.
  */
 const remove = asyncHandler(async (req, res) => {
   const result = await deleteCustomer(req.params.customerId, req.params.businessId);

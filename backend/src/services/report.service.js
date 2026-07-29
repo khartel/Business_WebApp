@@ -2,7 +2,14 @@ const prisma = require("../utils/prisma");
 const { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval, eachWeekOfInterval } = require("date-fns");
 
 /**
- * Helper to build date range
+ * Builds a Prisma-friendly date range filter (`{ gte, lte }`) spanning the
+ * full calendar days from `startDate` to `endDate` inclusive. Defaults each
+ * end to "now" when not provided, so callers get a sensible single-day
+ * range (today) if no dates are passed at all.
+ *
+ * @param {string|Date} [startDate]
+ * @param {string|Date} [endDate]
+ * @returns {{gte: Date, lte: Date}}
  */
 const buildDateRange = (startDate, endDate) => {
   const start = startDate ? new Date(startDate) : new Date();
@@ -15,8 +22,15 @@ const buildDateRange = (startDate, endDate) => {
 };
 
 /**
- * Daily Report
- * Full breakdown of a single day
+ * Daily Report — full breakdown of a single day's sales: overall totals,
+ * a cash-vs-transfer split, and per-employee and per-product breakdowns
+ * (each built by grouping the day's transactions in memory with a map
+ * keyed by employee/product ID, since a single day's volume is small
+ * enough not to need per-group queries).
+ *
+ * @param {string} businessId
+ * @param {string|Date} [date] - Defaults to today if omitted.
+ * @returns {Promise<object>} `{ date, summary, transactions, byEmployee, byProduct }`.
  */
 const getDailyReport = async (businessId, date) => {
   const targetDate = date ? new Date(date) : new Date();
@@ -138,8 +152,13 @@ const getDailyReport = async (businessId, date) => {
 };
 
 /**
- * Weekly Report
- * Breakdown by day for a week
+ * Weekly Report — breaks a week's sales down by day (Monday-start weeks),
+ * plus overall totals, the best-performing day, and per-employee/product
+ * breakdowns for the whole week.
+ *
+ * @param {string} businessId
+ * @param {string|Date} [date] - Any date within the target week; defaults to today.
+ * @returns {Promise<object>} `{ weekStart, weekEnd, summary, dailyBreakdown, byEmployee, byProduct }`.
  */
 const getWeeklyReport = async (businessId, date) => {
   const targetDate = date ? new Date(date) : new Date();
@@ -270,8 +289,14 @@ const getWeeklyReport = async (businessId, date) => {
 };
 
 /**
- * Monthly Report
- * Breakdown by week and day for a month
+ * Monthly Report — breaks a month's sales down by day, plus overall
+ * totals, average daily sales, the best day, and per-employee/product
+ * breakdowns for the whole month.
+ *
+ * @param {string} businessId
+ * @param {number} [year] - Defaults to the current year.
+ * @param {number} [month] - 1-indexed month (1 = January); defaults to current month.
+ * @returns {Promise<object>} `{ month, monthStart, monthEnd, summary, dailyBreakdown, byEmployee, byProduct }`.
  */
 const getMonthlyReport = async (businessId, year, month) => {
   const targetDate = new Date(
@@ -416,8 +441,18 @@ const getMonthlyReport = async (businessId, year, month) => {
 };
 
 /**
- * Employee Report
- * Sales performance per employee
+ * Employee Report — sales performance per team member over a date range:
+ * total revenue, cash/transfer split, transaction count, and top products
+ * sold by each. Fetches all team members and all in-range transactions in
+ * one pair of parallel queries and groups them in memory, rather than
+ * running a separate query per employee — this keeps the report to a fixed
+ * number of DB round-trips regardless of team size.
+ *
+ * @param {string} businessId
+ * @param {string|Date} [startDate]
+ * @param {string|Date} [endDate]
+ * @returns {Promise<object>} `{ startDate, endDate, employees }`, employees
+ *   sorted by total revenue descending.
  */
 const getEmployeeReport = async (businessId, startDate, endDate) => {
   const dateRange = buildDateRange(startDate, endDate);
@@ -522,8 +557,17 @@ const getEmployeeReport = async (businessId, startDate, endDate) => {
 };
 
 /**
- * Product Report
- * Best and worst selling products
+ * Product Report — ranks products by revenue and by quantity sold over a
+ * date range, with each product's average unit price (averaged across all
+ * its sale line items, since price can vary per sale) and current stock
+ * levels. Current stock for every product involved is fetched in a single
+ * batched query (`productId: { in: [...] }`) rather than one query per
+ * product, to keep this report cheap even with many distinct products sold.
+ *
+ * @param {string} businessId
+ * @param {string|Date} [startDate]
+ * @param {string|Date} [endDate]
+ * @returns {Promise<object>} `{ startDate, endDate, totalProducts, bestSelling, mostQuantitySold }`.
  */
 const getProductReport = async (businessId, startDate, endDate) => {
   const dateRange = buildDateRange(startDate, endDate);
@@ -631,8 +675,15 @@ const getProductReport = async (businessId, startDate, endDate) => {
 };
 
 /**
- * Stock Alert Report
- * Low stock and out of stock items
+ * Stock Alert Report — buckets every stock line across all of a business's
+ * warehouses into out-of-stock (quantity 0), low-stock (quantity > 0 but at
+ * or below that line's own `lowStockThreshold`), and healthy, so reordering
+ * decisions can be made at a glance. Thresholds are per warehouse-product
+ * line, not global, since different warehouses may want different reorder
+ * points for the same product.
+ *
+ * @param {string} businessId
+ * @returns {Promise<object>} `{ summary, outOfStock, lowStock, healthyStock }`.
  */
 const getStockAlertReport = async (businessId) => {
   const stock = await prisma.warehouseStock.findMany({

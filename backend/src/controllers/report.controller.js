@@ -11,6 +11,7 @@ const asyncHandler = require("../utils/asyncHandler");
 
 /**
  * GET /api/businesses/:businessId/reports/daily
+ * Full sales breakdown for a single day (transactions, revenue, etc.).
  * Query params: date (optional, defaults to today)
  */
 const daily = asyncHandler(async (req, res) => {
@@ -26,6 +27,8 @@ const daily = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/reports/weekly
+ * Sales breakdown for the week containing the given date, with a per-day
+ * summary within that week.
  * Query params: date (optional, any date in the week)
  */
 const weekly = asyncHandler(async (req, res) => {
@@ -41,6 +44,7 @@ const weekly = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/reports/monthly
+ * Sales breakdown for a calendar month, with a per-week summary within it.
  * Query params: year, month (optional, defaults to current month)
  */
 const monthly = asyncHandler(async (req, res) => {
@@ -56,6 +60,8 @@ const monthly = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/reports/employees
+ * Per-employee performance breakdown (sales made, revenue generated) over
+ * an optional date range, for spotting top/underperforming staff.
  * Query params: startDate, endDate (optional)
  */
 const employees = asyncHandler(async (req, res) => {
@@ -71,6 +77,8 @@ const employees = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/reports/products
+ * Per-product sales performance (units sold, revenue) over an optional date
+ * range, for spotting best/worst sellers.
  * Query params: startDate, endDate (optional)
  */
 const products = asyncHandler(async (req, res) => {

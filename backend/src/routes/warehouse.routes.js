@@ -17,6 +17,8 @@ const {
   updateWarehouseSchema,
 } = require("../validators/warehouse.validators");
 
+// Mounted under /api/businesses/:businessId/warehouses. Every route
+// requires a valid session and business membership.
 router.use(authenticate);
 router.use(belongsToBusiness);
 

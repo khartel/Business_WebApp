@@ -18,6 +18,10 @@ const {
   businessIdParamSchema,
 } = require("../validators/report.validators");
 
+// Mounted under /api/businesses/:businessId/reports. Every route requires a
+// valid session and business membership; reports are restricted to
+// SuperAdmin/Admin since they expose sales and staff performance data that
+// regular Employees shouldn't see.
 router.use(authenticate);
 router.use(belongsToBusiness);
 

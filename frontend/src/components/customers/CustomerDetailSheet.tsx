@@ -25,6 +25,21 @@ import {
 } from "@/components/ui/table"
 import { History } from "lucide-react"
 
+/**
+ * Slide-over sheet showing a single customer's profile: visit count, total spent,
+ * outstanding credit ("Owes"), and their transaction history.
+ *
+ * Props:
+ * - customerId: when null the sheet is closed; setting it triggers the detail fetch
+ *   (query is `enabled: !!customerId`).
+ * - onOpenChange: called when the sheet is dismissed.
+ *
+ * Behavior:
+ * - `outstandingCredit` is the customer's running unpaid balance across CREDIT
+ *   transactions, computed server-side and just displayed here.
+ * - Clicking a transaction row opens a nested `TransactionDetailSheet` (tracked via
+ *   local `transactionId` state) layered on top of this sheet.
+ */
 export function CustomerDetailSheet({
   businessId,
   customerId,

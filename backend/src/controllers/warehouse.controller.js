@@ -11,6 +11,8 @@ const asyncHandler = require("../utils/asyncHandler");
 
 /**
  * POST /api/businesses/:businessId/warehouses
+ * Creates a new warehouse/storage location for the business. If `isPrimary`
+ * is true it becomes the default location stock operations target.
  */
 const create = asyncHandler(async (req, res) => {
   const { name, location, isPrimary } = req.body;
@@ -33,6 +35,7 @@ const create = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/warehouses
+ * Lists every warehouse belonging to the business.
  */
 const getAll = asyncHandler(async (req, res) => {
   const warehouses = await getWarehouses(req.params.businessId);
@@ -45,6 +48,7 @@ const getAll = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/warehouses/:warehouseId
+ * Fetches a single warehouse's details by id, scoped to the business.
  */
 const getOne = asyncHandler(async (req, res) => {
   const warehouse = await getWarehouseById(
@@ -60,6 +64,9 @@ const getOne = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/businesses/:businessId/warehouses/:warehouseId/primary
+ * Marks this warehouse as the business's primary location, implicitly
+ * unmarking whichever warehouse held that flag before (a business has at
+ * most one primary warehouse at a time).
  */
 const setPrimary = asyncHandler(async (req, res) => {
   const warehouse = await setPrimaryWarehouse(
@@ -75,6 +82,7 @@ const setPrimary = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/businesses/:businessId/warehouses/:warehouseId
+ * Updates a warehouse's name and/or location. Returns the updated warehouse.
  */
 const update = asyncHandler(async (req, res) => {
   const { name, location } = req.body;
@@ -93,6 +101,8 @@ const update = asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/businesses/:businessId/warehouses/:warehouseId
+ * Deletes a warehouse from the business. Rejected if it's the primary
+ * warehouse (must reassign primary first) or if it still holds stock.
  */
 const remove = asyncHandler(async (req, res) => {
   const result = await deleteWarehouse(

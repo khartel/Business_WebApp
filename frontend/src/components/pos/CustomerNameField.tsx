@@ -3,6 +3,14 @@ import { useQuery } from "@tanstack/react-query"
 import * as customerService from "@/services/customer.service"
 import { Input } from "@/components/ui/input"
 
+/**
+ * Free-text customer name input used in the POS sale flow, with a debounced
+ * autocomplete dropdown of matching existing customers (by name/phone) so
+ * cashiers can reuse an existing customer record instead of typing a fresh
+ * name each time. The input value itself is always controlled by the parent
+ * (`value`/`onChange`) — selecting a suggestion just calls `onChange` with
+ * that customer's name, it does not track a separate "selected customer" id.
+ */
 export function CustomerNameField({
   businessId,
   value,
@@ -21,6 +29,8 @@ export function CustomerNameField({
   const [debounced, setDebounced] = useState(value)
   const [focused, setFocused] = useState(false)
 
+  // Debounce the search query by 200ms so we don't fire a request on every
+  // keystroke while the user is typing.
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value), 200)
     return () => clearTimeout(timer)
@@ -33,6 +43,10 @@ export function CustomerNameField({
   })
 
   const results = query.data ?? []
+  // Dropdown only shows while the input is focused and there's a non-empty
+  // debounced query with results — `onBlur` below delays hiding it slightly
+  // so a click on a suggestion (onMouseDown preventDefault) can register
+  // before blur closes the dropdown.
   const showDropdown = focused && debounced.trim().length > 0 && results.length > 0
 
   return (

@@ -3,12 +3,15 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useNavigate } from "react-router-dom"
-import { KeyRound, Loader2 } from "lucide-react"
+import { KeyRound, Loader2, Settings as SettingsIcon } from "lucide-react"
 import { toast } from "sonner"
 import * as authService from "@/services/auth.service"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { ReceiptSettingsCard } from "@/components/settings/ReceiptSettingsCard"
+import { TwoFactorCard } from "@/components/settings/TwoFactorCard"
+import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +26,23 @@ const profileSchema = z.object({
 
 type ProfileValues = z.infer<typeof profileSchema>
 
+/**
+ * Settings page — account and business-owner settings, gated to
+ * `user.role === "SUPERADMIN"` (all other roles see an `EmptyState` saying
+ * settings are owner-only). Composed of several independent cards:
+ * - Profile: edit full name / phone / email via a react-hook-form + zod
+ *   form (`profileSchema`); submits through `authService.updateProfile`
+ *   then calls `refetchMe()` to refresh the cached user. Username and role
+ *   are shown read-only.
+ * - Security: a link to the dedicated `/change-password` page.
+ * - `TwoFactorCard`: self-contained 2FA enable/disable/verify flow.
+ * - `ReceiptSettingsCard`: self-contained receipt branding (logo, footer
+ *   text, etc.) editor.
+ * - Appearance: theme toggle (light/dark/system) via `ThemeToggle`.
+ *
+ * Each card owns its own submit state; this component only wires up the
+ * Profile form directly.
+ */
 export default function Settings() {
   const { user, refetchMe } = useAuth()
   const navigate = useNavigate()
@@ -54,8 +74,18 @@ export default function Settings() {
 
   if (!user) return null
 
+  if (user.role !== "SUPERADMIN") {
+    return (
+      <EmptyState
+        icon={<SettingsIcon className="size-6" />}
+        title="Not available"
+        description="Settings are only visible to the business owner."
+      />
+    )
+  }
+
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Profile</CardTitle>
@@ -113,6 +143,10 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <TwoFactorCard />
+
+      <ReceiptSettingsCard />
 
       <Card>
         <CardHeader>

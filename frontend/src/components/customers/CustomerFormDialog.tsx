@@ -22,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
+// Validation for the customer form; phone is optional.
 const schema = z.object({
   name: z.string().trim().min(1, "Customer name is required"),
   phone: z.string().trim().optional(),
@@ -30,6 +31,15 @@ const schema = z.object({
 type FormValues = z.input<typeof schema>
 type ParsedValues = z.output<typeof schema>
 
+/**
+ * Dialog for creating or editing a customer record. Dual-purpose based on whether
+ * a `customer` is passed in:
+ * - No `customer`: renders a "New customer" button trigger and creates a new customer.
+ * - `customer` provided: renders a pencil icon-button trigger (isEdit = true) and
+ *   updates that customer; the form is pre-filled via RHF's `values` option.
+ *
+ * On success, invalidates the customers list for the active business.
+ */
 export function CustomerFormDialog({ customer }: { customer?: Customer }) {
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()

@@ -8,6 +8,9 @@ const asyncHandler = require("../utils/asyncHandler");
 
 /**
  * GET /api/platform/superadmins
+ * Platform/support endpoint (see superadmin.routes.js — master-key gated,
+ * not a normal session). Lists every SuperAdmin account along with a summary
+ * of the businesses each one owns.
  */
 const getAllSuperAdmins = asyncHandler(async (req, res) => {
   const superAdmins = await fetchAllSuperAdmins();
@@ -19,6 +22,10 @@ const getAllSuperAdmins = asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/platform/superadmins/:userId
+ * Platform/support endpoint (master-key gated). Permanently deletes a
+ * SuperAdmin account; Prisma's cascading relations then delete everything
+ * that account owns — businesses, products, transactions, team members,
+ * warehouses, etc. This is irreversible.
  */
 const deleteSuperAdmin = asyncHandler(async (req, res) => {
   await removeSuperAdmin(req.params.userId);

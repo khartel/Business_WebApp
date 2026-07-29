@@ -32,6 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+// Validation for the receive-stock form: a warehouse, one or more (product, quantity)
+// line items, and an optional note. The `.refine` guards against selecting the same
+// product twice across items.
 const schema = z
   .object({
     warehouseId: z.string().min(1, "Select a warehouse"),
@@ -58,6 +61,19 @@ type ParsedValues = z.output<typeof schema>
 
 const emptyValues: FormValues = { warehouseId: "", items: [{ productId: "", quantity: 0 }], notes: "" }
 
+/**
+ * Dialog for recording incoming stock: pick a warehouse, then add one or more
+ * (product, quantity) line items in a single submission.
+ *
+ * Behavior:
+ * - Warehouses and products are only fetched while the dialog is `open`.
+ * - Uses `useFieldArray` to manage the dynamic list of line items (add/remove rows).
+ * - Each row's `ProductPicker` excludes products already chosen in other rows
+ *   (`excludeIds`, derived from `watchedItems`) to prevent duplicate entries.
+ * - On success, invalidates products, warehouses, stock movements, and stock queries
+ *   since receiving stock affects all of them, then resets the form back to one
+ *   empty line item.
+ */
 export function ReceiveStockDialog() {
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()

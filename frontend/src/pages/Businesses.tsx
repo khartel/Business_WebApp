@@ -15,6 +15,28 @@ import { EditBusinessDialog } from "@/components/businesses/EditBusinessDialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
+/**
+ * Businesses page — lets a SUPERADMIN (the account owner) view, create, edit,
+ * and delete the businesses they own, and switch which one is "active" for
+ * the rest of the app.
+ *
+ * Data: `["businesses"]` query via `businessService.getMyBusinesses` (only
+ * enabled for SUPERADMIN users — non-owners never see this list).
+ *
+ * Access control: non-SUPERADMIN users are shown an `EmptyState` instead of
+ * the page content, since only the owner can manage businesses.
+ *
+ * Interactions:
+ * - Selecting a business card sets it as the active business and navigates
+ *   to the POS screen.
+ * - `CreateBusinessDialog` / `EditBusinessDialog` handle create/edit forms.
+ * - Deleting a business runs `deleteMutation`, which invalidates the
+ *   businesses list, the current user (`["auth", "me"]`), and removes any
+ *   cached `["business", businessId]` data for the deleted business.
+ *
+ * States: loading (skeleton cards), error (`ErrorState` with retry), empty
+ * (no businesses yet), and the populated grid of `BusinessCard`s.
+ */
 export default function Businesses() {
   const { user, activeBusinessId, setActiveBusinessId } = useAuth()
   const navigate = useNavigate()
@@ -27,6 +49,7 @@ export default function Businesses() {
     enabled: isSuperAdmin,
   })
 
+  // Deletes a business and cleans up any React Query caches tied to it.
   const deleteMutation = useMutation({
     mutationFn: (businessId: string) => businessService.deleteBusiness(businessId),
     onSuccess: (_, businessId) => {

@@ -1,9 +1,15 @@
+/**
+ * Zod request-validation schemas for the product endpoints (create/update
+ * products within a business).
+ */
 const { z } = require("zod");
 
+/** Validates routes scoped to a business only (e.g. GET/POST /businesses/:businessId/products). */
 const businessIdParamSchema = {
   params: z.object({ businessId: z.string().uuid("Invalid business id") }),
 };
 
+/** Validates routes that also target a specific product (e.g. PATCH/DELETE .../products/:productId). */
 const productIdParamSchema = {
   params: z.object({
     businessId: z.string().uuid("Invalid business id"),
@@ -11,6 +17,9 @@ const productIdParamSchema = {
   }),
 };
 
+// Optional short code (e.g. barcode/SKU shorthand for fast POS lookup),
+// capped at 20 chars; blank strings are coerced to undefined so an empty
+// form field doesn't get persisted as "".
 const shortCodeField = z
   .string()
   .trim()
@@ -18,6 +27,7 @@ const shortCodeField = z
   .optional()
   .transform((value) => (value ? value : undefined));
 
+/** Validates POST /businesses/:businessId/products - creates a product; price defaults are handled downstream if omitted. */
 const createProductSchema = {
   params: businessIdParamSchema.params,
   body: z.object({
@@ -29,6 +39,7 @@ const createProductSchema = {
   }),
 };
 
+/** Validates PATCH .../products/:productId - fields optional to support partial updates. */
 const updateProductSchema = {
   params: productIdParamSchema.params,
   body: z.object({

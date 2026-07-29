@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { Building2, KeyRound, LogOut, Plus, Settings as SettingsIcon } from "lucide-react"
+import { Building2, KeyRound, LogOut, Plus } from "lucide-react"
 import * as businessService from "@/services/business.service"
 import { useAuth } from "@/context/AuthContext"
 import { AuthBackground } from "@/components/auth/AuthBackground"
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+// Derives up-to-two-letter initials from a full name, for avatar fallbacks.
 function initials(fullName: string) {
   return fullName
     .split(" ")
@@ -30,6 +31,22 @@ function initials(fullName: string) {
     .toUpperCase()
 }
 
+/**
+ * SelectBusiness page — the post-login landing screen where a user picks
+ * which business to work in (or, for the owner, creates a new one). Also
+ * hosts the account menu (change password, log out).
+ *
+ * Data: for SUPERADMIN users, `["businesses"]` via
+ * `businessService.getMyBusinesses` (their owned businesses, with stats).
+ * Non-owner users instead use `user.businesses` already present on the
+ * auth session (the businesses they've been added to as staff) — no extra
+ * fetch needed.
+ *
+ * Interactions: selecting a business card calls `setActiveBusinessId` and
+ * navigates to `/pos`; SUPERADMINs additionally get a "New business" tile
+ * that opens `CreateBusinessDialog`. `handleLogout` clears the session and
+ * redirects to `/login`.
+ */
 export default function SelectBusiness() {
   const { user, activeBusinessId, setActiveBusinessId, logout } = useAuth()
   const navigate = useNavigate()
@@ -81,10 +98,6 @@ export default function SelectBusiness() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/settings")}>
-                <SettingsIcon className="size-4" />
-                Settings
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/change-password")}>
                 <KeyRound className="size-4" />
                 Change password

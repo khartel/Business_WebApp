@@ -28,6 +28,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * Products page — catalog view of all products for the active business,
+ * with a name/short-code search filter, per-product stock/price display,
+ * and (for managers) product create/edit/delete and stock receiving.
+ *
+ * Data: `["products", activeBusinessId]` via `productService.getProducts`.
+ * Deleting a product invalidates that query plus `["business",
+ * activeBusinessId]` (product counts shown elsewhere depend on it).
+ * Editing is gated by `canManage(user?.role)`. Clicking a row opens
+ * `ProductDetailSheet` for the selected product.
+ */
 export default function Products() {
   const { user, activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
@@ -65,6 +76,8 @@ export default function Products() {
   }
 
   const products = productsQuery.data ?? []
+  // Client-side filter over the fetched product list, matching on name or
+  // short code (case-insensitive).
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return products

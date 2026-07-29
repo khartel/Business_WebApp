@@ -17,6 +17,8 @@ const {
   recordPaymentSchema,
 } = require("../validators/transaction.validators");
 
+// Mounted under /api/businesses/:businessId/transactions. Every route
+// requires a valid session and business membership.
 router.use(authenticate);
 router.use(belongsToBusiness);
 

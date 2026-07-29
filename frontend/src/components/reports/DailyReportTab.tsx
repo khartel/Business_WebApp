@@ -15,10 +15,13 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarDays } from "lucide-react"
 
+// Today's date as YYYY-MM-DD, used as the default value for the date picker.
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// Builds CSV rows for the "Items sold" export: just the per-product quantity/revenue
+// breakdown plus a total row.
 function itemsSoldCsvRows(report: DailyReport, currency: string) {
   return [
     ["Items sold", report.date],
@@ -31,6 +34,8 @@ function itemsSoldCsvRows(report: DailyReport, currency: string) {
   ]
 }
 
+// Builds CSV rows for the "Full report" export: summary totals plus breakdowns by
+// employee and by product.
 function fullReportCsvRows(report: DailyReport, currency: string) {
   return [
     ["Daily report", report.date],
@@ -51,6 +56,12 @@ function fullReportCsvRows(report: DailyReport, currency: string) {
   ]
 }
 
+/**
+ * Reports tab showing sales for a single selected day: total sales, transaction count,
+ * cash vs transfer totals, and breakdowns by employee and by product. Includes a date
+ * picker (defaults to today) and a Download menu offering "Items sold" and "Full report"
+ * exports, each as CSV or PDF.
+ */
 export function DailyReportTab() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
@@ -63,6 +74,8 @@ export function DailyReportTab() {
     enabled: !!activeBusinessId,
   })
 
+  // Shared header fields (business name/location, report title, date line) passed to
+  // every PDF export below.
   const pdfHeader = () => ({
     businessName: activeBusiness?.name ?? "",
     businessLocation: activeBusiness?.location,

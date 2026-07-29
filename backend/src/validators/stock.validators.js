@@ -1,9 +1,15 @@
+/**
+ * Zod request-validation schemas for stock movements (transfers between
+ * warehouses, restocking/receiving inventory, and the movement history feed).
+ */
 const { z } = require("zod");
 
+/** Validates routes scoped to a business only. */
 const businessIdParamSchema = {
   params: z.object({ businessId: z.string().uuid("Invalid business id") }),
 };
 
+/** Validates a stock transfer between two warehouses for a single product. */
 const moveStockSchema = {
   params: businessIdParamSchema.params,
   body: z.object({
@@ -15,6 +21,7 @@ const moveStockSchema = {
   }),
 };
 
+/** Validates the stock-movement history query; all filters optional (date range, warehouses, product, movement type). */
 const movementsQuerySchema = {
   params: businessIdParamSchema.params,
   query: z.object({
@@ -27,6 +34,7 @@ const movementsQuerySchema = {
   }),
 };
 
+/** Validates receiving new stock into a warehouse; requires at least one line item, each optionally setting a low-stock threshold. */
 const receiveStockSchema = {
   params: businessIdParamSchema.params,
   body: z.object({

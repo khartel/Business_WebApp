@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertTriangle } from "lucide-react"
 
+// Renders a list of stock alert rows (product + warehouse + quantity/threshold badge),
+// styled destructive (red) for out-of-stock or warning (amber) for low-stock.
 function AlertList({ items, tone }: { items: StockAlertItem[]; tone: "destructive" | "warning" }) {
   return (
     <ul className="space-y-2 text-sm">
@@ -34,6 +36,11 @@ function AlertList({ items, tone }: { items: StockAlertItem[]; tone: "destructiv
   )
 }
 
+/**
+ * Reports tab (no date range — always reflects current stock) listing products that
+ * are out of stock or below their low-stock threshold, per warehouse, plus a count of
+ * healthy products. Includes a CSV/PDF download menu.
+ */
 export function StockAlertsTab() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()

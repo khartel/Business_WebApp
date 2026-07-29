@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { AddTeamMemberDialog } from "@/components/team/AddTeamMemberDialog"
+import { ResetPasswordDialog } from "@/components/team/ResetPasswordDialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,10 +31,28 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+// Derives up-to-two-letter initials from a full name, for avatar fallbacks.
 function initials(fullName: string) {
   return fullName.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
 }
 
+/**
+ * Team page — lists everyone with access to the active business, and lets
+ * managers change a member's role (Employee/Admin), reset their password,
+ * or remove them.
+ *
+ * Data: `["team", activeBusinessId]` via `teamService.getTeamMembers`.
+ * Role changes and removals both call `invalidate()`, which refetches the
+ * team list and `["business", activeBusinessId]` (team count shown
+ * elsewhere).
+ *
+ * Role-gating rules baked into the row rendering:
+ * - Only users passing `canManage(user?.role)` see edit controls at all.
+ * - The business owner (`role === "SUPERADMIN"`) can never have their role
+ *   changed or be removed, even by another manager.
+ * - A user can't remove themselves (`isSelf`), though they can still see
+ *   their own row's role badge.
+ */
 export default function Team() {
   const { user, activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
@@ -140,18 +159,21 @@ export default function Team() {
                     </TableCell>
                     <TableCell className="text-right">
                       {canEdit && !isOwner && !isSelf && (
-                        <ConfirmDialog
-                          trigger={
-                            <Button variant="outline" size="icon-sm" aria-label="Remove team member">
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          }
-                          title="Remove team member?"
-                          description={`${member.user.fullName} will lose access to this business.`}
-                          confirmLabel="Remove"
-                          isLoading={removeMutation.isPending}
-                          onConfirm={() => removeMutation.mutate(member.id)}
-                        />
+                        <div className="flex justify-end gap-2">
+                          <ResetPasswordDialog businessUserId={member.id} memberName={member.user.fullName} />
+                          <ConfirmDialog
+                            trigger={
+                              <Button variant="outline" size="icon-sm" aria-label="Remove team member">
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            }
+                            title="Remove team member?"
+                            description={`${member.user.fullName} will lose access to this business.`}
+                            confirmLabel="Remove"
+                            isLoading={removeMutation.isPending}
+                            onConfirm={() => removeMutation.mutate(member.id)}
+                          />
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>

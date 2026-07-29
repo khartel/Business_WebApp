@@ -39,7 +39,33 @@ const withCreditStats = (transaction) => {
 };
 
 /**
- * Create a new transaction (sale)
+ * Create a new sale transaction. Sales are always fulfilled from the
+ * business's single primary warehouse — the register doesn't let staff
+ * pick a warehouse per sale. For each line item this validates the product
+ * exists, stock is sufficient, and quantity/price are positive, computing
+ * a subtotal and the overall total before touching the database.
+ *
+ * The actual write happens inside a `$transaction` that: (1) resolves the
+ * named customer to an existing `Customer` row by case-insensitive name
+ * match, or silently creates a lightweight one — this is what lets staff
+ * type a name at the register without pre-registering customers, and is
+ * what powers the Customers/Credit tracking page; (2) creates the
+ * Transaction with its nested TransactionItems; (3) decrements
+ * WarehouseStock for every item sold. Wrapping all of this atomically
+ * guarantees a sale is never recorded without its stock being deducted (or
+ * vice versa) even if something fails partway through.
+ *
+ * @param {object} params
+ * @param {string} params.businessId
+ * @param {string} params.performedById - Staff member making the sale.
+ * @param {"CASH"|"TRANSFER"|"CREDIT"} params.paymentMethod
+ * @param {string} [params.customerName] - Free-text name; blank defaults to "Casual Customer".
+ * @param {Array<{productId: string, quantitySold: number, unitPrice: number, discountPercent?: number}>} params.items
+ * @param {string} [params.notes]
+ * @returns {Promise<object>} The created transaction with computed
+ *   `amountPaid`/`balanceDue` (see `withCreditStats`).
+ * @throws {AppError} If there's no primary warehouse, a product isn't
+ *   found, stock is insufficient, or quantity/price aren't positive.
  */
 const createTransaction = async ({
   businessId,
@@ -182,8 +208,22 @@ const createTransaction = async ({
 };
 
 /**
- * Get all transactions for a business
- * with optional filters
+ * List transactions for a business, paginated, with optional filters by
+ * employee, payment method, credit-settlement status, and date range. The
+ * `paid` filter is only meaningful in combination with
+ * `paymentMethod=CREDIT`: `"true"` returns settled credit sales
+ * (`paidAt` set), `"false"` returns outstanding ones.
+ *
+ * @param {object} params
+ * @param {string} params.businessId
+ * @param {string} [params.performedById]
+ * @param {string} [params.paymentMethod]
+ * @param {"true"|"false"} [params.paid]
+ * @param {string|Date} [params.startDate]
+ * @param {string|Date} [params.endDate] - Treated as inclusive through end of that day.
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @returns {Promise<{transactions: object[], pagination: object}>}
  */
 const getTransactions = async ({
   businessId,
@@ -255,7 +295,12 @@ const getTransactions = async ({
 };
 
 /**
- * Get a single transaction
+ * Get a single transaction with its computed credit stats.
+ *
+ * @param {string} transactionId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @returns {Promise<object>}
+ * @throws {AppError} 404 if not found in this business.
  */
 const getTransactionById = async (transactionId, businessId) => {
   const transaction = await prisma.transaction.findFirst({
@@ -276,8 +321,19 @@ const getTransactionById = async (transactionId, businessId) => {
 /**
  * Record a payment against a CREDIT sale — either the full remaining
  * balance in one go, or a partial amount if the customer is paying it off
- * over time. Once cumulative payments cover the total, the sale is marked
- * settled (paidAt).
+ * over time. Once cumulative payments cover the total (within a 1-cent
+ * tolerance for float rounding), the sale is marked settled (`paidAt` set).
+ * Creating the CreditPayment row and updating the transaction's `paidAt`
+ * happen in one `$transaction` so a payment can never be recorded without
+ * the settlement status being kept consistent with it.
+ *
+ * @param {string} transactionId - Must be a CREDIT-payment-method sale.
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @param {{amount: number, recordedById: string}} payment - Amount must be
+ *   > 0 and not exceed the outstanding balance (with a small tolerance).
+ * @returns {Promise<object>} The updated transaction with refreshed credit stats.
+ * @throws {AppError} 404 if not found; error if not a CREDIT sale, already
+ *   fully paid, amount <= 0, or amount exceeds the outstanding balance.
  */
 const recordCreditPayment = async (transactionId, businessId, { amount, recordedById }) => {
   const transaction = await prisma.transaction.findFirst({
@@ -326,7 +382,15 @@ const recordCreditPayment = async (transactionId, businessId, { amount, recorded
 };
 
 /**
- * Get transaction summary for dashboard
+ * Build the dashboard summary: today's transactions in full (with a
+ * cash/transfer split and per-employee/per-product breakdowns computed in
+ * memory), plus lightweight aggregate totals (via Prisma `aggregate`, not
+ * full row fetches, since only sums/counts are needed) for the current
+ * week and current month. Week starts Monday-based; both week and month
+ * boundaries are computed relative to the server's local time.
+ *
+ * @param {string} businessId
+ * @returns {Promise<object>} `{ today, byEmployee, topProducts, weekly, monthly }`.
  */
 const getTransactionSummary = async (businessId) => {
   const today = new Date();

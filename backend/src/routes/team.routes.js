@@ -5,6 +5,7 @@ const {
   getAll,
   remove,
   updateRole,
+  resetPassword,
 } = require("../controllers/team.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
@@ -15,6 +16,8 @@ const {
   updateRoleSchema,
 } = require("../validators/team.validators");
 
+// Mounted under /api/businesses/:businessId/team. Every route requires a
+// valid session and business membership.
 router.use(authenticate);
 router.use(belongsToBusiness);
 
@@ -34,6 +37,12 @@ router.delete(
   authorize("SUPERADMIN", "ADMIN"),
   validate(businessUserIdParamSchema),
   remove
+);
+router.post(
+  "/:businessUserId/reset-password",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(businessUserIdParamSchema),
+  resetPassword
 );
 
 module.exports = router;

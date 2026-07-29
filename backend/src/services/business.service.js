@@ -3,7 +3,21 @@ const { getCurrencyForCountry } = require("../utils/currencies");
 const AppError = require("../utils/AppError");
 
 /**
- * Create a new business (SuperAdmin only)
+ * Create a new business (SuperAdmin only). Also derives the business's
+ * default currency from its country, and mirrors the owner into the
+ * `BusinessUser` join table with a SUPERADMIN role so that later queries
+ * (e.g. "what businesses can this user access") can treat owners and staff
+ * uniformly via a single join, instead of special-casing ownership.
+ *
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.phone
+ * @param {string} params.email
+ * @param {string} params.country - Used to look up the default currency.
+ * @param {string} params.location
+ * @param {string} params.ownerId - ID of the SuperAdmin creating/owning it.
+ * @returns {Promise<object>} The created business, including owner info,
+ *   related counts, and the resolved `currencyDetails`.
  */
 const createBusiness = async ({ name, phone, email, country, location, ownerId }) => {
   // Get currency based on country
@@ -57,7 +71,12 @@ const createBusiness = async ({ name, phone, email, country, location, ownerId }
 };
 
 /**
- * Get all businesses owned by a SuperAdmin
+ * List all businesses owned by a given SuperAdmin, with summary counts
+ * (team size, warehouse/product/transaction counts) and each business's
+ * primary warehouse, for the business-picker/dashboard screens.
+ *
+ * @param {string} ownerId - ID of the SuperAdmin whose businesses to list.
+ * @returns {Promise<object[]>} Businesses ordered newest first.
  */
 const getMyBusinesses = async (ownerId) => {
   const businesses = await prisma.business.findMany({
@@ -87,7 +106,19 @@ const getMyBusinesses = async (ownerId) => {
 };
 
 /**
- * Get a single business by ID
+ * Get a single business by ID, with full detail (owner, warehouses with
+ * stock counts, team members, aggregate counts). Access is enforced
+ * differently depending on role: a SuperAdmin must be the owner; any other
+ * role (Admin/Employee) must have an active `BusinessUser` link to it. This
+ * dual lookup path means the function returns the *same* not-found error
+ * for "doesn't exist" and "exists but you don't have access", so callers
+ * can't probe for the existence of businesses they aren't part of.
+ *
+ * @param {string} businessId
+ * @param {string} userId - ID of the requesting user.
+ * @param {string} role - The requesting user's global role (SUPERADMIN/ADMIN/EMPLOYEE).
+ * @returns {Promise<object>} The business with nested detail.
+ * @throws {AppError} 404 if not found or the user has no access to it.
  */
 const getBusinessById = async (businessId, userId, role) => {
   let business;
@@ -208,9 +239,23 @@ const getBusinessById = async (businessId, userId, role) => {
 };
 
 /**
- * Update a business
+ * Update editable business fields (contact info, location, and receipt
+ * branding/customization). Only the owning SuperAdmin may update it, and
+ * only fields explicitly provided are changed — falsy/undefined values are
+ * left untouched rather than overwriting existing data.
+ *
+ * @param {string} businessId
+ * @param {string} ownerId - Must match the business's owner.
+ * @param {object} fields - Partial update (name, phone, email, location,
+ *   receiptTitle, receiptFooterNote, receiptShowSignature).
+ * @returns {Promise<object>} The updated business record.
+ * @throws {Error} If the business doesn't exist or isn't owned by ownerId.
  */
-const updateBusiness = async (businessId, ownerId, { name, phone, email, location }) => {
+const updateBusiness = async (
+  businessId,
+  ownerId,
+  { name, phone, email, location, receiptTitle, receiptFooterNote, receiptShowSignature }
+) => {
   // Make sure this business belongs to this owner
   const existing = await prisma.business.findFirst({
     where: { id: businessId, ownerId },
@@ -227,6 +272,9 @@ const updateBusiness = async (businessId, ownerId, { name, phone, email, locatio
       ...(phone && { phone }),
       ...(email && { email }),
       ...(location && { location }),
+      ...(receiptTitle !== undefined && { receiptTitle }),
+      ...(receiptFooterNote !== undefined && { receiptFooterNote }),
+      ...(receiptShowSignature !== undefined && { receiptShowSignature }),
     },
   });
 
@@ -234,7 +282,15 @@ const updateBusiness = async (businessId, ownerId, { name, phone, email, locatio
 };
 
 /**
- * Delete a business and everything under it (products, warehouses, sales, team access)
+ * Delete a business and everything under it (products, warehouses, sales,
+ * team access). Relies on cascading deletes configured in schema.prisma —
+ * this is a single irreversible operation, so ownership is re-verified
+ * first to ensure only the owning SuperAdmin can trigger it.
+ *
+ * @param {string} businessId
+ * @param {string} ownerId - Must match the business's owner.
+ * @returns {Promise<{message: string}>}
+ * @throws {AppError} 404 if the business doesn't exist or isn't owned by ownerId.
  */
 const deleteBusiness = async (businessId, ownerId) => {
   const existing = await prisma.business.findFirst({

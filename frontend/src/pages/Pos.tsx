@@ -29,6 +29,34 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * RegisterTab — the point-of-sale "ring up a sale" screen: search/add
+ * products to a cart, adjust quantities/prices/discounts, pick a payment
+ * method, and complete the sale.
+ *
+ * Local state (the cart/ticket "state machine"):
+ * - `cart: CartLine[]` — one line per product in the current sale, each
+ *   tracking `quantity`, `catalogPrice` (original price), `unitPrice`
+ *   (possibly discounted), `discountPercent`, and `availableStock` (used to
+ *   prevent overselling).
+ * - `paymentMethod` / `customerName` / `transferNote` — fields of the sale
+ *   being built; `customerName` is required only when `paymentMethod` is
+ *   "CREDIT" (see `customerNameMissing` below).
+ * - `submitAttempted` — flips true once the user tries to complete a sale
+ *   that's missing the required customer name, so the error message only
+ *   appears after a real attempt (not while the field is merely empty).
+ * - `completedSale` — set after a successful sale, drives the "Sale
+ *   complete" confirmation dialog (with options to print a receipt or
+ *   start a new sale).
+ * - `printTransactionId` — when set, opens `TransactionDetailSheet` in
+ *   receipt/print mode for that transaction.
+ *
+ * Data: `["products", businessId]` via `productService.getProducts` feeds
+ * the product search/picker. Completing a sale calls
+ * `transactionService.createTransaction`, then invalidates the
+ * transactions, products, and business queries (stock counts and business
+ * totals change as a result of the sale).
+ */
 function RegisterTab({ businessId, currency }: { businessId: string; currency: string }) {
   const queryClient = useQueryClient()
   const [cart, setCart] = useState<CartLine[]>([])
@@ -46,6 +74,7 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
 
   const products = productsQuery.data ?? []
 
+  // Clears the ticket back to a blank state after a sale completes.
   const resetTicket = () => {
     setCart([])
     setPaymentMethod("CASH")
@@ -54,6 +83,9 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     setSubmitAttempted(false)
   }
 
+  // Adds `quantity` of `product` to the cart, merging into an existing line
+  // if the product is already present. Refuses (with a toast) to exceed the
+  // product's available stock at its primary warehouse.
   const addToCart = (product: productService.Product, quantity: number) => {
     const availableStock = product.primaryStock?.quantity ?? 0
     setCart((prev) => {
@@ -83,6 +115,8 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     })
   }
 
+  // Credit sales must be tied to a named customer (for the receivables/credit
+  // tracking on the Customers page); other payment methods don't require it.
   const customerNameMissing = paymentMethod === "CREDIT" && !customerName.trim()
 
   const saleMutation = useMutation({
@@ -110,6 +144,8 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     },
   })
 
+  // Guards the "Complete sale" action: if a credit sale is missing a
+  // customer name, flag the field as invalid instead of submitting.
   const handleComplete = () => {
     if (customerNameMissing) {
       setSubmitAttempted(true)
@@ -138,6 +174,16 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
         </div>
 
         <div className="flex-1 lg:min-h-0">
+          {/*
+            Cart line editing handlers, all operating on `cart` by productId:
+            - onIncrement/onDecrement: adjust quantity by 1, clamped to
+              available stock (increment) or removed once it hits 0 (decrement).
+            - onPriceChange: sets a custom unit price and derives the
+              equivalent discountPercent off the catalog price for display.
+            - onDiscountChange: sets a discount percent and derives the
+              resulting unit price (or clears both when discount is removed).
+            - onRemove: drops the line entirely.
+          */}
           <CartItemsPanel
             cart={cart}
             currency={currency}
@@ -252,6 +298,14 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   )
 }
 
+/**
+ * HistoryTab — paginated list of past sales for the business. Clicking a
+ * row opens `TransactionDetailSheet` for that transaction (view/print).
+ *
+ * Data: `["transactions", businessId, page]` via
+ * `transactionService.getTransactions` (20 per page); pagination state
+ * (`page`) is local and drives both the query key and the prev/next controls.
+ */
 function HistoryTab({ businessId, currency }: { businessId: string; currency: string }) {
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -345,6 +399,13 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
   )
 }
 
+/**
+ * Pos page — the point-of-sale screen, split into two tabs: "Register"
+ * (ring up a new sale, see `RegisterTab`) and "History" (browse past sales,
+ * see `HistoryTab`). Requires an active business; shows an `EmptyState` if
+ * none is selected. Currency for money formatting comes from
+ * `useActiveBusiness()`.
+ */
 export default function Pos() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()

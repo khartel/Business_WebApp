@@ -16,6 +16,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 
+/**
+ * UnlockGate — the entry screen for the platform admin console. Prompts for
+ * a master key and verifies it by attempting `platformService.getSuperAdmins`
+ * with that key; a successful call both validates the key and (via
+ * `onUnlock`) hands it up to be reused as the auth token for the rest of
+ * the console's requests. This screen has no persistent session — the key
+ * only lives in React state for as long as the page is open.
+ */
 function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
   const [key, setKey] = useState("")
   const [checking, setChecking] = useState(false)
@@ -63,6 +71,12 @@ function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
   )
 }
 
+/**
+ * ResetPasswordAction — button that resets a given SuperAdmin's password via
+ * `platformService.resetSuperAdminPassword`. On success, swaps itself out
+ * for a one-time display of the newly generated password with a
+ * copy-to-clipboard button (the "copied" checkmark auto-reverts after 2s).
+ */
 function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId: string }) {
   const [result, setResult] = useState<{ username: string; newPassword: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -105,6 +119,16 @@ function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId:
   )
 }
 
+/**
+ * AdminConsole — the unlocked platform admin view. Lists every SuperAdmin
+ * account on the platform (each account "owns" its own set of businesses)
+ * and lets the operator reset a SuperAdmin's password or delete the
+ * account entirely (which cascades to their businesses/products/sales).
+ *
+ * Data: `["platform-superadmins"]` via `platformService.getSuperAdmins(masterKey)`.
+ * All requests are authenticated with the master key passed down from
+ * `UnlockGate` rather than a normal user session.
+ */
 function AdminConsole({ masterKey }: { masterKey: string }) {
   const queryClient = useQueryClient()
 
@@ -195,6 +219,14 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
   )
 }
 
+/**
+ * PlatformAdmin page — a super-user tool separate from normal business
+ * accounts, used to administer SuperAdmin accounts across the whole
+ * platform. It is protected by a master key rather than the regular auth
+ * session: `UnlockGate` is shown until a valid key is entered, after which
+ * `AdminConsole` renders using that key for all API calls. State (the key)
+ * is held only in memory and is lost on refresh/navigation.
+ */
 export default function PlatformAdmin() {
   const [masterKey, setMasterKey] = useState<string | null>(null)
 

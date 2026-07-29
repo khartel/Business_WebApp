@@ -24,6 +24,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * Warehouses page — lists all warehouses/storage locations for the active
+ * business, with product-in-stock counts, and lets managers create/edit
+ * warehouses, promote one to "primary" (the default location used e.g. for
+ * POS stock checks), or delete a warehouse.
+ *
+ * Data: `["warehouses", activeBusinessId]` via
+ * `warehouseService.getWarehouses`. Setting a primary warehouse or
+ * deleting one both call `invalidate()`, refetching the warehouse list and
+ * `["business", activeBusinessId]`. Clicking a row opens
+ * `WarehouseDetailSheet` for the selected warehouse.
+ */
 export default function Warehouses() {
   const { user, activeBusinessId } = useAuth()
   const queryClient = useQueryClient()

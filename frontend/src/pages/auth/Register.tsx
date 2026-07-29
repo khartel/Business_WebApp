@@ -26,6 +26,17 @@ const registerSchema = z
 
 type RegisterValues = z.infer<typeof registerSchema>
 
+/**
+ * Register page — sign-up form for creating a new SUPERADMIN (business
+ * owner) account: full name, username, phone, optional email, and a
+ * password with confirmation (validated via `registerSchema`, including a
+ * password-match refinement).
+ *
+ * Data: no queries; submits via `authService.register` (stripping
+ * `confirmPassword` from the payload first), then redirects to `/login`
+ * with `state: { registered: true }` so the login page can show a
+ * "registered successfully" acknowledgment if it chooses to.
+ */
 export default function Register() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)

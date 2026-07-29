@@ -31,6 +31,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+// Validation schema for the move-stock form. `quantity` uses z.coerce since
+// the underlying <Input type="number"> yields a string; the `.refine` adds a
+// cross-field check that source and destination warehouses differ (attached
+// to the `toWarehouseId` field so its error renders next to that select).
 const schema = z
   .object({
     productId: z.string().min(1, "Select a product"),
@@ -44,9 +48,20 @@ const schema = z
     path: ["toWarehouseId"],
   })
 
+// FormValues is the raw (pre-coercion) shape react-hook-form works with;
+// ParsedValues is what comes out after zod resolves/coerces it (e.g.
+// `quantity` as a number) — used as the mutation's input type.
 type FormValues = z.input<typeof schema>
 type ParsedValues = z.output<typeof schema>
 
+/**
+ * Dialog + trigger button for transferring a quantity of a product between
+ * two warehouses. Warehouse and product lists are fetched lazily (`enabled:
+ * open && ...`) only once the dialog is opened, to avoid unnecessary
+ * requests while it's closed. On successful submit, invalidates the
+ * stock-movements, products, and warehouses queries so affected views
+ * refresh, then closes the dialog and resets the form.
+ */
 export function MoveStockDialog() {
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()

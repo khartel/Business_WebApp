@@ -15,10 +15,12 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarDays } from "lucide-react"
 
+// Current month as YYYY-MM, the default value for the month picker.
 function currentMonthIso() {
   return new Date().toISOString().slice(0, 7)
 }
 
+// Builds CSV rows for the "Items sold" export: per-product quantity/revenue plus a total row.
 function itemsSoldCsvRows(report: MonthlyReport, currency: string) {
   return [
     ["Items sold", report.month],
@@ -31,6 +33,8 @@ function itemsSoldCsvRows(report: MonthlyReport, currency: string) {
   ]
 }
 
+// Builds CSV rows for the "Full report" export: summary totals, a daily breakdown,
+// and breakdowns by employee and by product.
 function fullReportCsvRows(report: MonthlyReport, currency: string) {
   return [
     ["Monthly report", report.month],
@@ -55,11 +59,17 @@ function fullReportCsvRows(report: MonthlyReport, currency: string) {
   ]
 }
 
+/**
+ * Reports tab showing sales for a selected calendar month: total sales, transaction
+ * count, average per day, best day, a daily bar chart, and breakdowns by employee and
+ * by product. Includes "Items sold" and "Full report" exports (CSV/PDF).
+ */
 export function MonthlyReportTab() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
   const [month, setMonth] = useState(currentMonthIso)
+  // The <input type="month"> value ("YYYY-MM") is split into numeric year/month for the query.
   const [year, monthNum] = month.split("-").map(Number)
 
   const query = useQuery({
@@ -68,6 +78,7 @@ export function MonthlyReportTab() {
     enabled: !!activeBusinessId,
   })
 
+  // Shared header fields for every PDF export below.
   const pdfHeader = () => ({
     businessName: activeBusiness?.name ?? "",
     businessLocation: activeBusiness?.location,
@@ -177,6 +188,7 @@ export function MonthlyReportTab() {
     )
   }
 
+  // Denominator for the daily-breakdown bar heights; floored at 1 to avoid divide-by-zero.
   const maxDayAmount = Math.max(...report.dailyBreakdown.map((d) => d.totalAmount), 1)
 
   return (

@@ -1,8 +1,16 @@
+/**
+ * Role/business-membership middleware: gates routes by req.user.role, and
+ * verifies the authenticated user actually has access to the business
+ * referenced in the request before letting it through.
+ */
 const { sendError } = require("../utils/response.utils");
 const prisma = require("../utils/prisma");
 
 /**
- * Allow only specific roles
+ * Allow only specific roles. Must run after `authenticate` (relies on
+ * req.user being set). Returns a middleware that responds 401 if there's
+ * no authenticated user, 403 if req.user.role isn't in the allowed list,
+ * otherwise calls next().
  * Usage: authorize("SUPERADMIN", "ADMIN")
  */
 const authorize = (...roles) => {
@@ -26,7 +34,11 @@ const authorize = (...roles) => {
 };
 
 /**
- * Check if user belongs to the business they are trying to access
+ * Checks that the authenticated user is allowed to access the business
+ * referenced by req.params.businessId (or req.body.businessId). A
+ * SUPERADMIN must own the business; ADMIN/EMPLOYEE users must have a
+ * BusinessUser link to it. On success, attaches the business record as
+ * req.business and calls next(); otherwise responds 400/403/500.
  */
 const belongsToBusiness = async (req, res, next) => {
   try {

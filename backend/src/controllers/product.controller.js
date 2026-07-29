@@ -14,6 +14,9 @@ const asyncHandler = require("../utils/asyncHandler");
 
 /**
  * POST /api/businesses/:businessId/products
+ * Creates a new product catalog entry (name, unit, price, etc.) for the
+ * business. Does not create any stock — use the stock/receive endpoint for
+ * that. Returns the created product.
  */
 const create = asyncHandler(async (req, res) => {
   const { name, unit, price, description, shortCode } = req.body;
@@ -36,6 +39,7 @@ const create = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/products
+ * Lists every product in the business's catalog.
  */
 const getAll = asyncHandler(async (req, res) => {
   const products = await getProducts(req.params.businessId);
@@ -48,6 +52,7 @@ const getAll = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/businesses/:businessId/products/:productId
+ * Fetches a single product's details by id, scoped to the business.
  */
 const getOne = asyncHandler(async (req, res) => {
   const product = await getProductById(
@@ -63,6 +68,8 @@ const getOne = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/businesses/:businessId/products/:productId
+ * Updates a product's catalog fields (name, unit, price, description,
+ * shortCode). Returns the updated product.
  */
 const update = asyncHandler(async (req, res) => {
   const { name, unit, price, description, shortCode } = req.body;
@@ -81,6 +88,8 @@ const update = asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/businesses/:businessId/products/:productId
+ * Deletes a product from the business's catalog. Rejected if the product
+ * already has transaction history (sell it as archived instead).
  */
 const remove = asyncHandler(async (req, res) => {
   const result = await deleteProduct(

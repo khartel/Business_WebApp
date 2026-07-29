@@ -2,6 +2,27 @@ import { useMemo, useState } from "react"
 import type { Product } from "@/services/product.service"
 import { Input } from "@/components/ui/input"
 
+/**
+ * Type-ahead search box for choosing one product from a list, used by flows like
+ * receiving stock or building a POS sale line item.
+ *
+ * Props:
+ * - products: full candidate list to search/filter client-side (no server call).
+ * - value: currently selected product id (empty string if none).
+ * - onChange: called with the selected product's id, or "" when the user starts
+ *   typing again (clearing the previous selection).
+ * - excludeIds: product ids to hide from results (e.g. products already added as
+ *   other line items in the same form), so the same product can't be picked twice.
+ * - placeholder: input placeholder text.
+ *
+ * Behavior:
+ * - The input's text mirrors the selected product's name when not actively
+ *   searching; typing clears the selection and shows up to 6 matching results
+ *   (by name or shortCode, case-insensitive) in a dropdown.
+ * - On blur, the dropdown closes and the query text resets to the selected
+ *   product's name after a short delay (`setTimeout`) so that a click on a result
+ *   (which also triggers blur) still registers before the input reverts.
+ */
 export function ProductPicker({
   products,
   value,

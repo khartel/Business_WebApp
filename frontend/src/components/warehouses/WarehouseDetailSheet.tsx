@@ -22,6 +22,19 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * Slide-over sheet showing a single warehouse's stocked products with an in-sheet
+ * search box to filter them by name (client-side, case-insensitive substring match).
+ *
+ * Props:
+ * - warehouseId: when null the sheet is closed; setting it triggers the detail fetch
+ *   (query is `enabled: !!warehouseId`).
+ * - onOpenChange: called when the sheet is dismissed; the local search text is reset
+ *   whenever the sheet closes.
+ *
+ * Each row shows "Out" when quantity is 0, or "Low" when quantity is at/below that
+ * entry's `lowStockThreshold`.
+ */
 export function WarehouseDetailSheet({
   businessId,
   warehouseId,

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Bell, ChevronDown, LogOut, KeyRound, Menu, Settings as SettingsIcon } from "lucide-react"
+import { Bell, ChevronDown, LogOut, KeyRound, Menu } from "lucide-react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
+// Derives up to two uppercase initials from a full name, for the avatar
+// fallback (e.g. "Jane Doe" -> "JD").
 function initials(fullName: string) {
   return fullName
     .split(" ")
@@ -26,19 +28,34 @@ function initials(fullName: string) {
     .toUpperCase()
 }
 
+/**
+ * Top app bar shown above the page content in `AppLayout`. Shows: a mobile
+ * hamburger button that opens the nav as a slide-in `Sheet` (reusing
+ * `SidebarBrand`/`SidebarNav` so mobile and desktop nav stay in sync), the
+ * active business name plus the current page label (looked up from
+ * `NAV_ITEMS` by matching the current pathname), a theme toggle, a
+ * notifications button (UI only, no backend wiring yet), and a user menu
+ * with "change password" and "log out" actions. Returns `null` if there's
+ * no authenticated user, since callers only render this behind
+ * `ProtectedRoute`.
+ */
 export function Topbar() {
   const { user, logout } = useAuth()
   const activeBusiness = useActiveBusiness()
   const location = useLocation()
   const navigate = useNavigate()
-  const [navOpen, setNavOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false) // controls the mobile nav Sheet
 
   if (!user) return null
 
-  const pageLabel =
-    NAV_ITEMS.find((item) => item.to === location.pathname)?.label ??
-    (location.pathname === "/settings" ? "Settings" : undefined)
+  // Look up the label for whichever nav item matches the current route, to
+  // show alongside the active business name (e.g. "Acme Store · Dashboard").
+  const pageLabel = NAV_ITEMS.find((item) => item.to === location.pathname)?.label
 
+  // Logs the user out, then imperatively redirects to /login. Note this
+  // happens independently of ProtectedRoute's own redirect-on-logout logic;
+  // see the comment in ProtectedRoute.tsx about the `state.from` quirk that
+  // can result from the two racing.
   const handleLogout = async () => {
     await logout()
     navigate("/login", { replace: true })
@@ -101,10 +118,6 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <SettingsIcon className="size-4" />
-              Settings
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/change-password")}>
               <KeyRound className="size-4" />
               Change password

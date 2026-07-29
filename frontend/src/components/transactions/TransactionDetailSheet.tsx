@@ -22,6 +22,26 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * Slide-over sheet that renders a single transaction as a printable sales receipt,
+ * plus a "Print receipt" button (uses the browser's native `window.print()`; the
+ * `.receipt-print-area` / `print:hidden` classes control what's included when printing).
+ *
+ * Props:
+ * - transactionId: when null the sheet is closed; setting it triggers the detail
+ *   fetch (query is `enabled: !!transactionId`).
+ * - onOpenChange: called when the sheet is dismissed.
+ *
+ * Branding data source: the receipt's title, footer note, and whether to show the
+ * signature lines are NOT hardcoded — they come from the active business's own
+ * settings (`activeBusiness.receiptTitle`, `receiptFooterNote`, `receiptShowSignature`,
+ * set on the Settings page) via `useActiveBusiness()`, each with a sensible fallback
+ * ("RECEIPT", "Thank you for your business!", and `true` respectively) so receipts
+ * still render correctly for businesses that haven't customized them.
+ *
+ * Also shows CREDIT-specific details when relevant: remaining balance due (or "Fully
+ * paid"), and a log of payments already recorded against the transaction.
+ */
 export function TransactionDetailSheet({
   businessId,
   transactionId,
@@ -65,7 +85,9 @@ export function TransactionDetailSheet({
                       <p className="text-sm text-slate-500">{activeBusiness.location}</p>
                     )}
                   </div>
-                  <p className="text-2xl font-bold tracking-[0.2em] text-slate-800">RECEIPT</p>
+                  <p className="text-2xl font-bold tracking-[0.2em] text-slate-800">
+                    {activeBusiness?.receiptTitle ?? "RECEIPT"}
+                  </p>
                 </div>
 
                 <div className="mt-6 flex items-start justify-between gap-4 text-sm">
@@ -173,18 +195,22 @@ export function TransactionDetailSheet({
                   </div>
                 )}
 
-                <div className="mt-10 grid grid-cols-2 gap-8 text-sm">
-                  <div>
-                    <div className="h-8 border-b border-slate-400" />
-                    <p className="mt-1.5 text-xs text-slate-500">Customer signature</p>
+                {(activeBusiness?.receiptShowSignature ?? true) && (
+                  <div className="mt-10 grid grid-cols-2 gap-8 text-sm">
+                    <div>
+                      <div className="h-8 border-b border-slate-400" />
+                      <p className="mt-1.5 text-xs text-slate-500">Customer signature</p>
+                    </div>
+                    <div>
+                      <div className="h-8 border-b border-slate-400" />
+                      <p className="mt-1.5 text-xs text-slate-500">Received by</p>
+                    </div>
                   </div>
-                  <div>
-                    <div className="h-8 border-b border-slate-400" />
-                    <p className="mt-1.5 text-xs text-slate-500">Received by</p>
-                  </div>
-                </div>
+                )}
 
-                <p className="mt-8 text-center text-xs text-slate-400">Thank you for your business!</p>
+                <p className="mt-8 text-center text-xs text-slate-400">
+                  {activeBusiness?.receiptFooterNote ?? "Thank you for your business!"}
+                </p>
               </div>
 
               <Button

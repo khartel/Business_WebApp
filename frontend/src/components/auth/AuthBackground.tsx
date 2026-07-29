@@ -1,3 +1,9 @@
+/**
+ * Purely decorative full-viewport background for auth pages (login,
+ * change-password, etc.), analogous to `AppBackground` but with brighter/
+ * more saturated aurora blobs suited to the auth "hero" look. No props,
+ * no interactivity — `pointer-events-none` and `-z-10`.
+ */
 export function AuthBackground() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background">

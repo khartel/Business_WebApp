@@ -30,6 +30,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * CustomersTab — lists customers for the active business with a name
+ * search filter, and lets managers create/edit/delete customers or open a
+ * detail sheet for a selected customer.
+ *
+ * Data: `["customers", businessId]` via `customerService.getCustomers`.
+ * Delete goes through `deleteMutation`, invalidating the same query key.
+ * Editing/deleting is gated by `canManage(user?.role)`.
+ */
 function CustomersTab({ businessId, currency }: { businessId: string; currency: string }) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -53,6 +62,7 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
   })
 
   const customers = customersQuery.data ?? []
+  // Client-side name filter over the already-fetched customer list.
   const filtered = useMemo(
     () => customers.filter((c) => c.name.toLowerCase().includes(search.trim().toLowerCase())),
     [customers, search]
@@ -151,6 +161,15 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
   )
 }
 
+/**
+ * CreditTab — shows all unpaid CREDIT-payment transactions for the business
+ * (customers who bought on credit and still owe money), with a running
+ * total owed and a way to record a payment against each transaction.
+ *
+ * Data: `["transactions", businessId, "credit-outstanding"]` via
+ * `transactionService.getTransactions` filtered to
+ * `paymentMethod: "CREDIT", paid: false` (capped at 100 rows).
+ */
 function CreditTab({ businessId, currency }: { businessId: string; currency: string }) {
   const creditQuery = useQuery({
     queryKey: ["transactions", businessId, "credit-outstanding"],
@@ -235,6 +254,16 @@ function CreditTab({ businessId, currency }: { businessId: string; currency: str
   )
 }
 
+/**
+ * Customers page — top-level page for customer relationship management,
+ * split into two tabs: "Customers" (directory + CRUD, see `CustomersTab`)
+ * and "Credit" (outstanding credit-sale balances, see `CreditTab`).
+ *
+ * Requires an active business (`activeBusinessId` from AuthContext); shows
+ * an `EmptyState` if none is selected. Currency for money formatting comes
+ * from `useActiveBusiness()`. Create/edit actions are gated by
+ * `canManage(user?.role)`.
+ */
 export default function Customers() {
   const { user, activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()

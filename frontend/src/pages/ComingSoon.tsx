@@ -1,6 +1,12 @@
 import { Construction } from "lucide-react"
 import { EmptyState } from "@/components/EmptyState"
 
+/**
+ * ComingSoon page — generic placeholder screen used for routes that haven't
+ * been built yet. Renders the given `title` as a page heading plus an
+ * `EmptyState` telling the user the screen is still under construction.
+ * No data fetching or interactions.
+ */
 export default function ComingSoon({ title }: { title: string }) {
   return (
     <div className="space-y-6">

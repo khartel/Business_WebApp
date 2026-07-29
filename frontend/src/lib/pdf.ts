@@ -1,12 +1,19 @@
+// Builds and downloads a styled, tabular PDF report (used for exporting
+// sales/product/employee reports) using jsPDF + jspdf-autotable.
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 
+// Shared color palette for the generated PDF, matching the app's slate
+// theme so exports look consistent with the on-screen receipt/report UI.
 const HEADER_FILL: [number, number, number] = [30, 41, 59] // slate-800, matches the receipt's table header
 const HEADER_TEXT: [number, number, number] = [255, 255, 255]
 const MUTED_TEXT: [number, number, number] = [100, 116, 139] // slate-500
 const BODY_TEXT: [number, number, number] = [15, 23, 42] // slate-900
 const FOOT_FILL: [number, number, number] = [241, 245, 249] // slate-100
 
+// One table within the report. `heading` is an optional label printed above
+// the table; `head`/`body`/`foot` map directly to jspdf-autotable's
+// header row, data rows, and optional summary/total footer row.
 export interface PdfSection {
   heading?: string
   head: string[]
@@ -14,6 +21,9 @@ export interface PdfSection {
   foot?: (string | number)[]
 }
 
+// Full input for `downloadPdfReport`: page-level header info (business
+// name/location, report title, a date/period line) plus one or more table
+// sections rendered in order, and an optional footer note at the bottom.
 export interface PdfReportOptions {
   businessName: string
   businessLocation?: string | null
@@ -23,10 +33,20 @@ export interface PdfReportOptions {
   footerNote?: string
 }
 
+// Reads the Y position where the last autoTable finished drawing, so the
+// next section (or the footer note) can be placed below it. Falls back to
+// 30 if no table has been drawn yet (shouldn't normally happen).
 function getFinalY(doc: jsPDF): number {
   return (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 30
 }
 
+/**
+ * Generates a multi-section PDF report from `options` and immediately
+ * triggers a browser download as `filename`. Renders a header (business
+ * name/location on the left, report title/date on the right), then each
+ * `PdfSection` as a styled table stacked vertically, then an optional
+ * italic footer note centered at the bottom.
+ */
 export function downloadPdfReport(filename: string, options: PdfReportOptions) {
   const doc = new jsPDF()
   const marginX = 14

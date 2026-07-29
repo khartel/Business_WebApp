@@ -1,3 +1,10 @@
+/**
+ * Fixed, full-viewport decorative background used behind the main app layout
+ * (sidebar + content area). Purely visual: renders a subtle radial gradient,
+ * three softly animated "aurora" blobs, and a faint grid overlay. Has no
+ * props and no interactive behavior — it sits at `-z-10` with
+ * `pointer-events-none` so it never intercepts clicks.
+ */
 export function AppBackground() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background">

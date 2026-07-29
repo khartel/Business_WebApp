@@ -1,7 +1,14 @@
+// Wrappers around the /businesses/:businessId/stock endpoints — inventory
+// movements: restocking a warehouse from a supplier, or transferring stock
+// between two of a business's own warehouses.
 import { apiClient, apiRequest } from "@/lib/api-client"
 
+// RESTOCK = new stock brought into a warehouse (no source warehouse).
+// TRANSFER = stock moved from one of the business's warehouses to another.
 export type MovementType = "RESTOCK" | "TRANSFER"
 
+// A single inventory movement record. `fromWarehouse` is null for RESTOCK
+// movements since stock isn't coming from another warehouse in the system.
 export interface StockMovement {
   id: string
   quantity: number
@@ -15,6 +22,7 @@ export interface StockMovement {
   movedBy: { id: string; fullName: string; username: string }
 }
 
+// Payload for transferring a quantity of one product between two warehouses.
 export interface MoveStockInput {
   fromWarehouseId: string
   toWarehouseId: string
@@ -23,18 +31,23 @@ export interface MoveStockInput {
   notes?: string
 }
 
+// One product/quantity line within a restock batch. `lowStockThreshold`
+// optionally (re)sets the alert threshold for that product in this warehouse.
 export interface ReceiveStockItem {
   productId: string
   quantity: number
   lowStockThreshold?: number
 }
 
+// Payload for receiving new stock (RESTOCK) into a single warehouse,
+// potentially covering multiple products in one batch.
 export interface ReceiveStockInput {
   warehouseId: string
   items: ReceiveStockItem[]
   notes?: string
 }
 
+// Optional filters for querying stock movement history.
 export interface StockMovementFilters {
   startDate?: string
   endDate?: string
@@ -44,13 +57,16 @@ export interface StockMovementFilters {
   type?: MovementType
 }
 
+/** Lists stock movements (restocks + transfers) for a business, optionally filtered. */
 export const getStockMovements = (businessId: string, filters?: StockMovementFilters) =>
   apiRequest<StockMovement[]>(
     apiClient.get(`/businesses/${businessId}/stock/movements`, { params: filters })
   )
 
+/** Transfers a quantity of one product from one warehouse to another. */
 export const moveStock = (businessId: string, input: MoveStockInput) =>
   apiRequest<StockMovement>(apiClient.post(`/businesses/${businessId}/stock/move`, input))
 
+/** Receives (restocks) a batch of products into a single warehouse. */
 export const receiveStock = (businessId: string, input: ReceiveStockInput) =>
   apiRequest<StockMovement[]>(apiClient.post(`/businesses/${businessId}/stock/receive`, input))

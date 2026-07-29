@@ -16,6 +16,10 @@ const {
   updateProductSchema,
 } = require("../validators/product.validators");
 
+// Mounted under /api/businesses/:businessId/products. Every route requires
+// a valid session and membership of the business (`belongsToBusiness`).
+// Stock-specific endpoints (receive/move/movements) live in stock.routes.js
+// but are handled by this same product.controller.js.
 router.use(authenticate);
 router.use(belongsToBusiness);
 

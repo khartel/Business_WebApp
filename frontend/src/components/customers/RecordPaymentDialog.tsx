@@ -19,6 +19,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
+/**
+ * Dialog for recording a payment against a CREDIT transaction's outstanding balance.
+ * Wraps whatever `trigger` element is passed in (e.g. a "Record payment" button).
+ *
+ * Props:
+ * - balanceDue: the amount still owed on this transaction; caps the "partial" input
+ *   and is the amount submitted when paying in full.
+ * - trigger: element that opens the dialog.
+ *
+ * Behavior:
+ * - Two modes: "full" (pays the entire `balanceDue`) or "partial" (user enters a
+ *   custom amount, validated to be > 0 and <= balanceDue via `canSubmitPartial`).
+ * - On success, invalidates transactions/customers queries (list, detail, and this
+ *   specific transaction) so balances refresh everywhere, and reports whether the
+ *   transaction is now fully paid or still has a remaining balance.
+ */
 export function RecordPaymentDialog({
   businessId,
   transactionId,

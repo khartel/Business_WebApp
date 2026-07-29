@@ -23,6 +23,16 @@ interface SaleSummaryPanelProps {
   isSubmitting: boolean
 }
 
+/**
+ * Right-hand panel of the POS register: customer name field, a payment
+ * method picker (Cash / Transfer / Credit), method-specific extra fields
+ * (a transfer note for Transfer, an explanatory note for Credit), the
+ * running total (derived from `cart` here rather than passed in), and the
+ * "Complete sale" submit button. `customerNameRequired` is driven by the
+ * parent based on payment method (credit sales require a name to track who
+ * owes money) and is just forwarded to `CustomerNameField` for validation
+ * display. Purely presentational/controlled — all state lives in the parent.
+ */
 export function SaleSummaryPanel({
   businessId,
   cart,

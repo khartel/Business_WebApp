@@ -42,12 +42,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+// Sentinel value for the "no filter selected" option in the warehouse/type
+// Select dropdowns (native <select> can't use an empty-string value cleanly).
 const ANY = "__any__"
 
+// Formats an ISO date string as a local time (e.g. "3:45 PM") for the
+// per-movement rows inside a day's detail sheet.
 function formatTime(date: string) {
   return new Date(date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
+// Small colored badge distinguishing a RESTOCK (incoming stock) from a
+// TRANSFER (moved between warehouses) movement.
 function MovementTypeBadge({ type }: { type: StockMovement["type"] }) {
   return type === "RESTOCK" ? (
     <Badge className="gap-1 bg-success/15 text-success">
@@ -62,12 +68,31 @@ function MovementTypeBadge({ type }: { type: StockMovement["type"] }) {
   )
 }
 
+// One row in the top-level table: all movements that happened on a given
+// calendar day, expandable into a detail sheet.
 interface DayGroup {
   key: string
   label: string
   movements: StockMovement[]
 }
 
+/**
+ * StockMovements page — audit log of stock restocks and inter-warehouse
+ * transfers for the active business, grouped by day (each row expands into
+ * a detail sheet listing that day's individual movements).
+ *
+ * Data: `["warehouses", activeBusinessId]` (for the from/to filter
+ * dropdowns) and `["stock-movements", activeBusinessId, filters]` via
+ * `stockService.getStockMovements`. `filters` (date range, from/to
+ * warehouse, movement type) is derived from local state and included in
+ * the query key, so changing any filter triggers a refetch.
+ *
+ * Interactions: filter controls (date range, warehouse, type) with a
+ * "Clear filters" shortcut; `MoveStockDialog` for managers to record a new
+ * transfer; CSV/PDF export of the currently filtered movements via
+ * `DownloadMenu` (`downloadAsCsv/downloadAsPdf`, using `lib/csv.ts` and
+ * `lib/pdf.ts`).
+ */
 export default function StockMovements() {
   const { user, activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
@@ -95,6 +120,7 @@ export default function StockMovements() {
   }
   const hasActiveFilters = Object.values(filters).some((v) => v !== undefined)
 
+  // Resets all filter controls back to "no filter" / empty.
   const clearFilters = () => {
     setStartDate("")
     setEndDate("")
@@ -111,6 +137,7 @@ export default function StockMovements() {
 
   const movements = movementsQuery.data ?? []
 
+  // Exports the currently filtered movements as a CSV file.
   const downloadAsCsv = () => {
     downloadCsv(`stock-movements-${new Date().toISOString().slice(0, 10)}.csv`, [
       ["Date", "Time", "Type", "Product", "From", "To", "Quantity", "Unit", "Moved by", "Notes"],
@@ -129,6 +156,7 @@ export default function StockMovements() {
     ])
   }
 
+  // Exports the currently filtered movements as a branded PDF report.
   const downloadAsPdf = () => {
     downloadPdfReport(`stock-movements-${new Date().toISOString().slice(0, 10)}.pdf`, {
       businessName: activeBusiness?.name ?? "",
@@ -154,6 +182,8 @@ export default function StockMovements() {
     })
   }
 
+  // Buckets the flat movements list into one DayGroup per calendar day
+  // (used to render the collapsed day-by-day table).
   const dayGroups = useMemo(() => {
     const groups = new Map<string, DayGroup>()
     for (const movement of movements) {

@@ -22,6 +22,19 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/**
+ * Slide-over sheet showing a single product's details: price, total stock across
+ * warehouses, and a per-warehouse breakdown with low/out-of-stock badges.
+ *
+ * Props:
+ * - productId: when null the sheet is closed; setting it triggers the detail fetch
+ *   (query is `enabled: !!productId`).
+ * - currency: used to format the price stat.
+ * - onOpenChange: called when the sheet is dismissed.
+ *
+ * Each warehouse row is flagged "Out" when quantity is 0, or "Low" when quantity is
+ * at/below that warehouse entry's `lowStockThreshold`.
+ */
 export function ProductDetailSheet({
   businessId,
   productId,

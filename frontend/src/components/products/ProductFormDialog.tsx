@@ -30,6 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+// Preset unit choices offered in the "Unit" dropdown; selecting "Other (custom)" (OTHER_UNIT)
+// switches the field into free-text entry mode instead.
 const UNIT_OPTIONS = [
   "pcs",
   "dozen",
@@ -59,6 +61,23 @@ const schema = z.object({
 type FormValues = z.input<typeof schema>
 type ParsedValues = z.output<typeof schema>
 
+/**
+ * Dialog for creating or editing a product. Dual-purpose based on whether a
+ * `product` is passed in:
+ * - No `product`: "New product" button trigger, creates a new catalog entry.
+ * - `product` provided: pencil icon-button trigger (isEdit = true), updates it;
+ *   form fields are pre-filled via RHF's `values` option.
+ *
+ * Non-obvious behavior:
+ * - The unit field supports arbitrary custom units. `customUnitMode` tracks whether
+ *   the Select should show "Other (custom)" and reveal a free-text Input instead of
+ *   one of the `UNIT_OPTIONS`. It's initialized from whether the product's existing
+ *   unit is already in the preset list, and re-synced via useEffect whenever
+ *   `product` changes (e.g. dialog reused for a different product).
+ *
+ * On success, invalidates the products list and the active business (whose summary
+ * may include product counts).
+ */
 export function ProductFormDialog({ product }: { product?: Product }) {
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()

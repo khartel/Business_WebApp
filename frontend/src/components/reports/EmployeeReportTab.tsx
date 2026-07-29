@@ -13,15 +13,22 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Users } from "lucide-react"
 
+// Today's date as YYYY-MM-DD, the default end of the date range.
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// First day of the current month as YYYY-MM-DD, the default start of the date range.
 function firstOfMonthIso() {
   const d = new Date()
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
 }
 
+/**
+ * Reports tab showing per-employee sales performance over a custom date range
+ * (defaults to month-to-date): total sales, transaction count, cash/transfer split,
+ * and each employee's top-selling products. Includes a CSV/PDF download menu.
+ */
 export function EmployeeReportTab() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()

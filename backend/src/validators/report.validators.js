@@ -1,9 +1,15 @@
+/**
+ * Zod request-validation schemas for the reporting endpoints (daily,
+ * monthly, and custom date-range reports for a business).
+ */
 const { z } = require("zod");
 
+/** Validates routes scoped to a business only. */
 const businessIdParamSchema = {
   params: z.object({ businessId: z.string().uuid("Invalid business id") }),
 };
 
+/** Validates a single-day report query; `date` optional (defaults to today downstream if omitted). */
 const dateQuerySchema = {
   params: businessIdParamSchema.params,
   query: z.object({
@@ -11,6 +17,7 @@ const dateQuerySchema = {
   }),
 };
 
+/** Validates a month-level report query; month is 1-12 when provided. */
 const monthlyQuerySchema = {
   params: businessIdParamSchema.params,
   query: z.object({
@@ -19,6 +26,7 @@ const monthlyQuerySchema = {
   }),
 };
 
+/** Validates a custom start/end date-range report query. */
 const dateRangeQuerySchema = {
   params: businessIdParamSchema.params,
   query: z.object({

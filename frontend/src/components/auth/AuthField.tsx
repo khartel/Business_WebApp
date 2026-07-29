@@ -9,12 +9,22 @@ interface AuthFieldProps extends React.ComponentProps<"input"> {
   error?: string
 }
 
+/**
+ * Shared pill-shaped text input used across auth pages (login, register,
+ * change-password, etc.) — pairs a leading icon with a visually-hidden
+ * `<label>` (for accessibility) and an optional error message below it.
+ * Forwards its ref to the underlying `<input>` so it works with react-hook-form's
+ * `register`. When `type="password"`, an eye/eye-off toggle button is shown
+ * that flips the rendered input's `type` between "password" and "text" to
+ * let the user reveal/hide what they typed; this is purely a local UI
+ * concern and doesn't affect the value passed to forms.
+ */
 export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
   ({ icon: Icon, label, error, id, className, type, ...props }, ref) => {
     const autoId = useId()
     const inputId = id ?? autoId
     const isPassword = type === "password"
-    const [visible, setVisible] = useState(false)
+    const [visible, setVisible] = useState(false) // tracks password reveal state (password fields only)
 
     return (
       <div className="space-y-1.5">

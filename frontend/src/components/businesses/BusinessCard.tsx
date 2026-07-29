@@ -20,6 +20,18 @@ interface BusinessCardProps {
   actions?: ReactNode
 }
 
+/**
+ * Clickable summary card for a single business, used on the business picker/list screen.
+ * Renders the business name, location/country/currency, optional quick stats
+ * (products, warehouses, team size, sales count), and an "active" indicator.
+ *
+ * Props:
+ * - stats: optional summary counts; when omitted, the stats row is not rendered.
+ * - isActive: highlights the card as the currently selected business.
+ * - onSelect: fired on click or Enter/Space keypress (card is keyboard-accessible via role="button").
+ * - actions: optional extra controls (e.g. edit button) rendered top-right; clicks inside
+ *   `actions` call stopPropagation so they don't also trigger onSelect.
+ */
 export function BusinessCard({
   name,
   location,

@@ -1,9 +1,16 @@
+/**
+ * Generic request-validation middleware factory used with the zod schemas
+ * defined in `validators/`.
+ */
 const { ZodError } = require("zod");
 
 /**
  * Validates req.body / req.params / req.query against a zod schema shaped as
  * { body?, params?, query? }. Only the keys present on the schema are checked.
- * Parsed (and coerced/defaulted) values are written back onto req.
+ * Parsed (and coerced/defaulted) values are written back onto req (query
+ * results go to req.validatedQuery instead of req.query - see note below).
+ * On validation failure, responds 400 with a list of field-level errors
+ * instead of calling next(); non-Zod errors are passed to next(error).
  */
 const validate = (schema) => (req, res, next) => {
   try {

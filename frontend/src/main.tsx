@@ -10,6 +10,9 @@ import { ThemeProvider } from "@/context/ThemeContext"
 import "./index.css"
 import App from "./App.tsx"
 
+// Single shared TanStack Query client for the whole app. Queries retry once
+// on failure and don't auto-refetch just because the browser tab regained
+// focus (avoids surprising background requests/flicker while navigating).
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -19,6 +22,12 @@ const queryClient = new QueryClient({
   },
 })
 
+// App entry point. Provider order (outer to inner) matters:
+// ThemeProvider (needs no other context) -> ErrorBoundary (catches render
+// errors from everything below) -> QueryClientProvider (data fetching) ->
+// BrowserRouter (routing) -> AuthProvider (depends on QueryClient for
+// caching the session, and is read by route guards) -> TooltipProvider (UI)
+// -> the actual App routes, plus a global Toaster for notifications.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>

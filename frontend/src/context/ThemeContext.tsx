@@ -1,21 +1,35 @@
+// Light/dark/system theme context. Persists the user's preference to
+// localStorage and applies the resolved "light"/"dark" class to the
+// document root so Tailwind's dark-mode selector styles pick it up.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
+// User-facing preference. "system" means "follow the OS setting".
 type Theme = "light" | "dark" | "system"
 
 const STORAGE_KEY = "d-inventory:theme"
 
 interface ThemeContextValue {
+  /** The user's stored preference (may be "system"). */
   theme: Theme
+  /** The concrete theme actually applied to the page ("system" already resolved). */
   resolvedTheme: "light" | "dark"
+  /** Updates the preference and persists it to localStorage. */
   setTheme: (theme: Theme) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
+/** Reads the OS-level color scheme preference via a media query. */
 function getSystemTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
+/**
+ * Provides theme state to the app. On mount, restores the saved preference
+ * (defaulting to "system"), and whenever the preference is "system", keeps
+ * `resolvedTheme` and the `<html>` class in sync with live OS theme changes
+ * via a `matchMedia` change listener.
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(
     () => (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "system"
@@ -56,6 +70,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/** Accesses the theme context. Throws if called outside a `ThemeProvider`. */
 export function useTheme() {
   const ctx = useContext(ThemeContext)
   if (!ctx) throw new Error("useTheme must be used within a ThemeProvider")

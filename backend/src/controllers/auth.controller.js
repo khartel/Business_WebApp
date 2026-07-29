@@ -1,12 +1,31 @@
 const {
   registerSuperAdmin,
   loginUser,
+  verifyLoginTwoFactor,
   getMe,
   updatePassword,
   updateProfile: updateProfileService,
+  setupTwoFactor,
+  verifyTwoFactorSetup,
+  disableTwoFactor,
 } = require("../services/auth.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
+
+/**
+ * Sets the httpOnly session cookie - shared by the direct login path and
+ * the 2FA-verify path so both produce an identical session.
+ */
+const setAuthCookie = (res, token, rememberMe) => {
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: rememberMe
+      ? 30 * 24 * 60 * 60 * 1000 // 30 days
+      : 24 * 60 * 60 * 1000, // 24 hours
+  });
+};
 
 /**
  * POST /api/auth/register
@@ -31,18 +50,36 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { username, password, rememberMe } = req.body;
 
-  const { token, user } = await loginUser({ username, password, rememberMe });
+  const result = await loginUser({ username, password, rememberMe });
+
+  if (result.requires2FA) {
+    return sendSuccess(res, {
+      message: "Two-factor authentication code required",
+      data: { requires2FA: true, tempToken: result.tempToken },
+    });
+  }
 
   // Token is only ever sent via httpOnly cookie — never in the JSON body —
   // so it can't be read or exfiltrated by client-side JS.
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: rememberMe
-      ? 30 * 24 * 60 * 60 * 1000  // 30 days
-      : 24 * 60 * 60 * 1000,       // 24 hours
+  setAuthCookie(res, result.token, rememberMe);
+
+  return sendSuccess(res, {
+    message: "Login successful",
+    data: { user: result.user },
   });
+});
+
+/**
+ * POST /api/auth/login/2fa
+ * Completes login for an account with 2FA enabled - public endpoint (no
+ * session cookie exists yet), takes the tempToken from step 1 + a TOTP code.
+ */
+const verifyLogin2FA = asyncHandler(async (req, res) => {
+  const { tempToken, code } = req.body;
+
+  const { token, user, rememberMe } = await verifyLoginTwoFactor(tempToken, code);
+
+  setAuthCookie(res, token, rememberMe);
 
   return sendSuccess(res, {
     message: "Login successful",
@@ -103,4 +140,53 @@ const updateProfile = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { register, login, logout, me, changePassword, updateProfile };
+/**
+ * POST /api/auth/2fa/setup
+ */
+const setup2FA = asyncHandler(async (req, res) => {
+  const result = await setupTwoFactor(req.user.id);
+
+  return sendSuccess(res, {
+    message: "Scan the QR code with your authenticator app",
+    data: result,
+  });
+});
+
+/**
+ * POST /api/auth/2fa/verify
+ */
+const verify2FASetup = asyncHandler(async (req, res) => {
+  const { code } = req.body;
+
+  await verifyTwoFactorSetup(req.user.id, code);
+
+  return sendSuccess(res, {
+    message: "Two-factor authentication enabled",
+  });
+});
+
+/**
+ * POST /api/auth/2fa/disable
+ */
+const disable2FA = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+
+  await disableTwoFactor(req.user.id, password);
+
+  return sendSuccess(res, {
+    message: "Two-factor authentication disabled",
+  });
+});
+
+module.exports = {
+  register,
+  login,
+  verifyLogin2FA,
+  logout,
+  me,
+  changePassword,
+  updateProfile,
+  setup2FA,
+  verify2FASetup,
+  disable2FA,
+};

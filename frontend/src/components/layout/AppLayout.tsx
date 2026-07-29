@@ -3,6 +3,13 @@ import { AppBackground } from "@/components/AppBackground"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Topbar } from "@/components/layout/Topbar"
 
+/**
+ * Top-level authenticated layout: renders the decorative `AppBackground`,
+ * the fixed `Sidebar` (desktop) and `Topbar` (which also hosts the mobile
+ * nav sheet) side-by-side, and an `<Outlet />` for the current route's page
+ * content in a scrollable main area. Used as the layout route element for
+ * everything behind `ProtectedRoute`.
+ */
 export function AppLayout() {
   return (
     <div className="relative flex h-svh overflow-hidden">

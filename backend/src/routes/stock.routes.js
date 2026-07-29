@@ -11,6 +11,10 @@ const { authorize, belongsToBusiness } = require("../middleware/role.middleware"
 const { validate } = require("../middleware/validate.middleware");
 const { moveStockSchema, receiveStockSchema, movementsQuerySchema } = require("../validators/stock.validators");
 
+// Mounted under /api/businesses/:businessId/stock. Handlers live in
+// product.controller.js (stock is tracked per product/warehouse, not as
+// its own resource). Every route requires a valid session and business
+// membership.
 router.use(authenticate);
 router.use(belongsToBusiness);
 

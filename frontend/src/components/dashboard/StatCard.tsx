@@ -9,6 +9,12 @@ interface StatCardProps {
   accent?: "primary" | "success"
 }
 
+/**
+ * Small dashboard metric tile: an icon badge next to a label and a large
+ * value (e.g. "Total sales" / "₦1,200,000"). `accent` picks the icon
+ * badge's color scheme ("primary" or "success"); the badge also gets a
+ * glow effect on hover via `group-hover`.
+ */
 export function StatCard({ label, value, icon: Icon, accent = "primary" }: StatCardProps) {
   return (
     <Card className="group">

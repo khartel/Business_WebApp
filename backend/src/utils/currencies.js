@@ -1,3 +1,9 @@
+/**
+ * Static lookup table mapping country names to their currency (code, name,
+ * symbol), used to auto-set a new business's currency from its country at
+ * signup. Falls back to USD for any country not listed.
+ */
+
 // Country → Currency mapping
 const countryCurrencyMap = {
   // Africa
@@ -80,14 +86,17 @@ const countryCurrencyMap = {
 };
 
 /**
- * Get currency for a country
+ * Get currency for a country.
+ * @param {string} country - Country name as used in countryCurrencyMap.
+ * @returns {{code: string, name: string, symbol: string}} The matching currency, or USD if the country is unrecognized.
  */
 const getCurrencyForCountry = (country) => {
   return countryCurrencyMap[country] || { code: "USD", name: "US Dollar", symbol: "$" };
 };
 
 /**
- * Get list of all countries
+ * Get list of all countries supported by the country → currency lookup
+ * (used to populate the country dropdown on business creation).
  */
 const getAllCountries = () => {
   return Object.keys(countryCurrencyMap);

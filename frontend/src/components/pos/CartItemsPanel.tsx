@@ -3,6 +3,10 @@ import { Check, Minus, Percent, Plus, ShoppingCart, Trash2, X } from "lucide-rea
 import { formatMoney } from "@/lib/format"
 import { Input } from "@/components/ui/input"
 
+// A single line item in the POS cart. `catalogPrice` is the product's
+// original list price, while `unitPrice` is the (possibly discounted) price
+// actually charged; `discountPercent`, when set, is what produced that
+// discount and is shown/editable via `DiscountControl`.
 export interface CartLine {
   productId: string
   name: string
@@ -24,6 +28,16 @@ interface CartItemsPanelProps {
   onRemove: (productId: string) => void
 }
 
+/**
+ * Per-cart-line discount widget with three visual states:
+ * 1. A discount is already applied — shows the struck-through catalog price,
+ *    the discount badge, and a button to remove it.
+ * 2. `editing` — shows a small numeric input (0-100) to type a new percent,
+ *    confirmed with Enter/the check button or cancelled with Escape/the X.
+ *    An out-of-range value (<=0 or >100) is silently ignored rather than
+ *    surfaced as a validation error.
+ * 3. Default — a plain "Add discount" link that opens the editing state.
+ */
 function DiscountControl({
   line,
   currency,
@@ -118,6 +132,16 @@ function DiscountControl({
   )
 }
 
+/**
+ * Scrollable list of the current POS sale's line items. Each line shows the
+ * product name, a quantity stepper (increment disabled once `quantity`
+ * reaches `availableStock`), an editable unit price, the computed line
+ * total, and a `DiscountControl` for applying/removing a percent discount.
+ * All mutations (`onIncrement`, `onDecrement`, `onPriceChange`,
+ * `onDiscountChange`, `onRemove`) are delegated to the parent — this
+ * component holds no cart state of its own beyond the per-line discount
+ * editor's local draft.
+ */
 export function CartItemsPanel({
   cart,
   currency,

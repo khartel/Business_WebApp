@@ -17,6 +17,13 @@ const {
   businessIdParamSchema,
 } = require("../validators/business.validators");
 
+/**
+ * Business router — creating/listing/updating/deleting businesses and the
+ * countries lookup used on business-creation forms. Every route except
+ * `/countries` requires a valid session (`authenticate`), and most are
+ * SuperAdmin-only since businesses are owned by a single SuperAdmin.
+ */
+
 // Get all countries (public, needed for register/create business form)
 router.get("/countries", getCountries);
 

@@ -31,6 +31,19 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/**
+ * Dialog for creating or editing a warehouse. Dual-purpose based on whether a
+ * `warehouse` is passed in:
+ * - No `warehouse`: "New warehouse" button trigger; also lets the user check
+ *   "Set as primary warehouse" (only offered on create — the isPrimary field is
+ *   omitted from the update call, so a warehouse's primary status can't be changed
+ *   from this dialog once created).
+ * - `warehouse` provided: pencil icon-button trigger (isEdit = true), updates only
+ *   name/location.
+ *
+ * On success, invalidates the warehouses list and the active business query (whose
+ * summary may include warehouse counts).
+ */
 export function WarehouseFormDialog({ warehouse }: { warehouse?: Warehouse }) {
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()

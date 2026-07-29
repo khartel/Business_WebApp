@@ -47,6 +47,8 @@ model User {
   passwordHash       String
   mustChangePassword Boolean  @default(false)
   role               Role     @default(EMPLOYEE)
+  twoFactorSecret    String?
+  twoFactorEnabled   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -71,6 +73,9 @@ model Business {
   location  String
   currency  String
   ownerId   String
+  receiptTitle         String  @default("RECEIPT")
+  receiptFooterNote    String  @default("Thank you for your business!")
+  receiptShowSignature Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

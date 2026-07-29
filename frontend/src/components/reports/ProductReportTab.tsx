@@ -14,15 +14,19 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Package } from "lucide-react"
 
+// Today's date as YYYY-MM-DD, the default end of the date range.
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// First day of the current month as YYYY-MM-DD, the default start of the date range.
 function firstOfMonthIso() {
   const d = new Date()
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
 }
 
+// Renders a ranked list of products with their current stock and either revenue or
+// quantity sold, depending on `metric`.
 function ProductList({ items, currency, metric }: { items: ProductReportItem[]; currency: string; metric: "revenue" | "quantity" }) {
   return (
     <ul className="space-y-2 text-sm">
@@ -43,6 +47,11 @@ function ProductList({ items, currency, metric }: { items: ProductReportItem[]; 
   )
 }
 
+/**
+ * Reports tab showing product performance over a custom date range (defaults to
+ * month-to-date): best-selling products by revenue and separately by quantity sold,
+ * each annotated with current stock on hand. Includes a CSV/PDF download menu.
+ */
 export function ProductReportTab() {
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()

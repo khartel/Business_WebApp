@@ -21,6 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
+// Validation for the edit-business form (same shape as create, minus country which isn't editable here).
 const schema = z.object({
   name: z.string().trim().min(1, "Business name is required"),
   phone: z.string().trim().min(7, "Phone number is required"),
@@ -30,6 +31,17 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/**
+ * Dialog (opened via a small pencil icon button) for editing an existing business's
+ * name, phone, email, and location.
+ *
+ * Props:
+ * - business: the business being edited; its fields seed the form via RHF's `values`
+ *   option, so the form stays in sync if `business` changes while mounted.
+ *
+ * On success, invalidates both the businesses list and this specific business's query
+ * so any screens showing its details refresh.
+ */
 export function EditBusinessDialog({ business }: { business: BusinessListItem }) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()

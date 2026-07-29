@@ -6,6 +6,13 @@ interface PageHeaderProps {
   action?: ReactNode
 }
 
+/**
+ * Standard page-top header: title, optional description, and an optional
+ * trailing `action` (e.g. a "New" button) aligned to the right. If both
+ * `title` and `description` are omitted, it falls back to rendering just
+ * the `action` right-aligned (or nothing at all), so pages that only need
+ * an action row can reuse this component without an empty heading.
+ */
 export function PageHeader({ title, description, action }: PageHeaderProps) {
   if (!title && !description) {
     return action ? <div className="flex justify-end">{action}</div> : null

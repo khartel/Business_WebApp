@@ -1,5 +1,14 @@
+/**
+ * Master-key middleware: gates platform-admin-only routes (e.g. superadmin
+ * bootstrap endpoints) behind a shared secret rather than a user session.
+ */
 const { sendError } = require("../utils/response.utils");
 
+/**
+ * Requires the `x-master-key` request header to exactly match the
+ * MASTER_KEY environment variable. Responds 401 if the header is missing,
+ * 403 if it doesn't match, otherwise calls next().
+ */
 const validateMasterKey = (req, res, next) => {
   const masterKey = req.headers["x-master-key"];
 

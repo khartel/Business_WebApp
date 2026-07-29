@@ -38,6 +38,22 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/**
+ * Dialog for adding a new team member to the active business, with a role picker
+ * (Employee/Admin). Follows the app's "reveal-once credentials" pattern also used by
+ * ResetPasswordDialog:
+ * - On success, if the backend generated a `defaultPassword` (i.e. this created a
+ *   brand-new user rather than attaching an existing username to the business), the
+ *   dialog switches from the form view to a "credentials" view showing the username
+ *   and temporary password exactly once, with a copy-to-clipboard button
+ *   (`copyPassword`, which briefly flips a check icon via `copied` state). These
+ *   values are only ever held in local component state — refreshing or reopening the
+ *   dialog loses them, matching the "won't be shown again" warning in the UI.
+ * - If no `defaultPassword` came back (existing user attached directly), it just
+ *   shows a toast and closes.
+ * - Closing the dialog (`handleOpenChange`) clears the revealed-credentials state so
+ *   reopening it always starts fresh on the form.
+ */
 export function AddTeamMemberDialog() {
   const [open, setOpen] = useState(false)
   const [created, setCreated] = useState<{ username: string; password: string } | null>(null)
@@ -82,6 +98,8 @@ export function AddTeamMemberDialog() {
     }
   }
 
+  // Copies the one-time temporary password to the clipboard and briefly shows a
+  // checkmark (reverts to the copy icon after 2s) as feedback.
   const copyPassword = async () => {
     if (!created) return
     await navigator.clipboard.writeText(created.password)

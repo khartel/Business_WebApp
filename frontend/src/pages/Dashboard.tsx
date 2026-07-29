@@ -15,6 +15,24 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 
+/**
+ * Dashboard page — landing screen for the active business showing key
+ * stats, low/out-of-stock alerts, recent sales, and a warehouse summary.
+ *
+ * Data loaded (all scoped to `activeBusinessId` from AuthContext):
+ * - `["business", activeBusinessId]` via `getBusinessById` — counts for
+ *   products/warehouses/team/transactions, plus the warehouse list.
+ * - `["transactions", activeBusinessId, "recent"]` via
+ *   `transactionService.getTransactions` (page 1, limit 5) — recent sales.
+ * - `["report-stock-alerts", activeBusinessId]` via
+ *   `reportService.getStockAlertReport` — only fetched when
+ *   `canManage(user?.role)` is true, since alerts are a manager-only view.
+ *
+ * States: no active business (`EmptyState`, with copy that differs for
+ * SUPERADMIN vs invited users), business fetch error (`ErrorState`), and
+ * per-section loading skeletons/empty copy while each query resolves
+ * independently.
+ */
 export default function Dashboard() {
   const { user, activeBusinessId } = useAuth()
   const canSeeAlerts = canManage(user?.role)

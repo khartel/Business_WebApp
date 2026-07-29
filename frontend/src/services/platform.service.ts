@@ -1,8 +1,17 @@
+// Platform/god-mode admin endpoints for managing SuperAdmin accounts across
+// the whole system. Deliberately separate from the normal `apiClient`: these
+// calls are NOT authenticated via the session cookie — instead each request
+// carries a shared `x-master-key` header (passed in explicitly by the
+// caller), since the person using this client is outside the normal
+// per-business role system entirely.
 import axios, { type AxiosError } from "axios"
 import { ApiError, type ApiFailure, type ApiSuccess } from "@/lib/api-client"
 
+// Separate axios instance (no `withCredentials`) since auth here is via the
+// master key header, not the session cookie.
 const platformClient = axios.create({ baseURL: import.meta.env.VITE_API_URL })
 
+// Same error-normalization behavior as the main `apiClient` interceptor.
 platformClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiFailure>) => {
@@ -12,11 +21,13 @@ platformClient.interceptors.response.use(
   }
 )
 
+// Unwraps the { success, message, data } envelope, mirroring `apiRequest`.
 async function platformRequest<T>(promise: Promise<{ data: ApiSuccess<T> }>): Promise<T> {
   const response = await promise
   return response.data.data
 }
 
+// A business owned by a given SuperAdmin, with aggregate counts.
 export interface SuperAdminBusiness {
   id: string
   name: string
@@ -26,6 +37,7 @@ export interface SuperAdminBusiness {
   _count: { transactions: number; products: number; warehouses: number; businessUsers: number }
 }
 
+// A SuperAdmin account and the businesses they own.
 export interface SuperAdminSummary {
   id: string
   fullName: string
@@ -36,16 +48,19 @@ export interface SuperAdminSummary {
   ownedBusinesses: SuperAdminBusiness[]
 }
 
+/** Lists every SuperAdmin account in the system. Requires the platform master key. */
 export const getSuperAdmins = (masterKey: string) =>
   platformRequest<SuperAdminSummary[]>(
     platformClient.get("/platform/superadmins", { headers: { "x-master-key": masterKey } })
   )
 
+/** Deletes a SuperAdmin account (and, presumably, cascades to their businesses server-side). */
 export const deleteSuperAdmin = (masterKey: string, userId: string) =>
   platformRequest<null>(
     platformClient.delete(`/platform/superadmins/${userId}`, { headers: { "x-master-key": masterKey } })
   )
 
+/** Force-resets a SuperAdmin's password, returning the newly generated one. */
 export const resetSuperAdminPassword = (masterKey: string, userId: string) =>
   platformRequest<{ username: string; newPassword: string }>(
     platformClient.post(

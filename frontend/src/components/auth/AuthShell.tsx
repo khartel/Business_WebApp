@@ -10,6 +10,15 @@ interface AuthShellProps {
   footer?: ReactNode
 }
 
+/**
+ * Shared layout shell for all auth pages (login, 2FA, change-password, etc).
+ * Renders the animated `AuthBackground`, a theme toggle in the top-right
+ * corner, and a centered glass card containing a branded header
+ * (`title`/`description`), arbitrary `children` (the actual form), and an
+ * optional `footer` (e.g. "Don't have an account?" links). Together with
+ * `AuthField`/`AuthBackground`, this is one of the shared primitives that
+ * every auth screen composes rather than reimplementing its own chrome.
+ */
 export function AuthShell({ title, description, children, footer }: AuthShellProps) {
   return (
     <div className="relative flex min-h-svh items-center justify-center p-4">

@@ -14,6 +14,13 @@ const OPTIONS = [
   { value: "system" as const, label: "System", icon: Monitor },
 ]
 
+/**
+ * Icon-button dropdown for switching between light/dark/system theme.
+ * Reads/writes theme state via `useTheme()`; the trigger icon reflects the
+ * currently *resolved* theme (i.e. what "system" resolves to), while the
+ * dropdown highlights whichever option (light/dark/system) is actually
+ * selected.
+ */
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, resolvedTheme, setTheme } = useTheme()
 

@@ -1,3 +1,21 @@
+/**
+ * Express app setup and middleware/route-mounting pipeline.
+ *
+ * Order of concerns, top to bottom:
+ *  1. Request logging (every request is logged to the console).
+ *  2. Security headers (helmet) and CORS (must run before rate limiting so
+ *     rate-limited/blocked responses still carry CORS headers).
+ *  3. Rate limiting (a general API limiter plus a stricter one for login).
+ *  4. Body/cookie parsing.
+ *  5. Route mounting (auth, business, warehouse, team, product, customer,
+ *     stock, transaction, report, and platform/superadmin routers).
+ *  6. Health check endpoint.
+ *  7. 404 fallback handler.
+ *  8. Global error handler (must be registered last).
+ *
+ * This module only builds and exports the configured `app`; it does not
+ * call `app.listen()` (that's expected to live in the server entry point).
+ */
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -100,6 +118,7 @@ app.use("/api/platform", platformRoutes);
 // ─────────────────────────────────────────
 // HEALTH CHECK
 // ─────────────────────────────────────────
+// Simple liveness probe endpoint (used by uptime monitors / deploy checks).
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: "Server is running" });
 });
@@ -107,6 +126,7 @@ app.get("/api/health", (req, res) => {
 // ─────────────────────────────────────────
 // 404 HANDLER
 // ─────────────────────────────────────────
+// Catches any request that didn't match a mounted route above.
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
@@ -114,6 +134,11 @@ app.use((req, res) => {
 // ─────────────────────────────────────────
 // GLOBAL ERROR HANDLER
 // ─────────────────────────────────────────
+// Express recognizes this as an error handler because it takes 4 args.
+// AppError instances (isOperational = true) surface their own status code
+// and message to the client; anything else is treated as an unexpected
+// bug - logged server-side and reported to the client as a generic 500
+// so internal details aren't leaked.
 app.use((err, req, res, next) => {
   const statusCode = err.isOperational ? err.statusCode : 500;
   const message = err.isOperational ? err.message : "Internal server error";
