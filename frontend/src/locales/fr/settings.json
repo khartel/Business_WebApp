@@ -13,5 +13,10 @@
   "Footer note": "Note de bas de page",
   "Show signature line on printed receipts": "Afficher la ligne de signature sur les reçus imprimés",
   "Select or create a business to customize its receipt.": "Sélectionnez ou créez une entreprise pour personnaliser son reçu.",
-  "Settings are only visible to the business owner.": "Les paramètres ne sont visibles que par le propriétaire de l'entreprise."
+  "Settings are only visible to the business owner.": "Les paramètres ne sont visibles que par le propriétaire de l'entreprise.",
+  "Manage your account, security, and business preferences.": "Gérez votre compte, votre sécurité et les préférences de votre entreprise.",
+  "Your name, phone number, and email": "Votre nom, numéro de téléphone et e-mail",
+  "Customize what prints on your receipts": "Personnalisez ce qui est imprimé sur vos reçus",
+  "Theme and display language": "Thème et langue d'affichage",
+  "Back to Settings": "Retour aux paramètres"
 }

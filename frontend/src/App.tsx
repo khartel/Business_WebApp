@@ -14,7 +14,12 @@ import Team from "@/pages/Team"
 import StockMovements from "@/pages/StockMovements"
 import Reports from "@/pages/Reports"
 import Businesses from "@/pages/Businesses"
-import Settings from "@/pages/Settings"
+import SettingsLayout from "@/pages/settings/SettingsLayout"
+import SettingsHub from "@/pages/settings/SettingsHub"
+import SettingsProfile from "@/pages/settings/SettingsProfile"
+import SettingsTwoFactor from "@/pages/settings/SettingsTwoFactor"
+import SettingsReceipt from "@/pages/settings/SettingsReceipt"
+import SettingsAppearance from "@/pages/settings/SettingsAppearance"
 import PlatformAdmin from "@/pages/PlatformAdmin"
 
 /**
@@ -37,7 +42,10 @@ import PlatformAdmin from "@/pages/PlatformAdmin"
  * - The remaining business-scoped pages (POS, customers, dashboard,
  *   products, warehouses, stock, team, reports, businesses, settings) are
  *   further nested under `<AppLayout />`, which renders the shared
- *   sidebar/topbar chrome around each page's content.
+ *   sidebar/topbar chrome around each page's content. `/settings` is
+ *   itself a small nested route tree (`SettingsLayout` + a card-grid
+ *   index page plus one route per section) rather than a single flat
+ *   page — see `pages/settings/`.
  * - Any unmatched path falls back to redirecting to `/`.
  */
 function App() {
@@ -61,7 +69,13 @@ function App() {
           <Route path="/team" element={<Team />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/businesses" element={<Businesses />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<SettingsLayout />}>
+            <Route index element={<SettingsHub />} />
+            <Route path="profile" element={<SettingsProfile />} />
+            <Route path="2fa" element={<SettingsTwoFactor />} />
+            <Route path="receipt" element={<SettingsReceipt />} />
+            <Route path="appearance" element={<SettingsAppearance />} />
+          </Route>
         </Route>
       </Route>
 

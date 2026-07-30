@@ -53,7 +53,11 @@ export function Topbar() {
 
   // Look up the label for whichever nav item matches the current route, to
   // show alongside the active business name (e.g. "Acme Store · Dashboard").
-  const pageLabel = NAV_ITEMS.find((item) => item.to === location.pathname)?.label
+  // Matches on prefix (not just exact equality) so nested routes like
+  // /settings/profile still resolve to the "Settings" nav item.
+  const pageLabel = NAV_ITEMS.find(
+    (item) => location.pathname === item.to || location.pathname.startsWith(item.to + "/")
+  )?.label
 
   // Logs the user out, then imperatively redirects to /login. Note this
   // happens independently of ProtectedRoute's own redirect-on-logout logic;

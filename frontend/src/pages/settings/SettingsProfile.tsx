@@ -2,21 +2,16 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useNavigate } from "react-router-dom"
-import { KeyRound, Loader2, Settings as SettingsIcon } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as authService from "@/services/auth.service"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
-import { ThemeToggle } from "@/components/ThemeToggle"
-import { LanguageSwitcher } from "@/components/LanguageSwitcher"
-import { ReceiptSettingsCard } from "@/components/settings/ReceiptSettingsCard"
-import { TwoFactorCard } from "@/components/settings/TwoFactorCard"
-import { EmptyState } from "@/components/EmptyState"
+import { SettingsSectionHeader } from "@/pages/settings/SettingsSectionHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -29,26 +24,14 @@ const profileSchema = z.object({
 type ProfileValues = z.infer<typeof profileSchema>
 
 /**
- * Settings page — account and business-owner settings, gated to
- * `user.role === "SUPERADMIN"` (all other roles see an `EmptyState` saying
- * settings are owner-only). Composed of several independent cards:
- * - Profile: edit full name / phone / email via a react-hook-form + zod
- *   form (`profileSchema`); submits through `authService.updateProfile`
- *   then calls `refetchMe()` to refresh the cached user. Username and role
- *   are shown read-only.
- * - Security: a link to the dedicated `/change-password` page.
- * - `TwoFactorCard`: self-contained 2FA enable/disable/verify flow.
- * - `ReceiptSettingsCard`: self-contained receipt branding (logo, footer
- *   text, etc.) editor.
- * - Appearance: theme toggle (light/dark/system) via `ThemeToggle`.
- *
- * Each card owns its own submit state; this component only wires up the
- * Profile form directly.
+ * Settings > Profile — edit full name / phone / email via a react-hook-form
+ * + zod form (`profileSchema`); submits through `authService.updateProfile`
+ * then `refetchMe()` to refresh the cached user. Username and role are
+ * shown read-only.
  */
-export default function Settings() {
+export default function SettingsProfile() {
   const { t } = useTranslation()
   const { user, refetchMe } = useAuth()
-  const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -77,23 +60,11 @@ export default function Settings() {
 
   if (!user) return null
 
-  if (user.role !== "SUPERADMIN") {
-    return (
-      <EmptyState
-        icon={<SettingsIcon className="size-6" />}
-        title="Not available"
-        description="Settings are only visible to the business owner."
-      />
-    )
-  }
-
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl">
+      <SettingsSectionHeader title="Profile" description="Your name, phone number, and email" />
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("Profile")}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -129,41 +100,6 @@ export default function Settings() {
               {t("Save changes")}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("Security")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">{t("Update the password used to sign in.")}</p>
-            <Button variant="outline" onClick={() => navigate("/change-password")}>
-              <KeyRound className="size-4" />
-              {t("Change password")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <TwoFactorCard />
-
-      <ReceiptSettingsCard />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("Appearance")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">{t("Choose light, dark, or match your system.")}</p>
-            <ThemeToggle />
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">{t("Choose the app's display language.")}</p>
-            <LanguageSwitcher />
-          </div>
         </CardContent>
       </Card>
     </div>
