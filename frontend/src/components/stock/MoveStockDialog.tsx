@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -66,6 +67,7 @@ export function MoveStockDialog() {
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   const warehousesQuery = useQuery({
     queryKey: ["warehouses", activeBusinessId],
@@ -95,12 +97,12 @@ export function MoveStockDialog() {
       queryClient.invalidateQueries({ queryKey: ["stock-movements", activeBusinessId] })
       queryClient.invalidateQueries({ queryKey: ["products", activeBusinessId] })
       queryClient.invalidateQueries({ queryKey: ["warehouses", activeBusinessId] })
-      toast.success("Stock moved")
+      toast.success(t("Stock moved"))
       setOpen(false)
       reset()
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not move stock")
+      toast.error(error instanceof ApiError ? error.message : t("Could not move stock"))
     },
   })
 
@@ -109,25 +111,25 @@ export function MoveStockDialog() {
       <DialogTrigger asChild>
         <Button>
           <ArrowLeftRight className="size-4" />
-          Move stock
+          {t("Move stock")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Move stock</DialogTitle>
-          <DialogDescription>Transfer product quantity between warehouses.</DialogDescription>
+          <DialogTitle>{t("Move stock")}</DialogTitle>
+          <DialogDescription>{t("Transfer product quantity between warehouses.")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="move-product">Product</Label>
+            <Label htmlFor="move-product">{t("Product")}</Label>
             <Controller
               control={control}
               name="productId"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="move-product" className="w-full">
-                    <SelectValue placeholder="Select a product" />
+                    <SelectValue placeholder={t("Select a product")} />
                   </SelectTrigger>
                   <SelectContent>
                     {productsQuery.data?.map((p) => (
@@ -139,19 +141,19 @@ export function MoveStockDialog() {
                 </Select>
               )}
             />
-            {errors.productId && <p className="text-xs text-destructive">{errors.productId.message}</p>}
+            {errors.productId && <p className="text-xs text-destructive">{t(errors.productId.message ?? "")}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="move-from">From</Label>
+              <Label htmlFor="move-from">{t("From")}</Label>
               <Controller
                 control={control}
                 name="fromWarehouseId"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="move-from" className="w-full">
-                      <SelectValue placeholder="Source" />
+                      <SelectValue placeholder={t("Source")} />
                     </SelectTrigger>
                     <SelectContent>
                       {warehousesQuery.data?.map((w) => (
@@ -165,14 +167,14 @@ export function MoveStockDialog() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="move-to">To</Label>
+              <Label htmlFor="move-to">{t("To")}</Label>
               <Controller
                 control={control}
                 name="toWarehouseId"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="move-to" className="w-full">
-                      <SelectValue placeholder="Destination" />
+                      <SelectValue placeholder={t("Destination")} />
                     </SelectTrigger>
                     <SelectContent>
                       {warehousesQuery.data?.map((w) => (
@@ -186,23 +188,25 @@ export function MoveStockDialog() {
               />
             </div>
           </div>
-          {errors.toWarehouseId && <p className="text-xs text-destructive">{errors.toWarehouseId.message}</p>}
+          {errors.toWarehouseId && (
+            <p className="text-xs text-destructive">{t(errors.toWarehouseId.message ?? "")}</p>
+          )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="move-qty">Quantity</Label>
+            <Label htmlFor="move-qty">{t("Quantity")}</Label>
             <Input id="move-qty" type="number" step="any" min="0" {...register("quantity")} />
-            {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
+            {errors.quantity && <p className="text-xs text-destructive">{t(errors.quantity.message ?? "")}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="move-notes">Notes (optional)</Label>
+            <Label htmlFor="move-notes">{t("Notes (optional)")}</Label>
             <Textarea id="move-notes" rows={2} {...register("notes")} />
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Move stock
+              {t("Move stock")}
             </Button>
           </DialogFooter>
         </form>

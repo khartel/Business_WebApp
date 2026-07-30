@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Package, Search } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as warehouseService from "@/services/warehouse.service"
 import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
@@ -44,6 +45,7 @@ export function WarehouseDetailSheet({
   warehouseId: string | null
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState("")
 
   const query = useQuery({
@@ -69,8 +71,8 @@ export function WarehouseDetailSheet({
     >
       <SheetContent className="sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>{warehouse?.name ?? "Warehouse"}</SheetTitle>
-          <SheetDescription>{warehouse?.location || "No location on file"}</SheetDescription>
+          <SheetTitle>{warehouse?.name ?? t("Warehouse")}</SheetTitle>
+          <SheetDescription>{warehouse?.location || t("No location on file")}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 px-4 pb-4">
@@ -81,7 +83,7 @@ export function WarehouseDetailSheet({
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search products in this warehouse..."
+                  placeholder={t("Search products in this warehouse...")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -103,8 +105,8 @@ export function WarehouseDetailSheet({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead>{t("Product")}</TableHead>
+                        <TableHead className="text-right">{t("Quantity")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -115,10 +117,10 @@ export function WarehouseDetailSheet({
                             <div className="flex items-center justify-end gap-2">
                               {entry.quantity} {entry.product.unit}
                               {entry.quantity === 0 ? (
-                                <Badge variant="destructive">Out</Badge>
+                                <Badge variant="destructive">{t("Out")}</Badge>
                               ) : (
                                 entry.quantity <= entry.lowStockThreshold && (
-                                  <Badge className="bg-chart-4/15 text-chart-4">Low</Badge>
+                                  <Badge className="bg-chart-4/15 text-chart-4">{t("Low")}</Badge>
                                 )
                               )}
                             </div>

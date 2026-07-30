@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Building2, KeyRound, LogOut, Plus } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as businessService from "@/services/business.service"
 import { useAuth } from "@/context/AuthContext"
 import { AuthBackground } from "@/components/auth/AuthBackground"
@@ -48,6 +49,7 @@ function initials(fullName: string) {
  * redirects to `/login`.
  */
 export default function SelectBusiness() {
+  const { t } = useTranslation()
   const { user, activeBusinessId, setActiveBusinessId, logout } = useAuth()
   const navigate = useNavigate()
   const isSuperAdmin = user?.role === "SUPERADMIN"
@@ -100,11 +102,11 @@ export default function SelectBusiness() {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/change-password")}>
                 <KeyRound className="size-4" />
-                Change password
+                {t("Change password")}
               </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onClick={handleLogout}>
                 <LogOut className="size-4" />
-                Log out
+                {t("Log out")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -114,12 +116,12 @@ export default function SelectBusiness() {
       <main className="relative mx-auto max-w-6xl px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-10">
           <h1 className="font-heading text-3xl font-semibold sm:text-4xl">
-            Welcome back, {user.fullName.split(" ")[0]}
+            {t("Welcome back, {{name}}", { name: user.fullName.split(" ")[0] })}
           </h1>
           <p className="mt-2 text-muted-foreground">
             {isSuperAdmin
-              ? "Choose a business to manage, or set up a new one."
-              : "Choose a business to get to work."}
+              ? t("Choose a business to manage, or set up a new one.")
+              : t("Choose a business to get to work.")}
           </p>
         </div>
 
@@ -189,7 +191,7 @@ export default function SelectBusiness() {
                     <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                       <Plus className="size-6" />
                     </div>
-                    <span className="text-sm font-medium">New business</span>
+                    <span className="text-sm font-medium">{t("New business")}</span>
                   </button>
                 }
               />

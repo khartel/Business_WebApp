@@ -12,6 +12,7 @@ import { DownloadMenu } from "@/components/reports/DownloadMenu"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertTriangle } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 // Renders a list of stock alert rows (product + warehouse + quantity/threshold badge),
 // styled destructive (red) for out-of-stock or warning (amber) for low-stock.
@@ -42,6 +43,7 @@ function AlertList({ items, tone }: { items: StockAlertItem[]; tone: "destructiv
  * healthy products. Includes a CSV/PDF download menu.
  */
 export function StockAlertsTab() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
 
@@ -101,13 +103,13 @@ export function StockAlertsTab() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {report.outOfStock.length > 0 && (
           <div className="rounded-xl border border-border p-4">
-            <h3 className="mb-3 text-sm font-semibold">Out of stock</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("Out of stock")}</h3>
             <AlertList items={report.outOfStock} tone="destructive" />
           </div>
         )}
         {report.lowStock.length > 0 && (
           <div className="rounded-xl border border-border p-4">
-            <h3 className="mb-3 text-sm font-semibold">Low stock</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("Low stock")}</h3>
             <AlertList items={report.lowStock} tone="warning" />
           </div>
         )}

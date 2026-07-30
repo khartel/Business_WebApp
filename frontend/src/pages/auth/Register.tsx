@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Link, useNavigate } from "react-router-dom"
 import { UserRound, AtSign, Phone, Mail, Lock, Loader2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as authService from "@/services/auth.service"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ type RegisterValues = z.infer<typeof registerSchema>
  * "registered successfully" acknowledgment if it chooses to.
  */
 export default function Register() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -57,7 +59,7 @@ export default function Register() {
       await authService.register(payload)
       navigate("/login", { replace: true, state: { registered: true } })
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : "Registration failed")
+      setServerError(error instanceof ApiError ? error.message : t("Registration failed"))
     }
   }
 
@@ -67,9 +69,9 @@ export default function Register() {
       description="Set up your business on D-Inventory"
       footer={
         <>
-          Already have an account?{" "}
+          {t("Already have an account?")}{" "}
           <Link to="/login" className="font-medium text-primary hover:underline">
-            Sign in
+            {t("Sign in")}
           </Link>
         </>
       }
@@ -135,7 +137,7 @@ export default function Register() {
           disabled={isSubmitting}
         >
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          Create account
+          {t("Create account")}
         </Button>
       </form>
     </AuthShell>

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useNavigate } from "react-router-dom"
 import { KeyRound, Lock, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as authService from "@/services/auth.service"
 import { ApiError } from "@/lib/api-client"
 import { useAuth } from "@/context/AuthContext"
@@ -42,6 +43,7 @@ type ChangePasswordValues = z.infer<typeof changePasswordSchema>
  * at least 6 characters, and a matching confirmation field.
  */
 export default function ChangePassword() {
+  const { t } = useTranslation()
   const { user, refetchMe } = useAuth()
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -60,10 +62,10 @@ export default function ChangePassword() {
     try {
       await authService.changePassword(values)
       await refetchMe()
-      toast.success("Password updated successfully")
+      toast.success(t("Password updated successfully"))
       navigate("/", { replace: true })
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : "Could not update password")
+      setServerError(error instanceof ApiError ? error.message : t("Could not update password"))
     }
   }
 
@@ -114,7 +116,7 @@ export default function ChangePassword() {
           disabled={isSubmitting}
         >
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          Update password
+          {t("Update password")}
         </Button>
       </form>
     </AuthShell>

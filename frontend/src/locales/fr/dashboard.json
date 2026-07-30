@@ -1,0 +1,14 @@
+{
+  "View full report": "Voir le rapport complet",
+  "Recent sales": "Ventes récentes",
+  "No sales recorded yet.": "Aucune vente enregistrée pour l'instant.",
+  "Couldn't load recent sales.": "Impossible de charger les ventes récentes.",
+  "Stock alerts": "Alertes de stock",
+  "All stock is healthy": "Tout le stock est en bon état",
+  "No warehouses set up yet.": "Aucun entrepôt configuré pour l'instant.",
+  "Total Sales": "Ventes totales",
+  "Products in stock": "Produits en stock",
+  "Total stock": "Stock total",
+  "Only {{count}} {{unit}} in stock": "Seulement {{count}} {{unit}} en stock",
+  "Only {{count}} {{unit}} of {{name}} in stock": "Seulement {{count}} {{unit}} de {{name}} en stock"
+}

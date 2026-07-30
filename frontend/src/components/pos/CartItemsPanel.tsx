@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Check, Minus, Percent, Plus, ShoppingCart, Trash2, X } from "lucide-react"
 import { formatMoney } from "@/lib/format"
 import { Input } from "@/components/ui/input"
@@ -49,6 +50,7 @@ function DiscountControl({
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(line.discountPercent?.toString() ?? "")
+  const { t } = useTranslation()
 
   if (line.discountPercent) {
     return (
@@ -62,7 +64,7 @@ function DiscountControl({
         <button
           type="button"
           onClick={() => onDiscountChange(null)}
-          aria-label="Remove discount"
+          aria-label={t("Remove discount")}
           className="rounded text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X className="size-3" />
@@ -100,7 +102,7 @@ function DiscountControl({
             if (pct > 0 && pct <= 100) onDiscountChange(pct)
             setEditing(false)
           }}
-          aria-label="Apply discount"
+          aria-label={t("Apply discount")}
           className="rounded text-success transition-colors hover:text-success/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Check className="size-3.5" />
@@ -108,7 +110,7 @@ function DiscountControl({
         <button
           type="button"
           onClick={() => setEditing(false)}
-          aria-label="Cancel discount"
+          aria-label={t("Cancel discount")}
           className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X className="size-3.5" />
@@ -127,7 +129,7 @@ function DiscountControl({
       className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Percent className="size-3" />
-      Add discount
+      {t("Add discount")}
     </button>
   )
 }
@@ -151,14 +153,16 @@ export function CartItemsPanel({
   onDiscountChange,
   onRemove,
 }: CartItemsPanelProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex h-full flex-col rounded-3xl border border-border/60 bg-card/60 shadow-lg backdrop-blur-2xl dark:bg-card/40">
       <div className="flex items-center gap-2 border-b border-border/60 px-5 py-4">
         <ShoppingCart className="size-4.5 text-success" />
-        <h2 className="font-heading text-base font-semibold">Current sale</h2>
+        <h2 className="font-heading text-base font-semibold">{t("Current sale")}</h2>
         {cart.length > 0 && (
           <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {cart.length} item{cart.length !== 1 && "s"}
+            {cart.length === 1 ? t("{{count}} item", { count: cart.length }) : t("{{count}} items", { count: cart.length })}
           </span>
         )}
       </div>
@@ -167,7 +171,7 @@ export function CartItemsPanel({
         {cart.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
             <ShoppingCart className="size-8 opacity-40" />
-            <p className="text-sm">Search a product to add it to the sale</p>
+            <p className="text-sm">{t("Search a product to add it to the sale")}</p>
           </div>
         ) : (
           cart.map((line) => (
@@ -177,7 +181,7 @@ export function CartItemsPanel({
                 <button
                   type="button"
                   onClick={() => onRemove(line.productId)}
-                  aria-label={`Remove ${line.name}`}
+                  aria-label={t("Remove {{name}}", { name: line.name })}
                   className="shrink-0 rounded text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Trash2 className="size-3.5" />
@@ -189,7 +193,7 @@ export function CartItemsPanel({
                     type="button"
                     onClick={() => onDecrement(line.productId)}
                     className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="Decrease quantity"
+                    aria-label={t("Decrease quantity")}
                   >
                     <Minus className="size-3" />
                   </button>
@@ -201,7 +205,7 @@ export function CartItemsPanel({
                     onClick={() => onIncrement(line.productId)}
                     disabled={line.quantity >= line.availableStock}
                     className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
-                    aria-label="Increase quantity"
+                    aria-label={t("Increase quantity")}
                   >
                     <Plus className="size-3" />
                   </button>

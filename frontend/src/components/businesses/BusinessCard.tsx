@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { ArrowRight, Building2, Package, Receipt, Users, Warehouse } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 
 interface BusinessCardStats {
@@ -42,6 +43,7 @@ export function BusinessCard({
   onSelect,
   actions,
 }: BusinessCardProps) {
+  const { t } = useTranslation()
   return (
     <div
       role="button"
@@ -106,7 +108,7 @@ export function BusinessCard({
             isActive ? "text-success" : "text-muted-foreground"
           )}
         >
-          {isActive ? "Currently active" : "Tap to enter"}
+          {isActive ? t("Currently active") : t("Tap to enter")}
         </span>
         <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-success" />
       </div>

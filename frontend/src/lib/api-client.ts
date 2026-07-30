@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios"
+import i18n from "@/i18n"
 
 // Shape of a successful backend response envelope. Every endpoint that
 // succeeds responds with this exact wrapper around the real payload (`data`).
@@ -22,16 +23,36 @@ export interface ApiFailure {
  * errors — `message` is always human-readable, `statusCode` is the HTTP
  * status (0 if the request never reached the server), and `errors` carries
  * field-level validation messages when the backend provided them.
+ *
+ * `message` is deliberately a *getter*, not a plain property: it translates
+ * `rawMessage` (the exact string the backend sent, in English) through
+ * i18next's "errors" namespace on every read. This is the one chokepoint
+ * every backend-originated error string passes through, so the ~24 existing
+ * `error instanceof ApiError ? error.message : "..."` call sites across the
+ * app get translated text automatically with no changes needed at any of
+ * them. If no French entry exists yet for a given string, i18next's
+ * `defaultValue` fallback returns the original English text, so a gap in
+ * the catalog degrades gracefully instead of showing a blank/broken message.
+ * (Note: `super()` is called with no argument so Error's own constructor
+ * never tries to assign its own `message` property — that would collide
+ * with this getter-only override.)
  */
 export class ApiError extends Error {
   errors: ApiFailure["errors"]
   statusCode: number
+  /** The original, untranslated message exactly as sent by the backend. */
+  rawMessage: string
 
   constructor(message: string, statusCode: number, errors: ApiFailure["errors"] = null) {
-    super(message)
+    super()
     this.name = "ApiError"
     this.statusCode = statusCode
     this.errors = errors
+    this.rawMessage = message
+  }
+
+  get message(): string {
+    return i18n.t(this.rawMessage, { ns: "errors", defaultValue: this.rawMessage })
   }
 }
 

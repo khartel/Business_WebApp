@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Pencil, Plus } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as customerService from "@/services/customer.service"
 import type { Customer } from "@/services/customer.service"
 import { useAuth } from "@/context/AuthContext"
@@ -41,6 +42,7 @@ type ParsedValues = z.output<typeof schema>
  * On success, invalidates the customers list for the active business.
  */
 export function CustomerFormDialog({ customer }: { customer?: Customer }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
@@ -70,12 +72,12 @@ export function CustomerFormDialog({ customer }: { customer?: Customer }) {
         : customerService.createCustomer(activeBusinessId!, values),
     onSuccess: () => {
       invalidate()
-      toast.success(isEdit ? "Customer updated" : "Customer added")
+      toast.success(isEdit ? t("Customer updated") : t("Customer added"))
       setOpen(false)
       if (!isEdit) reset()
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Something went wrong")
+      toast.error(error instanceof ApiError ? error.message : t("Something went wrong"))
     },
   })
 
@@ -83,41 +85,41 @@ export function CustomerFormDialog({ customer }: { customer?: Customer }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="icon-sm" aria-label="Edit customer">
+          <Button variant="outline" size="icon-sm" aria-label={t("Edit customer")}>
             <Pencil className="size-3.5" />
           </Button>
         ) : (
           <Button>
             <Plus className="size-4" />
-            New customer
+            {t("New customer")}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit customer" : "Add a customer"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("Edit customer") : t("Add a customer")}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? `Update ${customer.name}'s details.`
-              : "Pre-register a customer so they're ready to select at the register."}
+              ? t("Update {{name}}'s details.", { name: customer.name })
+              : t("Pre-register a customer so they're ready to select at the register.")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="cust-name">Name</Label>
+            <Label htmlFor="cust-name">{t("Name")}</Label>
             <Input id="cust-name" autoFocus {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="cust-phone">Phone (optional)</Label>
+            <Label htmlFor="cust-phone">{t("Phone (optional)")}</Label>
             <Input id="cust-phone" {...register("phone")} />
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Add customer"}
+              {isEdit ? t("Save changes") : t("Add customer")}
             </Button>
           </DialogFooter>
         </form>

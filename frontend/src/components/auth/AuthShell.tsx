@@ -1,7 +1,9 @@
 import type { ReactNode } from "react"
 import { Boxes } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { AuthBackground } from "@/components/auth/AuthBackground"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 
 interface AuthShellProps {
   title: string
@@ -20,11 +22,13 @@ interface AuthShellProps {
  * every auth screen composes rather than reimplementing its own chrome.
  */
 export function AuthShell({ title, description, children, footer }: AuthShellProps) {
+  const { t } = useTranslation()
   return (
     <div className="relative flex min-h-svh items-center justify-center p-4">
       <AuthBackground />
 
-      <div className="absolute right-4 top-4">
+      <div className="absolute right-4 top-4 flex items-center gap-1.5">
+        <LanguageSwitcher />
         <ThemeToggle />
       </div>
 
@@ -33,8 +37,8 @@ export function AuthShell({ title, description, children, footer }: AuthShellPro
           <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success text-primary-foreground shadow-lg shadow-primary/20">
             <Boxes className="size-6" />
           </div>
-          <h1 className="font-heading text-xl font-semibold">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <h1 className="font-heading text-xl font-semibold">{t(title)}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t(description)}</p>
         </div>
 
         {children}

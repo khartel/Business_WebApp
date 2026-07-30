@@ -1,0 +1,13 @@
+{
+  "Sale receipt": "Reçu de vente",
+  "Billed To": "Facturé à",
+  "Receipt #": "Reçu n°",
+  "Receipt date": "Date du reçu",
+  "Qty": "Qté",
+  "Total ({{currency}})": "Total ({{currency}})",
+  "Served by": "Servi par",
+  "Served by {{name}}": "Servi par {{name}}",
+  "Payment method:": "Mode de paiement :",
+  "Customer signature": "Signature du client",
+  "Received by": "Reçu par"
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useQuery } from "@tanstack/react-query"
 import * as customerService from "@/services/customer.service"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ export function CustomerNameField({
 }) {
   const [debounced, setDebounced] = useState(value)
   const [focused, setFocused] = useState(false)
+  const { t } = useTranslation()
 
   // Debounce the search query by 200ms so we don't fire a request on every
   // keystroke while the user is typing.
@@ -60,7 +62,7 @@ export function CustomerNameField({
         aria-invalid={!!error}
         aria-required={required}
       />
-      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-1 text-xs text-destructive">{t(error)}</p>}
       {showDropdown && (
         <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-2xl dark:bg-popover/80">
           {results.map((customer) => (

@@ -1,0 +1,17 @@
+{
+  "Profile": "Profil",
+  "Profile updated": "Profil mis à jour",
+  "Could not update profile": "Impossible de mettre à jour le profil",
+  "Security": "Sécurité",
+  "Appearance": "Apparence",
+  "Choose light, dark, or match your system.": "Choisissez clair, sombre, ou suivez votre système.",
+  "Choose the app's display language.": "Choisissez la langue d'affichage de l'application.",
+  "Receipt appearance": "Apparence du reçu",
+  "Receipt appearance updated": "Apparence du reçu mise à jour",
+  "Could not update receipt appearance": "Impossible de mettre à jour l'apparence du reçu",
+  "Receipt title": "Titre du reçu",
+  "Footer note": "Note de bas de page",
+  "Show signature line on printed receipts": "Afficher la ligne de signature sur les reçus imprimés",
+  "Select or create a business to customize its receipt.": "Sélectionnez ou créez une entreprise pour personnaliser son reçu.",
+  "Settings are only visible to the business owner.": "Les paramètres ne sont visibles que par le propriétaire de l'entreprise."
+}

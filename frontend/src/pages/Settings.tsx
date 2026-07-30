@@ -5,10 +5,12 @@ import { z } from "zod"
 import { useNavigate } from "react-router-dom"
 import { KeyRound, Loader2, Settings as SettingsIcon } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as authService from "@/services/auth.service"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 import { ReceiptSettingsCard } from "@/components/settings/ReceiptSettingsCard"
 import { TwoFactorCard } from "@/components/settings/TwoFactorCard"
 import { EmptyState } from "@/components/EmptyState"
@@ -44,6 +46,7 @@ type ProfileValues = z.infer<typeof profileSchema>
  * Profile form directly.
  */
 export default function Settings() {
+  const { t } = useTranslation()
   const { user, refetchMe } = useAuth()
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -66,9 +69,9 @@ export default function Settings() {
     try {
       await authService.updateProfile(values)
       await refetchMe()
-      toast.success("Profile updated")
+      toast.success(t("Profile updated"))
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : "Could not update profile")
+      setServerError(error instanceof ApiError ? error.message : t("Could not update profile"))
     }
   }
 
@@ -88,34 +91,34 @@ export default function Settings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
+          <CardTitle className="text-base">{t("Profile")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="settings-fullname">Full name</Label>
+                <Label htmlFor="settings-fullname">{t("Full name")}</Label>
                 <Input id="settings-fullname" {...register("fullName")} />
-                {errors.fullName && <p className="text-xs text-destructive">{errors.fullName.message}</p>}
+                {errors.fullName && <p className="text-xs text-destructive">{t(errors.fullName.message ?? "")}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="settings-username">Username</Label>
+                <Label htmlFor="settings-username">{t("Username")}</Label>
                 <Input id="settings-username" value={user.username} disabled />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="settings-phone">Phone number</Label>
+                <Label htmlFor="settings-phone">{t("Phone number")}</Label>
                 <Input id="settings-phone" {...register("phone")} />
-                {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+                {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message ?? "")}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="settings-email">Email</Label>
-                <Input id="settings-email" type="email" placeholder="Optional" {...register("email")} />
-                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                <Label htmlFor="settings-email">{t("Email")}</Label>
+                <Input id="settings-email" type="email" placeholder={t("Optional")} {...register("email")} />
+                {errors.email && <p className="text-xs text-destructive">{t(errors.email.message ?? "")}</p>}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Role</span>
+              <span className="text-xs text-muted-foreground">{t("Role")}</span>
               <Badge variant="secondary">{user.role}</Badge>
             </div>
 
@@ -123,7 +126,7 @@ export default function Settings() {
 
             <Button type="submit" disabled={isSubmitting || !isDirty}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Save changes
+              {t("Save changes")}
             </Button>
           </form>
         </CardContent>
@@ -131,14 +134,14 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Security</CardTitle>
+          <CardTitle className="text-base">{t("Security")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">Update the password used to sign in.</p>
+            <p className="text-sm text-muted-foreground">{t("Update the password used to sign in.")}</p>
             <Button variant="outline" onClick={() => navigate("/change-password")}>
               <KeyRound className="size-4" />
-              Change password
+              {t("Change password")}
             </Button>
           </div>
         </CardContent>
@@ -150,12 +153,16 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Appearance</CardTitle>
+          <CardTitle className="text-base">{t("Appearance")}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">Choose light, dark, or match your system.</p>
+            <p className="text-sm text-muted-foreground">{t("Choose light, dark, or match your system.")}</p>
             <ThemeToggle />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">{t("Choose the app's display language.")}</p>
+            <LanguageSwitcher />
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Warehouse as WarehouseIcon } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as productService from "@/services/product.service"
 import { formatMoney } from "@/lib/format"
 import { SummaryStat } from "@/components/reports/SummaryStat"
@@ -46,6 +47,7 @@ export function ProductDetailSheet({
   currency: string
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
   const query = useQuery({
     queryKey: ["product", businessId, productId],
     queryFn: () => productService.getProductById(businessId, productId!),
@@ -59,10 +61,10 @@ export function ProductDetailSheet({
       <SheetContent className="sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            {product?.name ?? "Product"}
+            {product?.name ?? t("Product")}
             {product?.shortCode && <Badge variant="secondary">{product.shortCode}</Badge>}
           </SheetTitle>
-          <SheetDescription>{product?.description || "No description"}</SheetDescription>
+          <SheetDescription>{product?.description || t("No description")}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 px-4 pb-4">
@@ -71,8 +73,8 @@ export function ProductDetailSheet({
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <SummaryStat label="Price" value={formatMoney(product.price, currency)} />
-                <SummaryStat label="Total stock" value={`${product.totalQuantity} ${product.unit}`} />
+                <SummaryStat label={t("Price")} value={formatMoney(product.price, currency)} />
+                <SummaryStat label={t("Total stock")} value={`${product.totalQuantity} ${product.unit}`} />
               </div>
 
               {product.stock.length === 0 ? (
@@ -86,8 +88,8 @@ export function ProductDetailSheet({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Warehouse</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead>{t("Warehouse")}</TableHead>
+                        <TableHead className="text-right">{t("Quantity")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -98,7 +100,7 @@ export function ProductDetailSheet({
                               {entry.warehouse.name}
                               {entry.warehouse.isPrimary && (
                                 <Badge variant="secondary" className="text-[10px]">
-                                  Primary
+                                  {t("Primary")}
                                 </Badge>
                               )}
                             </div>
@@ -107,10 +109,10 @@ export function ProductDetailSheet({
                             <div className="flex items-center justify-end gap-2">
                               {entry.quantity} {product.unit}
                               {entry.quantity === 0 ? (
-                                <Badge variant="destructive">Out</Badge>
+                                <Badge variant="destructive">{t("Out")}</Badge>
                               ) : (
                                 entry.quantity <= entry.lowStockThreshold && (
-                                  <Badge className="bg-chart-4/15 text-chart-4">Low</Badge>
+                                  <Badge className="bg-chart-4/15 text-chart-4">{t("Low")}</Badge>
                                 )
                               )}
                             </div>

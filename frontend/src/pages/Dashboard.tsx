@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { Package, Warehouse, Users, Receipt, AlertTriangle, ArrowRight } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
 import { getBusinessById } from "@/services/business.service"
 import * as transactionService from "@/services/transaction.service"
@@ -34,6 +35,7 @@ import { ErrorState } from "@/components/ErrorState"
  * independently.
  */
 export default function Dashboard() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
   const canSeeAlerts = canManage(user?.role)
 
@@ -87,10 +89,10 @@ export default function Dashboard() {
         </div>
       ) : business ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Products" value={business._count.products} icon={Package} />
-          <StatCard label="Warehouses" value={business._count.warehouses} icon={Warehouse} />
-          <StatCard label="Team Members" value={business._count.businessUsers} icon={Users} accent="success" />
-          <StatCard label="Total Sales" value={business._count.transactions} icon={Receipt} />
+          <StatCard label={t("Products")} value={business._count.products} icon={Package} />
+          <StatCard label={t("Warehouses")} value={business._count.warehouses} icon={Warehouse} />
+          <StatCard label={t("Team Members")} value={business._count.businessUsers} icon={Users} accent="success" />
+          <StatCard label={t("Total Sales")} value={business._count.transactions} icon={Receipt} />
         </div>
       ) : null}
 
@@ -99,7 +101,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <AlertTriangle className="size-4 text-chart-4" />
-              Stock alerts
+              {t("Stock alerts")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -114,14 +116,14 @@ export default function Dashboard() {
                     variant={item.quantity === 0 ? "destructive" : undefined}
                     className={item.quantity > 0 ? "bg-chart-4/15 text-chart-4" : undefined}
                   >
-                    {item.quantity} {item.product.unit} left
+                    {t("{{quantity}} {{unit}} left", { quantity: item.quantity, unit: item.product.unit })}
                   </Badge>
                 </li>
               ))}
             </ul>
             <Button variant="outline" size="sm" asChild>
               <Link to="/reports">
-                View full report
+                {t("View full report")}
                 <ArrowRight className="size-3.5" />
               </Link>
             </Button>
@@ -132,13 +134,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent sales</CardTitle>
+            <CardTitle className="text-base">{t("Recent sales")}</CardTitle>
           </CardHeader>
           <CardContent>
             {recentSalesQuery.isLoading ? (
               <Skeleton className="h-32 rounded-lg" />
             ) : recentSalesQuery.isError ? (
-              <p className="text-sm text-destructive">Couldn't load recent sales.</p>
+              <p className="text-sm text-destructive">{t("Couldn't load recent sales.")}</p>
             ) : recentSales.length > 0 ? (
               <ul className="divide-y divide-border">
                 {recentSales.map((tx) => (
@@ -152,14 +154,14 @@ export default function Dashboard() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">No sales recorded yet.</p>
+              <p className="text-sm text-muted-foreground">{t("No sales recorded yet.")}</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Warehouses</CardTitle>
+            <CardTitle className="text-base">{t("Warehouses")}</CardTitle>
           </CardHeader>
           <CardContent>
             {business && business.warehouses.length > 0 ? (
@@ -168,13 +170,13 @@ export default function Dashboard() {
                   <li key={w.id} className="flex items-center justify-between py-2 text-sm">
                     <span className="font-medium">{w.name}</span>
                     <span className="text-muted-foreground">
-                      {w.isPrimary ? "Primary" : w.location ?? "—"}
+                      {w.isPrimary ? t("Primary") : w.location ?? "—"}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">No warehouses set up yet.</p>
+              <p className="text-sm text-muted-foreground">{t("No warehouses set up yet.")}</p>
             )}
           </CardContent>
         </Card>

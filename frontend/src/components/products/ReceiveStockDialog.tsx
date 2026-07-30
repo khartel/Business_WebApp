@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader2, PackagePlus, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as stockService from "@/services/stock.service"
 import * as warehouseService from "@/services/warehouse.service"
 import * as productService from "@/services/product.service"
@@ -75,6 +76,7 @@ const emptyValues: FormValues = { warehouseId: "", items: [{ productId: "", quan
  *   empty line item.
  */
 export function ReceiveStockDialog() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
@@ -113,13 +115,15 @@ export function ReceiveStockDialog() {
       queryClient.invalidateQueries({ queryKey: ["stock-movements", activeBusinessId] })
       queryClient.invalidateQueries({ queryKey: ["stock", activeBusinessId] })
       toast.success(
-        values.items.length === 1 ? "Stock added" : `Stock added for ${values.items.length} products`
+        values.items.length === 1
+          ? t("Stock added")
+          : t("Stock added for {{count}} products", { count: values.items.length })
       )
       setOpen(false)
       reset(emptyValues)
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not add stock")
+      toast.error(error instanceof ApiError ? error.message : t("Could not add stock"))
     },
   })
 
@@ -134,43 +138,43 @@ export function ReceiveStockDialog() {
       <DialogTrigger asChild>
         <Button variant="outline">
           <PackagePlus className="size-4" />
-          Add stock
+          {t("Add stock")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add stock</DialogTitle>
+          <DialogTitle>{t("Add stock")}</DialogTitle>
           <DialogDescription>
-            Receive incoming stock into a warehouse — add one or more products at once.
+            {t("Receive incoming stock into a warehouse — add one or more products at once.")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="receive-warehouse">Warehouse</Label>
+            <Label htmlFor="receive-warehouse">{t("Warehouse")}</Label>
             <Controller
               control={control}
               name="warehouseId"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="receive-warehouse" className="w-full">
-                    <SelectValue placeholder="Select a warehouse" />
+                    <SelectValue placeholder={t("Select a warehouse")} />
                   </SelectTrigger>
                   <SelectContent>
                     {warehousesQuery.data?.map((w) => (
                       <SelectItem key={w.id} value={w.id}>
-                        {w.name} {w.isPrimary && "(Primary)"}
+                        {w.name} {w.isPrimary && t("(Primary)")}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             />
-            {errors.warehouseId && <p className="text-xs text-destructive">{errors.warehouseId.message}</p>}
+            {errors.warehouseId && <p className="text-xs text-destructive">{t(errors.warehouseId.message)}</p>}
           </div>
 
           <div className="space-y-3">
-            <Label>Products</Label>
+            <Label>{t("Products")}</Label>
             {fields.map((field, index) => (
               <div key={field.id} className="flex items-start gap-2">
                 <div className="flex-1">
@@ -190,7 +194,7 @@ export function ReceiveStockDialog() {
                   />
                   {errors.items?.[index]?.productId && (
                     <p className="mt-1 text-xs text-destructive">
-                      {errors.items[index]?.productId?.message}
+                      {t(errors.items[index]?.productId?.message)}
                     </p>
                   )}
                 </div>
@@ -198,7 +202,7 @@ export function ReceiveStockDialog() {
                   type="number"
                   step="any"
                   min="0"
-                  placeholder="Qty"
+                  placeholder={t("Qty")}
                   className="w-24"
                   {...register(`items.${index}.quantity`)}
                 />
@@ -206,7 +210,7 @@ export function ReceiveStockDialog() {
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label="Remove product"
+                  aria-label={t("Remove product")}
                   disabled={fields.length === 1}
                   onClick={() => remove(index)}
                 >
@@ -215,21 +219,21 @@ export function ReceiveStockDialog() {
               </div>
             ))}
             {errors.items?.root?.message && (
-              <p className="text-xs text-destructive">{errors.items.root.message}</p>
+              <p className="text-xs text-destructive">{t(errors.items.root.message)}</p>
             )}
 
             <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", quantity: 0 })}>
               <Plus className="size-3.5" />
-              Add another product
+              {t("Add another product")}
             </Button>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="receive-notes">Notes (optional)</Label>
+            <Label htmlFor="receive-notes">{t("Notes (optional)")}</Label>
             <Textarea
               id="receive-notes"
               rows={2}
-              placeholder="e.g. supplier, delivery reference"
+              placeholder={t("e.g. supplier, delivery reference")}
               {...register("notes")}
             />
           </div>
@@ -237,7 +241,7 @@ export function ReceiveStockDialog() {
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Add stock
+              {t("Add stock")}
             </Button>
           </DialogFooter>
         </form>

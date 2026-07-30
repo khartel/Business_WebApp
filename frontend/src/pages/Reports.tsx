@@ -1,4 +1,5 @@
 import { BarChart3 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
 import { canManage } from "@/lib/permissions"
 import { EmptyState } from "@/components/EmptyState"
@@ -29,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
  * own query.
  */
 export default function Reports() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
 
   if (!canManage(user?.role)) {
@@ -55,12 +57,12 @@ export default function Reports() {
     <div className="space-y-6">
       <Tabs defaultValue="daily">
         <TabsList>
-          <TabsTrigger value="daily">Daily</TabsTrigger>
-          <TabsTrigger value="weekly">Weekly</TabsTrigger>
-          <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          <TabsTrigger value="employees">Employees</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="stock">Stock alerts</TabsTrigger>
+          <TabsTrigger value="daily">{t("Daily")}</TabsTrigger>
+          <TabsTrigger value="weekly">{t("Weekly")}</TabsTrigger>
+          <TabsTrigger value="monthly">{t("Monthly")}</TabsTrigger>
+          <TabsTrigger value="employees">{t("Employees")}</TabsTrigger>
+          <TabsTrigger value="products">{t("Products")}</TabsTrigger>
+          <TabsTrigger value="stock">{t("Stock alerts")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily">

@@ -14,6 +14,7 @@ import { DownloadMenu } from "@/components/reports/DownloadMenu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarDays } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 // Current month as YYYY-MM, the default value for the month picker.
 function currentMonthIso() {
@@ -65,6 +66,7 @@ function fullReportCsvRows(report: MonthlyReport, currency: string) {
  * by product. Includes "Items sold" and "Full report" exports (CSV/PDF).
  */
 export function MonthlyReportTab() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
@@ -202,7 +204,7 @@ export function MonthlyReportTab() {
       </div>
 
       <div className="rounded-xl border border-border p-4">
-        <h3 className="mb-3 text-sm font-semibold">Daily breakdown</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("Daily breakdown")}</h3>
         <div className="flex h-32 items-end gap-1">
           {report.dailyBreakdown.map((day) => (
             <div
@@ -217,7 +219,7 @@ export function MonthlyReportTab() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">By employee</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("By employee")}</h3>
           <ul className="space-y-2 text-sm">
             {report.byEmployee.map((row) => (
               <li key={row.employee.id} className="flex justify-between">
@@ -228,7 +230,7 @@ export function MonthlyReportTab() {
           </ul>
         </div>
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">By product</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("By product")}</h3>
           <ul className="space-y-2 text-sm">
             {report.byProduct.map((row) => (
               <li key={row.product.id} className="flex justify-between">

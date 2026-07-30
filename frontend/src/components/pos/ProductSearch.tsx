@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Plus, Search, ShoppingBasket, X } from "lucide-react"
 import type { Product } from "@/services/product.service"
 import { formatMoney } from "@/lib/format"
@@ -28,6 +29,7 @@ export function ProductSearch({
   const [quantity, setQuantity] = useState("1")
   const searchRef = useRef<HTMLInputElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
+  const { t } = useTranslation()
 
   // Client-side filter of `products` by name/short code, capped to 6
   // suggestions. Hidden once a product is selected (query then shows the
@@ -75,7 +77,7 @@ export function ProductSearch({
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={searchRef}
-          placeholder="Search products to add..."
+          placeholder={t("Search products to add...")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)
@@ -93,7 +95,7 @@ export function ProductSearch({
           <button
             type="button"
             onClick={clear}
-            aria-label="Clear search"
+            aria-label={t("Clear search")}
             className="absolute right-4 top-1/2 -translate-y-1/2 rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="size-4" />
@@ -129,7 +131,9 @@ export function ProductSearch({
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {outOfStock ? "Out of stock" : `${productStock} ${product.unit} left`}
+                      {outOfStock
+                        ? t("Out of stock")
+                        : t("{{count}} {{unit}} left", { count: productStock, unit: product.unit })}
                     </p>
                   </div>
                   <span className="shrink-0 font-heading text-sm font-semibold text-success">
@@ -143,7 +147,7 @@ export function ProductSearch({
 
         {query && !selected && results.length === 0 && (
           <div className="absolute z-20 mt-2 w-full rounded-2xl border border-border/60 bg-popover/95 px-4 py-3 text-sm text-muted-foreground shadow-xl backdrop-blur-2xl dark:bg-popover/80">
-            No products match "{query}"
+            {t('No products match "{{query}}"', { query })}
           </div>
         )}
       </div>
@@ -154,10 +158,14 @@ export function ProductSearch({
             <p className="truncate font-heading text-base font-semibold">{selected.name}</p>
             <p className="text-sm text-muted-foreground">
               {formatMoney(selected.price, currency)} ·{" "}
-              {isOutOfStock ? "Out of stock" : `${stock} ${selected.unit} available`}
+              {isOutOfStock
+                ? t("Out of stock")
+                : t("{{count}} {{unit}} available", { count: stock, unit: selected.unit })}
             </p>
             {!isOutOfStock && qtyNum > stock && (
-              <p className="mt-0.5 text-xs text-destructive">Only {stock} {selected.unit} in stock</p>
+              <p className="mt-0.5 text-xs text-destructive">
+                {t("Only {{count}} {{unit}} in stock", { count: stock, unit: selected.unit })}
+              </p>
             )}
           </div>
           <Input
@@ -179,14 +187,14 @@ export function ProductSearch({
             className="h-11 shrink-0 rounded-xl bg-gradient-to-r from-primary to-success text-primary-foreground shadow-[0_0_16px_var(--glow-primary)] hover:opacity-90"
           >
             <Plus className="size-4" />
-            Add
+            {t("Add")}
           </Button>
         </div>
       ) : (
         !query && (
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 py-10 text-center text-muted-foreground">
             <ShoppingBasket className="size-7 opacity-40" />
-            <p className="text-sm">Search a product above to start the sale</p>
+            <p className="text-sm">{t("Search a product above to start the sale")}</p>
           </div>
         )
       )}

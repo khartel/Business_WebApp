@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Package, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as productService from "@/services/product.service"
 import { useAuth } from "@/context/AuthContext"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
@@ -40,6 +41,7 @@ import {
  * `ProductDetailSheet` for the selected product.
  */
 export default function Products() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const queryClient = useQueryClient()
@@ -59,10 +61,10 @@ export default function Products() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products", activeBusinessId] })
       queryClient.invalidateQueries({ queryKey: ["business", activeBusinessId] })
-      toast.success("Product deleted")
+      toast.success(t("Product deleted"))
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not delete product"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not delete product")),
   })
 
   if (!activeBusinessId) {
@@ -114,7 +116,7 @@ export default function Products() {
           <div className="relative max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              placeholder={t("Search products...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -132,12 +134,12 @@ export default function Products() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Total stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("Name")}</TableHead>
+                    <TableHead>{t("Code")}</TableHead>
+                    <TableHead>{t("Unit")}</TableHead>
+                    <TableHead>{t("Price")}</TableHead>
+                    <TableHead>{t("Total stock")}</TableHead>
+                    <TableHead className="text-right">{t("Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -172,9 +174,9 @@ export default function Products() {
                           <div className="flex items-center gap-2">
                             {product.totalQuantity} {product.unit}
                             {product.totalQuantity === 0 ? (
-                              <Badge variant="destructive">Out of stock</Badge>
+                              <Badge variant="destructive">{t("Out of stock")}</Badge>
                             ) : (
-                              isLow && <Badge className="bg-chart-4/15 text-chart-4">Low stock</Badge>
+                              isLow && <Badge className="bg-chart-4/15 text-chart-4">{t("Low stock")}</Badge>
                             )}
                           </div>
                         </TableCell>
@@ -184,7 +186,7 @@ export default function Products() {
                               <ProductFormDialog product={product} />
                               <ConfirmDialog
                                 trigger={
-                                  <Button variant="outline" size="icon-sm" aria-label="Delete product">
+                                  <Button variant="outline" size="icon-sm" aria-label={t("Delete product")}>
                                     <Trash2 className="size-3.5" />
                                   </Button>
                                 }

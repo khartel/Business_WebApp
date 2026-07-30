@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Check, Copy, KeyRound, Loader2, ShieldAlert, Trash2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as platformService from "@/services/platform.service"
 import { ApiError } from "@/lib/api-client"
 import { formatDate } from "@/lib/format"
@@ -25,6 +26,7 @@ import { ErrorState } from "@/components/ErrorState"
  * only lives in React state for as long as the page is open.
  */
 function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
+  const { t } = useTranslation()
   const [key, setKey] = useState("")
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +39,7 @@ function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
       await platformService.getSuperAdmins(key)
       onUnlock(key)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not verify master key")
+      setError(err instanceof ApiError ? err.message : t("Could not verify master key"))
     } finally {
       setChecking(false)
     }
@@ -47,7 +49,7 @@ function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
     <AuthShell title="Platform admin" description="Enter the master key to continue.">
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="master-key">Master key</Label>
+          <Label htmlFor="master-key">{t("Master key")}</Label>
           <Input
             id="master-key"
             type="password"
@@ -64,7 +66,7 @@ function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
           disabled={checking || !key}
         >
           {checking && <Loader2 className="size-4 animate-spin" />}
-          Unlock
+          {t("Unlock")}
         </Button>
       </form>
     </AuthShell>
@@ -78,13 +80,14 @@ function UnlockGate({ onUnlock }: { onUnlock: (key: string) => void }) {
  * copy-to-clipboard button (the "copied" checkmark auto-reverts after 2s).
  */
 function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId: string }) {
+  const { t } = useTranslation()
   const [result, setResult] = useState<{ username: string; newPassword: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
   const mutation = useMutation({
     mutationFn: () => platformService.resetSuperAdminPassword(masterKey, userId),
     onSuccess: (data) => setResult(data),
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not reset password"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Could not reset password")),
   })
 
   const copy = async () => {
@@ -98,7 +101,7 @@ function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId:
     return (
       <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs">
         <span className="font-mono">{result.newPassword}</span>
-        <Button type="button" variant="ghost" size="icon-sm" onClick={copy} aria-label="Copy password">
+        <Button type="button" variant="ghost" size="icon-sm" onClick={copy} aria-label={t("Copy password")}>
           {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
         </Button>
       </div>
@@ -110,7 +113,7 @@ function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId:
       type="button"
       variant="outline"
       size="icon-sm"
-      aria-label="Reset password"
+      aria-label={t("Reset password")}
       disabled={mutation.isPending}
       onClick={() => mutation.mutate()}
     >
@@ -130,6 +133,7 @@ function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId:
  * `UnlockGate` rather than a normal user session.
  */
 function AdminConsole({ masterKey }: { masterKey: string }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const query = useQuery({
@@ -141,9 +145,9 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
     mutationFn: (userId: string) => platformService.deleteSuperAdmin(masterKey, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-superadmins"] })
-      toast.success("SuperAdmin deleted")
+      toast.success(t("SuperAdmin deleted"))
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not delete SuperAdmin"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Could not delete SuperAdmin")),
   })
 
   const superAdmins = query.data ?? []
@@ -152,8 +156,8 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">Platform admin</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage SuperAdmin accounts across the platform.</p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">{t("Platform admin")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("Manage SuperAdmin accounts across the platform.")}</p>
         </div>
         <ThemeToggle />
       </div>
@@ -176,13 +180,15 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
                       @{admin.username} · {admin.phone}
                       {admin.email && ` · ${admin.email}`}
                     </p>
-                    <p className="text-xs text-muted-foreground">Joined {formatDate(admin.createdAt)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("Joined {{date}}", { date: formatDate(admin.createdAt) })}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <ResetPasswordAction masterKey={masterKey} userId={admin.id} />
                     <ConfirmDialog
                       trigger={
-                        <Button variant="outline" size="icon-sm" aria-label="Delete SuperAdmin">
+                        <Button variant="outline" size="icon-sm" aria-label={t("Delete SuperAdmin")}>
                           <Trash2 className="size-3.5" />
                         </Button>
                       }
@@ -197,7 +203,7 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
               </CardHeader>
               <CardContent>
                 {admin.ownedBusinesses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No businesses yet.</p>
+                  <p className="text-sm text-muted-foreground">{t("No businesses yet.")}</p>
                 ) : (
                   <ul className="divide-y divide-border">
                     {admin.ownedBusinesses.map((business) => (

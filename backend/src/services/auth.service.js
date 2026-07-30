@@ -236,6 +236,7 @@ const getMe = async (userId) => {
       email: true,
       role: true,
       twoFactorEnabled: true,
+      language: true,
       createdAt: true,
       ownedBusinesses: {
         select: {
@@ -346,15 +347,17 @@ const updatePassword = async (userId, currentPassword, newPassword) => {
  * All fields are optional/partial - only provided ones are updated.
  *
  * @param {string} userId - ID of the user being updated.
- * @param {{fullName?: string, phone?: string, email?: string}} fields -
+ * @param {{fullName?: string, phone?: string, email?: string, language?: string}} fields -
  *   Partial profile fields. An empty-string email is normalized to null;
  *   a changed, non-empty email is checked for uniqueness across all users
- *   before being saved.
+ *   before being saved. `language` is the user's own UI-language preference
+ *   (e.g. "en"/"fr") and is saved immediately by the language switcher, not
+ *   just from the Profile form.
  * @returns {Promise<object>} The refreshed profile, same shape as `getMe`.
  * @throws {AppError} 404 if user not found, 409 if the new email is already
  *   registered to another account.
  */
-const updateProfile = async (userId, { fullName, phone, email }) => {
+const updateProfile = async (userId, { fullName, phone, email, language }) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
 
   if (!user) {
@@ -364,6 +367,7 @@ const updateProfile = async (userId, { fullName, phone, email }) => {
   const data = {};
   if (fullName !== undefined) data.fullName = fullName;
   if (phone !== undefined) data.phone = phone;
+  if (language !== undefined) data.language = language;
 
   if (email !== undefined) {
     const cleanEmail = email.trim() !== "" ? email.trim() : null;

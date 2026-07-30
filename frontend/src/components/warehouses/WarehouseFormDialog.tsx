@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Pencil, Plus } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as warehouseService from "@/services/warehouse.service"
 import type { Warehouse } from "@/services/warehouse.service"
 import { useAuth } from "@/context/AuthContext"
@@ -45,6 +46,7 @@ type FormValues = z.infer<typeof schema>
  * summary may include warehouse counts).
  */
 export function WarehouseFormDialog({ warehouse }: { warehouse?: Warehouse }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
@@ -81,12 +83,12 @@ export function WarehouseFormDialog({ warehouse }: { warehouse?: Warehouse }) {
         : warehouseService.createWarehouse(activeBusinessId!, values),
     onSuccess: () => {
       invalidate()
-      toast.success(isEdit ? "Warehouse updated" : "Warehouse created")
+      toast.success(isEdit ? t("Warehouse updated") : t("Warehouse created"))
       setOpen(false)
       if (!isEdit) reset()
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Something went wrong")
+      toast.error(error instanceof ApiError ? error.message : t("Something went wrong"))
     },
   })
 
@@ -94,32 +96,34 @@ export function WarehouseFormDialog({ warehouse }: { warehouse?: Warehouse }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="icon-sm" aria-label="Edit warehouse">
+          <Button variant="outline" size="icon-sm" aria-label={t("Edit warehouse")}>
             <Pencil className="size-3.5" />
           </Button>
         ) : (
           <Button>
             <Plus className="size-4" />
-            New warehouse
+            {t("New warehouse")}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit warehouse" : "Create a warehouse"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("Edit warehouse") : t("Create a warehouse")}</DialogTitle>
           <DialogDescription>
-            {isEdit ? `Update ${warehouse.name}'s details.` : "Add a new stock location for this business."}
+            {isEdit
+              ? t("Update {{name}}'s details.", { name: warehouse.name })
+              : t("Add a new stock location for this business.")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="wh-name">Name</Label>
+            <Label htmlFor="wh-name">{t("Name")}</Label>
             <Input id="wh-name" autoFocus {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message ?? "")}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="wh-location">Location (optional)</Label>
+            <Label htmlFor="wh-location">{t("Location (optional)")}</Label>
             <Input id="wh-location" {...register("location")} />
           </div>
           {!isEdit && (
@@ -128,14 +132,14 @@ export function WarehouseFormDialog({ warehouse }: { warehouse?: Warehouse }) {
                 checked={watch("isPrimary")}
                 onCheckedChange={(checked) => setValue("isPrimary", checked === true)}
               />
-              Set as primary warehouse
+              {t("Set as primary warehouse")}
             </label>
           )}
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Create warehouse"}
+              {isEdit ? t("Save changes") : t("Create warehouse")}
             </Button>
           </DialogFooter>
         </form>

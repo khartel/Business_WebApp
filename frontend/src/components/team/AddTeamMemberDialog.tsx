@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Check, Copy, Loader2, Plus, UserPlus } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as teamService from "@/services/team.service"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
@@ -55,6 +56,7 @@ type FormValues = z.infer<typeof schema>
  *   reopening it always starts fresh on the form.
  */
 export function AddTeamMemberDialog() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [created, setCreated] = useState<{ username: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -81,12 +83,12 @@ export function AddTeamMemberDialog() {
       if (member.defaultPassword) {
         setCreated({ username: member.user.username, password: member.defaultPassword })
       } else {
-        toast.success(`${member.user.fullName} added to the business`)
+        toast.success(t("{{name}} added to the business", { name: member.user.fullName }))
         setOpen(false)
       }
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not add team member")
+      toast.error(error instanceof ApiError ? error.message : t("Could not add team member"))
     },
   })
 
@@ -112,7 +114,7 @@ export function AddTeamMemberDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="size-4" />
-          Add team member
+          {t("Add team member")}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -121,24 +123,23 @@ export function AddTeamMemberDialog() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="size-5 text-success" />
-                Team member added
+                {t("Team member added")}
               </DialogTitle>
               <DialogDescription>
-                Share these sign-in details with them now — this password won't be shown again. They'll be
-                asked to set a new one on first login.
+                {t("Share these sign-in details with them now — this password won't be shown again. They'll be asked to set a new one on first login.")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4">
               <div>
-                <p className="text-xs text-muted-foreground">Username</p>
+                <p className="text-xs text-muted-foreground">{t("Username")}</p>
                 <p className="font-mono text-sm font-medium">{created.username}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Temporary password</p>
+                <p className="text-xs text-muted-foreground">{t("Temporary password")}</p>
                 <div className="flex items-center gap-2">
                   <p className="font-mono text-sm font-medium">{created.password}</p>
-                  <Button type="button" variant="ghost" size="icon-sm" onClick={copyPassword} aria-label="Copy password">
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={copyPassword} aria-label={t("Copy password")}>
                     {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
                   </Button>
                 </div>
@@ -146,38 +147,37 @@ export function AddTeamMemberDialog() {
             </div>
 
             <DialogFooter>
-              <Button onClick={() => handleOpenChange(false)}>Done</Button>
+              <Button onClick={() => handleOpenChange(false)}>{t("Done")}</Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Add a team member</DialogTitle>
+              <DialogTitle>{t("Add a team member")}</DialogTitle>
               <DialogDescription>
-                They'll get a temporary password to log in with. Existing users can be added directly by
-                username.
+                {t("They'll get a temporary password to log in with. Existing users can be added directly by username.")}
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="member-name">Full name</Label>
+                <Label htmlFor="member-name">{t("Full name")}</Label>
                 <Input id="member-name" autoFocus {...register("fullName")} />
-                {errors.fullName && <p className="text-xs text-destructive">{errors.fullName.message}</p>}
+                {errors.fullName && <p className="text-xs text-destructive">{t(errors.fullName.message ?? "")}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="member-username">Username</Label>
+                <Label htmlFor="member-username">{t("Username")}</Label>
                 <Input id="member-username" {...register("username")} />
-                {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
+                {errors.username && <p className="text-xs text-destructive">{t(errors.username.message ?? "")}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="member-phone">Phone number</Label>
+                  <Label htmlFor="member-phone">{t("Phone number")}</Label>
                   <Input id="member-phone" {...register("phone")} />
-                  {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+                  {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message ?? "")}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="member-role">Role</Label>
+                  <Label htmlFor="member-role">{t("Role")}</Label>
                   <Controller
                     control={control}
                     name="role"
@@ -187,8 +187,8 @@ export function AddTeamMemberDialog() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                          <SelectItem value="ADMIN">Admin</SelectItem>
+                          <SelectItem value="EMPLOYEE">{t("Employee")}</SelectItem>
+                          <SelectItem value="ADMIN">{t("Admin")}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -196,15 +196,15 @@ export function AddTeamMemberDialog() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="member-email">Email (optional)</Label>
+                <Label htmlFor="member-email">{t("Email (optional)")}</Label>
                 <Input id="member-email" type="email" {...register("email")} />
-                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                {errors.email && <p className="text-xs text-destructive">{t(errors.email.message ?? "")}</p>}
               </div>
 
               <DialogFooter>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-                  Add member
+                  {t("Add member")}
                 </Button>
               </DialogFooter>
             </form>

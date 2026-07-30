@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as transactionService from "@/services/transaction.service"
 import { ApiError } from "@/lib/api-client"
 import { formatMoney } from "@/lib/format"
@@ -50,6 +51,7 @@ export function RecordPaymentDialog({
   currency: string
   trigger: ReactNode
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<"full" | "partial">("full")
   const [amount, setAmount] = useState("")
@@ -69,14 +71,16 @@ export function RecordPaymentDialog({
       queryClient.invalidateQueries({ queryKey: ["transaction", businessId, transactionId] })
       toast.success(
         transaction.balanceDue <= 0
-          ? "Marked as fully paid"
-          : `Payment recorded — ${formatMoney(transaction.balanceDue, currency)} still owed`
+          ? t("Marked as fully paid")
+          : t("Payment recorded — {{amount}} still owed", {
+              amount: formatMoney(transaction.balanceDue, currency),
+            })
       )
       setOpen(false)
       reset()
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not record payment"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not record payment")),
   })
 
   const parsedAmount = parseFloat(amount) || 0
@@ -93,9 +97,12 @@ export function RecordPaymentDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record a payment</DialogTitle>
+          <DialogTitle>{t("Record a payment")}</DialogTitle>
           <DialogDescription>
-            {customerName} owes {formatMoney(balanceDue, currency)}.
+            {t("{{customerName}} owes {{amount}}.", {
+              customerName,
+              amount: formatMoney(balanceDue, currency),
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +118,7 @@ export function RecordPaymentDialog({
                   : "border-border/60 text-muted-foreground hover:bg-muted"
               )}
             >
-              Pay in full
+              {t("Pay in full")}
             </button>
             <button
               type="button"
@@ -123,13 +130,13 @@ export function RecordPaymentDialog({
                   : "border-border/60 text-muted-foreground hover:bg-muted"
               )}
             >
-              Enter amount
+              {t("Enter amount")}
             </button>
           </div>
 
           {mode === "partial" && (
             <div className="space-y-1.5">
-              <Label htmlFor="payment-amount">Amount paid</Label>
+              <Label htmlFor="payment-amount">{t("Amount paid")}</Label>
               <Input
                 id="payment-amount"
                 type="number"
@@ -142,7 +149,7 @@ export function RecordPaymentDialog({
               />
               {parsedAmount > balanceDue && (
                 <p className="text-xs text-destructive">
-                  Can't exceed the balance of {formatMoney(balanceDue, currency)}
+                  {t("Can't exceed the balance of {{amount}}", { amount: formatMoney(balanceDue, currency) })}
                 </p>
               )}
             </div>
@@ -155,7 +162,9 @@ export function RecordPaymentDialog({
             onClick={() => mutation.mutate(mode === "full" ? balanceDue : parsedAmount)}
           >
             {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-            {mode === "full" ? `Pay in full (${formatMoney(balanceDue, currency)})` : "Record payment"}
+            {mode === "full"
+              ? t("Pay in full ({{amount}})", { amount: formatMoney(balanceDue, currency) })
+              : t("Record payment")}
           </Button>
         </DialogFooter>
       </DialogContent>

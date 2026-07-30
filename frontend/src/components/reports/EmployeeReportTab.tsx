@@ -12,6 +12,7 @@ import { DownloadMenu } from "@/components/reports/DownloadMenu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Users } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 // Today's date as YYYY-MM-DD, the default end of the date range.
 function todayIso() {
@@ -30,6 +31,7 @@ function firstOfMonthIso() {
  * and each employee's top-selling products. Includes a CSV/PDF download menu.
  */
 export function EmployeeReportTab() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
@@ -89,7 +91,7 @@ export function EmployeeReportTab() {
   const dateControls = (
     <div className="flex flex-wrap items-center gap-2">
       <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" />
-      <span className="text-xs text-muted-foreground">to</span>
+      <span className="text-xs text-muted-foreground">{t("to")}</span>
       <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" />
       <DownloadMenu
         className="ml-auto"
@@ -143,20 +145,20 @@ export function EmployeeReportTab() {
             <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
               <div>
                 <p className="font-semibold">{summary.transactionCount}</p>
-                <p className="text-muted-foreground">Sales</p>
+                <p className="text-muted-foreground">{t("Sales")}</p>
               </div>
               <div>
                 <p className="font-semibold">{formatMoney(summary.cashTotal, currency)}</p>
-                <p className="text-muted-foreground">Cash</p>
+                <p className="text-muted-foreground">{t("Cash")}</p>
               </div>
               <div>
                 <p className="font-semibold">{formatMoney(summary.transferTotal, currency)}</p>
-                <p className="text-muted-foreground">Transfer</p>
+                <p className="text-muted-foreground">{t("Transfer")}</p>
               </div>
             </div>
             {topProducts.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">Top products</p>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">{t("Top products")}</p>
                 <ul className="space-y-1 text-sm">
                   {topProducts.map((row) => (
                     <li key={row.product.id} className="flex justify-between">

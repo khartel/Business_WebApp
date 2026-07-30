@@ -13,6 +13,7 @@ import { DownloadMenu } from "@/components/reports/DownloadMenu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Package } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 // Today's date as YYYY-MM-DD, the default end of the date range.
 function todayIso() {
@@ -28,6 +29,7 @@ function firstOfMonthIso() {
 // Renders a ranked list of products with their current stock and either revenue or
 // quantity sold, depending on `metric`.
 function ProductList({ items, currency, metric }: { items: ProductReportItem[]; currency: string; metric: "revenue" | "quantity" }) {
+  const { t } = useTranslation()
   return (
     <ul className="space-y-2 text-sm">
       {items.map((row) => (
@@ -35,7 +37,7 @@ function ProductList({ items, currency, metric }: { items: ProductReportItem[]; 
           <div>
             <p className="font-medium">{row.product.name}</p>
             <p className="text-xs text-muted-foreground">
-              {row.currentStock.total} {row.product.unit} in stock
+              {t("{{quantity}} {{unit}} in stock", { quantity: row.currentStock.total, unit: row.product.unit })}
             </p>
           </div>
           <span className="font-medium">
@@ -53,6 +55,7 @@ function ProductList({ items, currency, metric }: { items: ProductReportItem[]; 
  * each annotated with current stock on hand. Includes a CSV/PDF download menu.
  */
 export function ProductReportTab() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
@@ -110,7 +113,7 @@ export function ProductReportTab() {
   const dateControls = (
     <div className="flex flex-wrap items-center gap-2">
       <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" />
-      <span className="text-xs text-muted-foreground">to</span>
+      <span className="text-xs text-muted-foreground">{t("to")}</span>
       <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" />
       <DownloadMenu
         className="ml-auto"
@@ -153,11 +156,11 @@ export function ProductReportTab() {
       {dateControls}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">Best selling (by revenue)</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("Best selling (by revenue)")}</h3>
           <ProductList items={report.bestSelling} currency={currency} metric="revenue" />
         </div>
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">Most quantity sold</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("Most quantity sold")}</h3>
           <ProductList items={report.mostQuantitySold} currency={currency} metric="quantity" />
         </div>
       </div>

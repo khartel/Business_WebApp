@@ -1,0 +1,19 @@
+{
+  "Platform admin": "Administration de la plateforme",
+  "Master key": "Clé principale",
+  "Enter the master key to continue.": "Entrez la clé principale pour continuer.",
+  "Unlock": "Déverrouiller",
+  "Could not verify master key": "Impossible de vérifier la clé principale",
+  "Manage SuperAdmin accounts across the platform.": "Gérez les comptes SuperAdmin sur toute la plateforme.",
+  "No SuperAdmin accounts exist yet.": "Aucun compte SuperAdmin n'existe encore.",
+  "No SuperAdmins": "Aucun SuperAdmin",
+  "Delete SuperAdmin": "Supprimer le SuperAdmin",
+  "Delete SuperAdmin?": "Supprimer le SuperAdmin ?",
+  "SuperAdmin deleted": "SuperAdmin supprimé",
+  "Could not delete SuperAdmin": "Impossible de supprimer le SuperAdmin",
+  "Joined {{date}}": "Inscrit le {{date}}",
+  "Coming soon": "Bientôt disponible",
+  "This screen is being built in the next phase of the project.": "Cet écran est en cours de construction dans la prochaine phase du projet.",
+  "An unexpected error occurred. Reloading the page usually fixes it.": "Une erreur inattendue est survenue. Recharger la page résout généralement le problème.",
+  "Reload page": "Recharger la page"
+}

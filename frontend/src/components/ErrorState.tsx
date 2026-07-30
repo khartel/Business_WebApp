@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { AlertCircle, RotateCw } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 
 interface ErrorStateProps {
@@ -22,17 +23,18 @@ export function ErrorState({
   icon,
   onRetry,
 }: ErrorStateProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-destructive/30 bg-destructive/5 py-16 text-center">
       <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
         {icon ?? <AlertCircle className="size-6" />}
       </div>
-      <h3 className="font-heading text-base font-semibold">{title}</h3>
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
+      <h3 className="font-heading text-base font-semibold">{t(title)}</h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{t(description)}</p>
       {onRetry && (
         <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
           <RotateCw className="size-3.5" />
-          Retry
+          {t("Retry")}
         </Button>
       )}
     </div>

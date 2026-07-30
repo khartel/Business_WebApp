@@ -14,6 +14,7 @@ import { DownloadMenu } from "@/components/reports/DownloadMenu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarRange } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 // Today's date as YYYY-MM-DD, used as the default value for the date picker (any day
 // within the desired week can be picked; the backend resolves the containing week).
@@ -67,6 +68,7 @@ function fullReportCsvRows(report: WeeklyReport, currency: string) {
  * employee and by product. Includes "Items sold" and "Full report" exports (CSV/PDF).
  */
 export function WeeklyReportTab() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
@@ -149,7 +151,7 @@ export function WeeklyReportTab() {
   const dateControls = (
     <div className="flex flex-wrap items-center gap-2">
       <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
-      <span className="text-xs text-muted-foreground">Pick any day in the week</span>
+      <span className="text-xs text-muted-foreground">{t("Pick any day in the week")}</span>
       <DownloadMenu
         className="ml-auto"
         disabled={!query.data}
@@ -214,7 +216,7 @@ export function WeeklyReportTab() {
       </div>
 
       <div className="rounded-xl border border-border p-4">
-        <h3 className="mb-3 text-sm font-semibold">Daily breakdown</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("Daily breakdown")}</h3>
         <ul className="space-y-2">
           {report.dailyBreakdown.map((day) => (
             <li key={day.date} className="flex items-center gap-3 text-sm">
@@ -235,7 +237,7 @@ export function WeeklyReportTab() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">By employee</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("By employee")}</h3>
           <ul className="space-y-2 text-sm">
             {report.byEmployee.map((row) => (
               <li key={row.employee.id} className="flex justify-between">
@@ -246,7 +248,7 @@ export function WeeklyReportTab() {
           </ul>
         </div>
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">By product</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("By product")}</h3>
           <ul className="space-y-2 text-sm">
             {report.byProduct.map((row) => (
               <li key={row.product.id} className="flex justify-between">

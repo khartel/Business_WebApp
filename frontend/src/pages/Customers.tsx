@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Contact, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as customerService from "@/services/customer.service"
 import * as transactionService from "@/services/transaction.service"
 import { useAuth } from "@/context/AuthContext"
@@ -40,6 +41,7 @@ import {
  * Editing/deleting is gated by `canManage(user?.role)`.
  */
 function CustomersTab({ businessId, currency }: { businessId: string; currency: string }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const canEdit = canManage(user?.role)
@@ -55,10 +57,10 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
     mutationFn: (customerId: string) => customerService.deleteCustomer(businessId, customerId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers", businessId] })
-      toast.success("Customer deleted")
+      toast.success(t("Customer deleted"))
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not delete customer"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not delete customer")),
   })
 
   const customers = customersQuery.data ?? []
@@ -76,7 +78,7 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
       <div className="relative max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search customers..."
+          placeholder={t("Search customers...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -98,12 +100,12 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Visits</TableHead>
-                <TableHead>Total spent</TableHead>
-                <TableHead>Owes</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Phone")}</TableHead>
+                <TableHead>{t("Visits")}</TableHead>
+                <TableHead>{t("Total spent")}</TableHead>
+                <TableHead>{t("Owes")}</TableHead>
+                <TableHead className="text-right">{t("Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -132,7 +134,7 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
                         <CustomerFormDialog customer={customer} />
                         <ConfirmDialog
                           trigger={
-                            <Button variant="outline" size="icon-sm" aria-label="Delete customer">
+                            <Button variant="outline" size="icon-sm" aria-label={t("Delete customer")}>
                               <Trash2 className="size-3.5" />
                             </Button>
                           }
@@ -171,6 +173,7 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
  * `paymentMethod: "CREDIT", paid: false` (capped at 100 rows).
  */
 function CreditTab({ businessId, currency }: { businessId: string; currency: string }) {
+  const { t } = useTranslation()
   const creditQuery = useQuery({
     queryKey: ["transactions", businessId, "credit-outstanding"],
     queryFn: () =>
@@ -200,7 +203,7 @@ function CreditTab({ businessId, currency }: { businessId: string; currency: str
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between rounded-xl bg-muted/60 px-4 py-3">
-        <span className="text-sm font-medium text-muted-foreground">Total owed</span>
+        <span className="text-sm font-medium text-muted-foreground">{t("Total owed")}</span>
         <span className="font-heading text-2xl font-bold tabular-nums text-destructive">
           {formatMoney(totalOwed, currency)}
         </span>
@@ -210,12 +213,12 @@ function CreditTab({ businessId, currency }: { businessId: string; currency: str
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Served by</TableHead>
-              <TableHead className="text-right">Paid</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t("Date")}</TableHead>
+              <TableHead>{t("Customer")}</TableHead>
+              <TableHead>{t("Served by")}</TableHead>
+              <TableHead className="text-right">{t("Paid")}</TableHead>
+              <TableHead className="text-right">{t("Balance")}</TableHead>
+              <TableHead className="text-right">{t("Actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -240,7 +243,7 @@ function CreditTab({ businessId, currency }: { businessId: string; currency: str
                     currency={currency}
                     trigger={
                       <Button variant="outline" size="sm">
-                        Record payment
+                        {t("Record payment")}
                       </Button>
                     }
                   />
@@ -265,6 +268,7 @@ function CreditTab({ businessId, currency }: { businessId: string; currency: str
  * `canManage(user?.role)`.
  */
 export default function Customers() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const canEdit = canManage(user?.role)
@@ -286,8 +290,8 @@ export default function Customers() {
 
       <Tabs defaultValue="customers">
         <TabsList>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-          <TabsTrigger value="credit">Credit</TabsTrigger>
+          <TabsTrigger value="customers">{t("Customers")}</TabsTrigger>
+          <TabsTrigger value="credit">{t("Credit")}</TabsTrigger>
         </TabsList>
         <TabsContent value="customers">
           <CustomersTab businessId={activeBusinessId} currency={currency} />

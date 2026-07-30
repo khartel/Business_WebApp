@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Pencil, Plus } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as productService from "@/services/product.service"
 import type { Product } from "@/services/product.service"
 import { useAuth } from "@/context/AuthContext"
@@ -79,6 +80,7 @@ type ParsedValues = z.output<typeof schema>
  * may include product counts).
  */
 export function ProductFormDialog({ product }: { product?: Product }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
@@ -124,12 +126,12 @@ export function ProductFormDialog({ product }: { product?: Product }) {
         : productService.createProduct(activeBusinessId!, values),
     onSuccess: () => {
       invalidate()
-      toast.success(isEdit ? "Product updated" : "Product created")
+      toast.success(isEdit ? t("Product updated") : t("Product created"))
       setOpen(false)
       if (!isEdit) reset()
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Something went wrong")
+      toast.error(error instanceof ApiError ? error.message : t("Something went wrong"))
     },
   })
 
@@ -137,33 +139,35 @@ export function ProductFormDialog({ product }: { product?: Product }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="icon-sm" aria-label="Edit product">
+          <Button variant="outline" size="icon-sm" aria-label={t("Edit product")}>
             <Pencil className="size-3.5" />
           </Button>
         ) : (
           <Button>
             <Plus className="size-4" />
-            New product
+            {t("New product")}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit product" : "Create a product"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("Edit product") : t("Create a product")}</DialogTitle>
           <DialogDescription>
-            {isEdit ? `Update ${product.name}'s details.` : "Add a new product to this business's catalog."}
+            {isEdit
+              ? t("Update {{name}}'s details.", { name: product.name })
+              : t("Add a new product to this business's catalog.")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="prod-name">Name</Label>
+            <Label htmlFor="prod-name">{t("Name")}</Label>
             <Input id="prod-name" autoFocus {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="prod-unit">Unit</Label>
+              <Label htmlFor="prod-unit">{t("Unit")}</Label>
               <Select
                 value={customUnitMode ? OTHER_UNIT : unitValue}
                 onValueChange={(value) => {
@@ -177,7 +181,7 @@ export function ProductFormDialog({ product }: { product?: Product }) {
                 }}
               >
                 <SelectTrigger id="prod-unit" className="w-full">
-                  <SelectValue placeholder="Select a unit" />
+                  <SelectValue placeholder={t("Select a unit")} />
                 </SelectTrigger>
                 <SelectContent>
                   {UNIT_OPTIONS.map((option) => (
@@ -185,40 +189,40 @@ export function ProductFormDialog({ product }: { product?: Product }) {
                       {option}
                     </SelectItem>
                   ))}
-                  <SelectItem value={OTHER_UNIT}>Other (custom)</SelectItem>
+                  <SelectItem value={OTHER_UNIT}>{t("Other (custom)")}</SelectItem>
                 </SelectContent>
               </Select>
               {customUnitMode && (
                 <Input
                   autoFocus
-                  placeholder="Type a custom unit"
+                  placeholder={t("Type a custom unit")}
                   value={unitValue}
                   onChange={(e) => setValue("unit", e.target.value, { shouldValidate: true })}
                 />
               )}
-              {errors.unit && <p className="text-xs text-destructive">{errors.unit.message}</p>}
+              {errors.unit && <p className="text-xs text-destructive">{t(errors.unit.message)}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="prod-price">Price</Label>
+              <Label htmlFor="prod-price">{t("Price")}</Label>
               <Input id="prod-price" type="number" step="0.01" min="0" {...register("price")} />
-              {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
+              {errors.price && <p className="text-xs text-destructive">{t(errors.price.message)}</p>}
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="prod-shortcode">Short code (optional)</Label>
-            <Input id="prod-shortcode" placeholder="e.g. fn14" {...register("shortCode")} />
-            <p className="text-xs text-muted-foreground">A quick nickname to find this product faster at the register.</p>
-            {errors.shortCode && <p className="text-xs text-destructive">{errors.shortCode.message}</p>}
+            <Label htmlFor="prod-shortcode">{t("Short code (optional)")}</Label>
+            <Input id="prod-shortcode" placeholder={t("e.g. fn14")} {...register("shortCode")} />
+            <p className="text-xs text-muted-foreground">{t("A quick nickname to find this product faster at the register.")}</p>
+            {errors.shortCode && <p className="text-xs text-destructive">{t(errors.shortCode.message)}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="prod-description">Description (optional)</Label>
+            <Label htmlFor="prod-description">{t("Description (optional)")}</Label>
             <Textarea id="prod-description" rows={3} {...register("description")} />
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Create product"}
+              {isEdit ? t("Save changes") : t("Create product")}
             </Button>
           </DialogFooter>
         </form>

@@ -48,6 +48,9 @@ const updateProfileSchema = {
     fullName: z.string().trim().min(1, "Full name is required").optional(),
     phone: z.string().trim().min(7, "Phone number is required").optional(),
     email: emailOrEmpty,
+    // Keep this enum in sync with SUPPORTED_LANGUAGES in
+    // frontend/src/components/LanguageSwitcher.tsx when adding a new language.
+    language: z.enum(["en", "fr"]).optional(),
   }),
 };
 

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as businessService from "@/services/business.service"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
@@ -60,6 +61,7 @@ export function CreateBusinessDialog({
   onCreated?: (businessId: string) => void
   trigger?: ReactNode
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -87,13 +89,13 @@ export function CreateBusinessDialog({
     onSuccess: (business) => {
       queryClient.invalidateQueries({ queryKey: ["businesses"] })
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] })
-      toast.success(`"${business.name}" created`)
+      toast.success(t('"{{name}}" created', { name: business.name }))
       setOpen(false)
       reset()
       onCreated?.(business.id)
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not create business")
+      toast.error(error instanceof ApiError ? error.message : t("Could not create business"))
     },
   })
 
@@ -105,44 +107,44 @@ export function CreateBusinessDialog({
         {trigger ?? (
           <Button>
             <Plus className="size-4" />
-            New business
+            {t("New business")}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create a business</DialogTitle>
-          <DialogDescription>Set up a new business to track its own inventory and sales.</DialogDescription>
+          <DialogTitle>{t("Create a business")}</DialogTitle>
+          <DialogDescription>{t("Set up a new business to track its own inventory and sales.")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="biz-name">Business name</Label>
+            <Label htmlFor="biz-name">{t("Business name")}</Label>
             <Input id="biz-name" {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="biz-phone">Phone number</Label>
+            <Label htmlFor="biz-phone">{t("Phone number")}</Label>
             <Input id="biz-phone" {...register("phone")} />
-            {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+            {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="biz-email">Email (optional)</Label>
+            <Label htmlFor="biz-email">{t("Email (optional)")}</Label>
             <Input id="biz-email" type="email" {...register("email")} />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            {errors.email && <p className="text-xs text-destructive">{t(errors.email.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="biz-country">Country</Label>
+            <Label htmlFor="biz-country">{t("Country")}</Label>
             <Select
               value={watch("country")}
               onValueChange={(value) => setValue("country", value, { shouldValidate: true })}
             >
               <SelectTrigger id="biz-country" className="w-full">
                 <SelectValue
-                  placeholder={countriesQuery.isLoading ? "Loading countries..." : "Select a country"}
+                  placeholder={countriesQuery.isLoading ? t("Loading countries...") : t("Select a country")}
                 />
               </SelectTrigger>
               <SelectContent>
@@ -153,19 +155,19 @@ export function CreateBusinessDialog({
                 ))}
               </SelectContent>
             </Select>
-            {errors.country && <p className="text-xs text-destructive">{errors.country.message}</p>}
+            {errors.country && <p className="text-xs text-destructive">{t(errors.country.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="biz-location">Location</Label>
-            <Input id="biz-location" placeholder="City, area" {...register("location")} />
-            {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
+            <Label htmlFor="biz-location">{t("Location")}</Label>
+            <Input id="biz-location" placeholder={t("City, area")} {...register("location")} />
+            {errors.location && <p className="text-xs text-destructive">{t(errors.location.message)}</p>}
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Create business
+              {t("Create business")}
             </Button>
           </DialogFooter>
         </form>

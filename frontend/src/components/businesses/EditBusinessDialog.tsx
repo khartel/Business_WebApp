@@ -5,6 +5,7 @@ import { z } from "zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Pencil } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as businessService from "@/services/business.service"
 import type { BusinessListItem } from "@/services/business.service"
 import { ApiError } from "@/lib/api-client"
@@ -43,6 +44,7 @@ type FormValues = z.infer<typeof schema>
  * so any screens showing its details refresh.
  */
 export function EditBusinessDialog({ business }: { business: BusinessListItem }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -65,53 +67,53 @@ export function EditBusinessDialog({ business }: { business: BusinessListItem })
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["businesses"] })
       queryClient.invalidateQueries({ queryKey: ["business", business.id] })
-      toast.success("Business updated")
+      toast.success(t("Business updated"))
       setOpen(false)
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not update business")
+      toast.error(error instanceof ApiError ? error.message : t("Could not update business"))
     },
   })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon-sm" aria-label="Edit business">
+        <Button variant="outline" size="icon-sm" aria-label={t("Edit business")}>
           <Pencil className="size-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit business</DialogTitle>
-          <DialogDescription>Update {business.name}'s details.</DialogDescription>
+          <DialogTitle>{t("Edit business")}</DialogTitle>
+          <DialogDescription>{t("Update {{name}}'s details.", { name: business.name })}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((values) => updateMutation.mutate(values))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor={`edit-biz-name-${business.id}`}>Business name</Label>
+            <Label htmlFor={`edit-biz-name-${business.id}`}>{t("Business name")}</Label>
             <Input id={`edit-biz-name-${business.id}`} {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`edit-biz-phone-${business.id}`}>Phone number</Label>
+            <Label htmlFor={`edit-biz-phone-${business.id}`}>{t("Phone number")}</Label>
             <Input id={`edit-biz-phone-${business.id}`} {...register("phone")} />
-            {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+            {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`edit-biz-email-${business.id}`}>Email (optional)</Label>
+            <Label htmlFor={`edit-biz-email-${business.id}`}>{t("Email (optional)")}</Label>
             <Input id={`edit-biz-email-${business.id}`} type="email" {...register("email")} />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            {errors.email && <p className="text-xs text-destructive">{t(errors.email.message)}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`edit-biz-location-${business.id}`}>Location</Label>
+            <Label htmlFor={`edit-biz-location-${business.id}`}>{t("Location")}</Label>
             <Input id={`edit-biz-location-${business.id}`} {...register("location")} />
-            {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
+            {errors.location && <p className="text-xs text-destructive">{t(errors.location.message)}</p>}
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Save changes
+              {t("Save changes")}
             </Button>
           </DialogFooter>
         </form>

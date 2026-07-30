@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Banknote, HandCoins, Landmark, Loader2, Receipt } from "lucide-react"
 import { formatMoney } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -49,18 +50,21 @@ export function SaleSummaryPanel({
   isSubmitting,
 }: SaleSummaryPanelProps) {
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
+  const { t } = useTranslation()
 
   return (
     <div className="flex h-full flex-col justify-between gap-4 rounded-3xl border border-border/60 bg-card/60 p-5 shadow-lg backdrop-blur-2xl dark:bg-card/40">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Receipt className="size-4.5 text-success" />
-          <h2 className="font-heading text-base font-semibold">Sale details</h2>
+          <h2 className="font-heading text-base font-semibold">{t("Sale details")}</h2>
         </div>
 
         <CustomerNameField
           businessId={businessId}
-          placeholder={customerNameRequired ? "Customer name (required for credit)" : "Customer name (optional)"}
+          placeholder={
+            customerNameRequired ? t("Customer name (required for credit)") : t("Customer name (optional)")
+          }
           value={customerName}
           onChange={onCustomerNameChange}
           required={customerNameRequired}
@@ -79,7 +83,7 @@ export function SaleSummaryPanel({
             )}
           >
             <Banknote className="size-4" />
-            Cash
+            {t("Cash")}
           </button>
           <button
             type="button"
@@ -92,7 +96,7 @@ export function SaleSummaryPanel({
             )}
           >
             <Landmark className="size-4" />
-            Transfer
+            {t("Transfer")}
           </button>
           <button
             type="button"
@@ -105,13 +109,13 @@ export function SaleSummaryPanel({
             )}
           >
             <HandCoins className="size-4" />
-            Credit
+            {t("Credit")}
           </button>
         </div>
 
         {paymentMethod === "TRANSFER" && (
           <Input
-            placeholder="Transfer note (e.g. reference, sender name)"
+            placeholder={t("Transfer note (e.g. reference, sender name)")}
             value={transferNote}
             onChange={(e) => onTransferNoteChange(e.target.value)}
           />
@@ -119,14 +123,14 @@ export function SaleSummaryPanel({
 
         {paymentMethod === "CREDIT" && (
           <p className="text-xs text-muted-foreground">
-            This sale will be recorded as owed — the customer name above is how you'll track who owes it.
+            {t("This sale will be recorded as owed — the customer name above is how you'll track who owes it.")}
           </p>
         )}
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between rounded-xl bg-muted/60 px-4 py-3">
-          <span className="text-sm font-medium text-muted-foreground">Total</span>
+          <span className="text-sm font-medium text-muted-foreground">{t("Total")}</span>
           <span className="font-heading text-2xl font-bold tabular-nums">
             {formatMoney(total, currency)}
           </span>
@@ -138,7 +142,7 @@ export function SaleSummaryPanel({
           onClick={onComplete}
         >
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          Complete sale
+          {t("Complete sale")}
         </Button>
       </div>
     </div>

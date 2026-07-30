@@ -127,12 +127,12 @@ const changePassword = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/auth/me
- * Update the current user's own profile (fullName, phone, email)
+ * Update the current user's own profile (fullName, phone, email, language)
  */
 const updateProfile = asyncHandler(async (req, res) => {
-  const { fullName, phone, email } = req.body;
+  const { fullName, phone, email, language } = req.body;
 
-  const user = await updateProfileService(req.user.id, { fullName, phone, email });
+  const user = await updateProfileService(req.user.id, { fullName, phone, email, language });
 
   return sendSuccess(res, {
     message: "Profile updated successfully",

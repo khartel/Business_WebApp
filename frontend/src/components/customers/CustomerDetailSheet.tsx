@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useTranslation } from "react-i18next"
 import * as customerService from "@/services/customer.service"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { formatDateTime, formatMoney } from "@/lib/format"
@@ -49,6 +50,7 @@ export function CustomerDetailSheet({
   customerId: string | null
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
   const [transactionId, setTransactionId] = useState<string | null>(null)
@@ -66,8 +68,8 @@ export function CustomerDetailSheet({
       <Sheet open={!!customerId} onOpenChange={onOpenChange}>
         <SheetContent className="sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>{customer?.name ?? "Customer"}</SheetTitle>
-            <SheetDescription>{customer?.phone || "No phone on file"}</SheetDescription>
+            <SheetTitle>{customer?.name ?? t("Customer")}</SheetTitle>
+            <SheetDescription>{customer?.phone || t("No phone on file")}</SheetDescription>
           </SheetHeader>
 
           <div className="space-y-4 px-4 pb-4">
@@ -76,10 +78,10 @@ export function CustomerDetailSheet({
             ) : (
               <>
                 <div className="grid grid-cols-3 gap-3">
-                  <SummaryStat label="Visits" value={customer.transactionCount} />
-                  <SummaryStat label="Total spent" value={formatMoney(customer.totalSpent, currency)} />
+                  <SummaryStat label={t("Visits")} value={customer.transactionCount} />
+                  <SummaryStat label={t("Total spent")} value={formatMoney(customer.totalSpent, currency)} />
                   <SummaryStat
-                    label="Owes"
+                    label={t("Owes")}
                     value={formatMoney(customer.outstandingCredit, currency)}
                   />
                 </div>
@@ -95,9 +97,9 @@ export function CustomerDetailSheet({
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Payment</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead>{t("Date")}</TableHead>
+                          <TableHead>{t("Payment")}</TableHead>
+                          <TableHead className="text-right">{t("Total")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -115,7 +117,9 @@ export function CustomerDetailSheet({
                                 <Badge variant="secondary">{tx.paymentMethod}</Badge>
                                 {tx.paymentMethod === "CREDIT" && (
                                   <Badge variant={tx.paidAt ? "secondary" : "destructive"}>
-                                    {tx.paidAt ? "Paid" : `Owing ${formatMoney(tx.balanceDue, currency)}`}
+                                    {tx.paidAt
+                                      ? t("Paid")
+                                      : t("Owing {{amount}}", { amount: formatMoney(tx.balanceDue, currency) })}
                                   </Badge>
                                 )}
                               </div>

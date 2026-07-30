@@ -1,5 +1,6 @@
 import { Fragment } from "react"
 import { Download } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -45,22 +46,23 @@ export function DownloadMenu({
   disabled?: boolean
   className?: string
 }) {
+  const { t } = useTranslation()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled} className={className}>
           <Download className="size-3.5" />
-          Download
+          {t("Download")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {groups.map((group, i) => (
           <Fragment key={group.label ?? i}>
             {i > 0 && <DropdownMenuSeparator />}
-            {group.label && <DropdownMenuLabel>{group.label}</DropdownMenuLabel>}
+            {group.label && <DropdownMenuLabel>{t(group.label)}</DropdownMenuLabel>}
             {group.items.map((item) => (
               <DropdownMenuItem key={item.label} onClick={item.onClick}>
-                {item.label}
+                {t(item.label)}
               </DropdownMenuItem>
             ))}
           </Fragment>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as teamService from "@/services/team.service"
 import { useAuth } from "@/context/AuthContext"
 import { canManage } from "@/lib/permissions"
@@ -54,6 +55,7 @@ function initials(fullName: string) {
  *   their own row's role badge.
  */
 export default function Team() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
   const canEdit = canManage(user?.role)
@@ -74,18 +76,18 @@ export default function Team() {
       teamService.updateTeamMemberRole(activeBusinessId!, businessUserId, role),
     onSuccess: () => {
       invalidate()
-      toast.success("Role updated")
+      toast.success(t("Role updated"))
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not update role"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Could not update role")),
   })
 
   const removeMutation = useMutation({
     mutationFn: (businessUserId: string) => teamService.removeTeamMember(activeBusinessId!, businessUserId),
     onSuccess: () => {
       invalidate()
-      toast.success("Team member removed")
+      toast.success(t("Team member removed"))
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not remove team member"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Could not remove team member")),
   })
 
   if (!activeBusinessId) {
@@ -115,10 +117,10 @@ export default function Team() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Username")}</TableHead>
+                <TableHead>{t("Role")}</TableHead>
+                <TableHead className="text-right">{t("Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -133,7 +135,7 @@ export default function Team() {
                           <AvatarFallback className="text-xs">{initials(member.user.fullName)}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium">{member.user.fullName}</span>
-                        {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}
+                        {isSelf && <span className="text-xs text-muted-foreground">({t("you")})</span>}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{member.user.username}</TableCell>
@@ -149,8 +151,8 @@ export default function Team() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
+                            <SelectItem value="EMPLOYEE">{t("Employee")}</SelectItem>
+                            <SelectItem value="ADMIN">{t("Admin")}</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
@@ -163,7 +165,7 @@ export default function Team() {
                           <ResetPasswordDialog businessUserId={member.id} memberName={member.user.fullName} />
                           <ConfirmDialog
                             trigger={
-                              <Button variant="outline" size="icon-sm" aria-label="Remove team member">
+                              <Button variant="outline" size="icon-sm" aria-label={t("Remove team member")}>
                                 <Trash2 className="size-3.5" />
                               </Button>
                             }

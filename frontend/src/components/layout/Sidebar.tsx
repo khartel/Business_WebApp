@@ -1,4 +1,5 @@
 import { Link, NavLink } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import {
   Store,
   LayoutDashboard,
@@ -61,6 +62,7 @@ export function SidebarBrand() {
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth()
+  const { t } = useTranslation()
   // Role-based filtering: an item is shown if it has no `roles` restriction,
   // or if the current user's role is in that restriction list (e.g. the
   // "Businesses" and "Settings" links are SUPERADMIN-only).
@@ -83,7 +85,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           }
         >
           <item.icon className="size-4.5 shrink-0" />
-          {item.label}
+          {t(item.label)}
         </NavLink>
       ))}
     </nav>

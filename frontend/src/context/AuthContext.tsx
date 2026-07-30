@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as authService from "@/services/auth.service"
 import type { AuthUser } from "@/types"
+import i18n from "@/i18n"
 
 // localStorage key used to persist which business the user last had selected,
 // so the choice survives page reloads.
@@ -77,6 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  // Once the account's own language preference is known, it takes over from
+  // whatever pre-login/local choice i18next was using (see i18n.ts's
+  // localStorage-backed default) — the account preference travels with the
+  // user across devices, so it should win once available.
+  useEffect(() => {
+    if (user?.language && user.language !== i18n.language) {
+      i18n.changeLanguage(user.language)
+    }
+  }, [user?.language])
 
   // On success, only seed the query cache with the user if login didn't stop
   // at the 2FA challenge — the `requires2FA` branch leaves the user

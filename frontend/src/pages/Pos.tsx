@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, ChevronLeft, ChevronRight, Printer, Store } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as productService from "@/services/product.service"
 import * as transactionService from "@/services/transaction.service"
 import type { PaymentMethod } from "@/services/transaction.service"
@@ -58,6 +59,7 @@ import {
  * totals change as a result of the sale).
  */
 function RegisterTab({ businessId, currency }: { businessId: string; currency: string }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [cart, setCart] = useState<CartLine[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
@@ -92,7 +94,13 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
       const existing = prev.find((line) => line.productId === product.id)
       const nextQty = (existing?.quantity ?? 0) + quantity
       if (nextQty > availableStock) {
-        toast.error(`Only ${availableStock} ${product.unit} of ${product.name} in stock`)
+        toast.error(
+          t("Only {{count}} {{unit}} of {{name}} in stock", {
+            count: availableStock,
+            unit: product.unit,
+            name: product.name,
+          })
+        )
         return prev
       }
       if (existing) {
@@ -140,7 +148,7 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
       resetTicket()
     },
     onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not record sale")
+      toast.error(error instanceof ApiError ? error.message : t("Could not record sale"))
     },
   })
 
@@ -192,7 +200,12 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
                 prev.map((line) => {
                   if (line.productId !== productId) return line
                   if (line.quantity >= line.availableStock) {
-                    toast.error(`Only ${line.availableStock} ${line.unit} in stock`)
+                    toast.error(
+                      t("Only {{count}} {{unit}} in stock", {
+                        count: line.availableStock,
+                        unit: line.unit,
+                      })
+                    )
                     return line
                   }
                   return { ...line, quantity: line.quantity + 1 }
@@ -251,7 +264,9 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           onCustomerNameChange={setCustomerName}
           customerNameRequired={paymentMethod === "CREDIT"}
           customerNameError={
-            submitAttempted && customerNameMissing ? "Customer name is required for credit sales" : undefined
+            submitAttempted && customerNameMissing
+              ? t("Customer name is required for credit sales")
+              : undefined
           }
           transferNote={transferNote}
           onTransferNoteChange={setTransferNote}
@@ -266,9 +281,11 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
             <CheckCircle2 className="size-7" />
           </div>
           <DialogHeader>
-            <DialogTitle className="text-center text-lg">Sale complete</DialogTitle>
+            <DialogTitle className="text-center text-lg">{t("Sale complete")}</DialogTitle>
             <DialogDescription className="text-center">
-              {completedSale && formatMoney(completedSale.total, currency)} recorded successfully.
+              {t("{{amount}} recorded successfully.", {
+                amount: completedSale ? formatMoney(completedSale.total, currency) : "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
@@ -280,10 +297,10 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
               }}
             >
               <Printer className="size-4" />
-              Print receipt
+              {t("Print receipt")}
             </Button>
             <Button variant="outline" className="w-full" onClick={() => setCompletedSale(null)}>
-              New sale
+              {t("New sale")}
             </Button>
           </div>
         </DialogContent>
@@ -307,6 +324,7 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
  * (`page`) is local and drives both the query key and the prev/next controls.
  */
 function HistoryTab({ businessId, currency }: { businessId: string; currency: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -336,12 +354,12 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Served by</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>{t("Date")}</TableHead>
+                  <TableHead>{t("Customer")}</TableHead>
+                  <TableHead>{t("Items")}</TableHead>
+                  <TableHead>{t("Payment")}</TableHead>
+                  <TableHead>{t("Served by")}</TableHead>
+                  <TableHead className="text-right">{t("Total")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -350,7 +368,7 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
                     <TableCell className="text-muted-foreground">{formatDateTime(tx.createdAt)}</TableCell>
                     <TableCell className="font-medium">{tx.customerName}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {tx.items.length} item{tx.items.length !== 1 && "s"}
+                      {tx.items.length} {tx.items.length === 1 ? t("item") : t("items")}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{tx.paymentMethod}</Badge>
@@ -368,12 +386,16 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
           {data && data.pagination.totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Page {data.pagination.page} of {data.pagination.totalPages} · {data.pagination.total} sales
+                {t("Page {{page}} of {{totalPages}} · {{total}} sales", {
+                  page: data.pagination.page,
+                  totalPages: data.pagination.totalPages,
+                  total: data.pagination.total,
+                })}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="size-4" />
-                  Previous
+                  {t("Previous")}
                 </Button>
                 <Button
                   variant="outline"
@@ -381,7 +403,7 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
                   disabled={page >= data.pagination.totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next
+                  {t("Next")}
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -407,6 +429,7 @@ function HistoryTab({ businessId, currency }: { businessId: string; currency: st
  * `useActiveBusiness()`.
  */
 export default function Pos() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
@@ -425,8 +448,8 @@ export default function Pos() {
     <div className="space-y-6">
       <Tabs defaultValue="register">
         <TabsList>
-          <TabsTrigger value="register">Register</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="register">{t("Register")}</TabsTrigger>
+          <TabsTrigger value="history">{t("History")}</TabsTrigger>
         </TabsList>
         <TabsContent value="register">
           <RegisterTab businessId={activeBusinessId} currency={currency} />

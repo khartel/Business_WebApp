@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -36,6 +37,7 @@ export function ReceiptSettingsCard() {
   const { activeBusinessId, refetchMe } = useAuth()
   const activeBusiness = useActiveBusiness()
   const [serverError, setServerError] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   const {
     register,
@@ -68,16 +70,16 @@ export function ReceiptSettingsCard() {
     try {
       await businessService.updateBusiness(activeBusinessId, values)
       await refetchMe()
-      toast.success("Receipt appearance updated")
+      toast.success(t("Receipt appearance updated"))
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : "Could not update receipt appearance")
+      setServerError(error instanceof ApiError ? error.message : t("Could not update receipt appearance"))
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Receipt appearance</CardTitle>
+        <CardTitle className="text-base">{t("Receipt appearance")}</CardTitle>
       </CardHeader>
       <CardContent>
         {!activeBusinessId ? (
@@ -89,15 +91,17 @@ export function ReceiptSettingsCard() {
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="receipt-title">Receipt title</Label>
+              <Label htmlFor="receipt-title">{t("Receipt title")}</Label>
               <Input id="receipt-title" {...register("receiptTitle")} />
-              {errors.receiptTitle && <p className="text-xs text-destructive">{errors.receiptTitle.message}</p>}
+              {errors.receiptTitle && (
+                <p className="text-xs text-destructive">{t(errors.receiptTitle.message ?? "")}</p>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="receipt-footer">Footer note</Label>
+              <Label htmlFor="receipt-footer">{t("Footer note")}</Label>
               <Input id="receipt-footer" {...register("receiptFooterNote")} />
               {errors.receiptFooterNote && (
-                <p className="text-xs text-destructive">{errors.receiptFooterNote.message}</p>
+                <p className="text-xs text-destructive">{t(errors.receiptFooterNote.message ?? "")}</p>
               )}
             </div>
             <Controller
@@ -106,7 +110,7 @@ export function ReceiptSettingsCard() {
               render={({ field }) => (
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  Show signature line on printed receipts
+                  {t("Show signature line on printed receipts")}
                 </label>
               )}
             />
@@ -115,7 +119,7 @@ export function ReceiptSettingsCard() {
 
             <Button type="submit" disabled={isSubmitting || !isDirty}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Save changes
+              {t("Save changes")}
             </Button>
           </form>
         )}

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { User, Lock, Loader2, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ type LoginValues = z.infer<typeof loginSchema>
  * user was redirected from) or "/" by default.
  */
 export default function Login() {
+  const { t } = useTranslation()
   const { login, verifyTwoFactor } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -75,7 +77,7 @@ export default function Login() {
       }
       navigate(from, { replace: true })
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : "Login failed")
+      setServerError(error instanceof ApiError ? error.message : t("Login failed"))
     }
   }
 
@@ -90,7 +92,7 @@ export default function Login() {
       await verifyTwoFactor(tempToken, code)
       navigate(from, { replace: true })
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : "Invalid code")
+      setServerError(error instanceof ApiError ? error.message : t("Invalid code"))
     } finally {
       setVerifying(false)
     }
@@ -124,7 +126,7 @@ export default function Login() {
             disabled={verifying || code.length !== 6}
           >
             {verifying && <Loader2 className="size-4 animate-spin" />}
-            Verify
+            {t("Verify")}
           </Button>
           <button
             type="button"
@@ -135,7 +137,7 @@ export default function Login() {
             }}
             className="w-full text-center text-sm text-muted-foreground hover:underline"
           >
-            Back to sign in
+            {t("Back to sign in")}
           </button>
         </form>
       </AuthShell>
@@ -149,9 +151,9 @@ export default function Login() {
       description="Sign in to manage your business"
       footer={
         <>
-          Setting up a new business?{" "}
+          {t("Setting up a new business?")}{" "}
           <Link to="/register" className="font-medium text-primary hover:underline">
-            Create an account
+            {t("Create an account")}
           </Link>
         </>
       }
@@ -183,18 +185,18 @@ export default function Login() {
             render={({ field }) => (
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                Remember me
+                {t("Remember me")}
               </label>
             )}
           />
           <button
             type="button"
             onClick={() =>
-              toast.info("Ask your business owner or admin to reset your password from the Team page.")
+              toast.info(t("Ask your business owner or admin to reset your password from the Team page."))
             }
             className="text-sm text-primary hover:underline"
           >
-            Forgot password?
+            {t("Forgot password?")}
           </button>
         </div>
 
@@ -206,7 +208,7 @@ export default function Login() {
           disabled={isSubmitting}
         >
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          Sign in
+          {t("Sign in")}
         </Button>
       </form>
     </AuthShell>

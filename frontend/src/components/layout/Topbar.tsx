@@ -1,12 +1,14 @@
 import { useState } from "react"
 import { Bell, ChevronDown, LogOut, KeyRound, Menu } from "lucide-react"
 import { useLocation, useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { SidebarBrand, SidebarNav, NAV_ITEMS } from "@/components/layout/Sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +43,7 @@ function initials(fullName: string) {
  */
 export function Topbar() {
   const { user, logout } = useAuth()
+  const { t } = useTranslation()
   const activeBusiness = useActiveBusiness()
   const location = useLocation()
   const navigate = useNavigate()
@@ -68,7 +71,7 @@ export function Topbar() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Open navigation"
+            aria-label={t("Open navigation")}
             className="lg:hidden"
             onClick={() => setNavOpen(true)}
           >
@@ -79,7 +82,7 @@ export function Topbar() {
             showCloseButton={false}
             className="flex w-64 flex-col gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
           >
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <SheetTitle className="sr-only">{t("Navigation")}</SheetTitle>
             <SidebarBrand />
             <SidebarNav onNavigate={() => setNavOpen(false)} />
           </SheetContent>
@@ -88,17 +91,18 @@ export function Topbar() {
         {activeBusiness ? (
           <p className="min-w-0 truncate text-sm font-semibold">
             {activeBusiness.name}
-            {pageLabel && <span className="font-normal text-muted-foreground"> · {pageLabel}</span>}
+            {pageLabel && <span className="font-normal text-muted-foreground"> · {t(pageLabel)}</span>}
           </p>
         ) : (
-          <span className="text-sm text-muted-foreground">No business selected</span>
+          <span className="text-sm text-muted-foreground">{t("No business selected")}</span>
         )}
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-3">
+        <LanguageSwitcher />
         <ThemeToggle />
 
-        <Button variant="ghost" size="icon" aria-label="Notifications" className="hidden sm:inline-flex">
+        <Button variant="ghost" size="icon" aria-label={t("Notifications")} className="hidden sm:inline-flex">
           <Bell className="size-4.5" />
         </Button>
 
@@ -120,11 +124,11 @@ export function Topbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/change-password")}>
               <KeyRound className="size-4" />
-              Change password
+              {t("Change password")}
             </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={handleLogout}>
               <LogOut className="size-4" />
-              Log out
+              {t("Log out")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

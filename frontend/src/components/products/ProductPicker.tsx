@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import type { Product } from "@/services/product.service"
 import { Input } from "@/components/ui/input"
 
@@ -36,6 +37,7 @@ export function ProductPicker({
   excludeIds?: string[]
   placeholder?: string
 }) {
+  const { t } = useTranslation()
   const selected = products.find((p) => p.id === value) ?? null
   const [query, setQuery] = useState(selected?.name ?? "")
   const [focused, setFocused] = useState(false)
@@ -54,7 +56,7 @@ export function ProductPicker({
   return (
     <div className="relative">
       <Input
-        placeholder={placeholder}
+        placeholder={t(placeholder)}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)

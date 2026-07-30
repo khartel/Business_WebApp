@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Star, Trash2, Warehouse as WarehouseIcon } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import * as warehouseService from "@/services/warehouse.service"
 import { useAuth } from "@/context/AuthContext"
 import { canManage } from "@/lib/permissions"
@@ -37,6 +38,7 @@ import {
  * `WarehouseDetailSheet` for the selected warehouse.
  */
 export default function Warehouses() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
   const queryClient = useQueryClient()
   const canEdit = canManage(user?.role)
@@ -57,18 +59,18 @@ export default function Warehouses() {
     mutationFn: (warehouseId: string) => warehouseService.setPrimaryWarehouse(activeBusinessId!, warehouseId),
     onSuccess: () => {
       invalidate()
-      toast.success("Primary warehouse updated")
+      toast.success(t("Primary warehouse updated"))
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not update"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Could not update")),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (warehouseId: string) => warehouseService.deleteWarehouse(activeBusinessId!, warehouseId),
     onSuccess: () => {
       invalidate()
-      toast.success("Warehouse deleted")
+      toast.success(t("Warehouse deleted"))
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not delete warehouse"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Could not delete warehouse")),
   })
 
   if (!activeBusinessId) {
@@ -102,10 +104,10 @@ export default function Warehouses() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Products in stock</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Location")}</TableHead>
+                <TableHead>{t("Products in stock")}</TableHead>
+                <TableHead className="text-right">{t("Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,7 +123,7 @@ export default function Warehouses() {
                       {warehouse.isPrimary && (
                         <Badge variant="secondary" className="gap-1">
                           <Star className="size-3 fill-current" />
-                          Primary
+                          {t("Primary")}
                         </Badge>
                       )}
                     </div>
@@ -138,13 +140,13 @@ export default function Warehouses() {
                             onClick={() => setPrimaryMutation.mutate(warehouse.id)}
                             disabled={setPrimaryMutation.isPending}
                           >
-                            Make primary
+                            {t("Make primary")}
                           </Button>
                         )}
                         <WarehouseFormDialog warehouse={warehouse} />
                         <ConfirmDialog
                           trigger={
-                            <Button variant="outline" size="icon-sm" aria-label="Delete warehouse">
+                            <Button variant="outline" size="icon-sm" aria-label={t("Delete warehouse")}>
                               <Trash2 className="size-3.5" />
                             </Button>
                           }

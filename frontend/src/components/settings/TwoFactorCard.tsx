@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Loader2, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import * as authService from "@/services/auth.service"
@@ -35,6 +36,7 @@ export function TwoFactorCard() {
   const [showDisable, setShowDisable] = useState(false) // true while the disable-password step is shown
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   const enabled = !!user?.twoFactorEnabled
 
@@ -47,7 +49,7 @@ export function TwoFactorCard() {
       const result = await authService.setupTwoFactor()
       setSetup(result)
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not start 2FA setup")
+      toast.error(err instanceof ApiError ? err.message : t("Could not start 2FA setup"))
     } finally {
       setLoading(false)
     }
@@ -69,11 +71,11 @@ export function TwoFactorCard() {
     try {
       await authService.verifyTwoFactorSetup(code)
       await refetchMe()
-      toast.success("Two-factor authentication enabled")
+      toast.success(t("Two-factor authentication enabled"))
       setSetup(null)
       setCode("")
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Invalid code")
+      setError(err instanceof ApiError ? err.message : t("Invalid code"))
     } finally {
       setLoading(false)
     }
@@ -88,11 +90,11 @@ export function TwoFactorCard() {
     try {
       await authService.disableTwoFactor(password)
       await refetchMe()
-      toast.success("Two-factor authentication disabled")
+      toast.success(t("Two-factor authentication disabled"))
       setShowDisable(false)
       setPassword("")
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not disable 2FA")
+      setError(err instanceof ApiError ? err.message : t("Could not disable 2FA"))
     } finally {
       setLoading(false)
     }
@@ -101,30 +103,33 @@ export function TwoFactorCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Two-factor authentication</CardTitle>
+        <CardTitle className="text-base">{t("Two-factor authentication")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {setup ? (
           <form onSubmit={confirmSetup} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Scan this QR code with Google Authenticator (or any TOTP app), then enter the 6-digit code it
-              shows to confirm.
+              {t("Scan this QR code with Google Authenticator (or any TOTP app), then enter the 6-digit code it shows to confirm.")}
             </p>
             <div className="flex flex-col items-center gap-4 text-center">
-              <img src={setup.qrCodeDataUrl} alt="2FA QR code" className="size-40 rounded-lg border border-border" />
+              <img
+                src={setup.qrCodeDataUrl}
+                alt={t("2FA QR code")}
+                className="size-40 rounded-lg border border-border"
+              />
               <div className="w-full max-w-xs space-y-1.5">
-                <Label>Can't scan it? Enter this code manually</Label>
+                <Label>{t("Can't scan it? Enter this code manually")}</Label>
                 <Input value={setup.secret} readOnly className="text-center font-mono" />
               </div>
               <div className="w-full max-w-xs space-y-1.5">
-                <Label htmlFor="tfa-code">Authentication code</Label>
+                <Label htmlFor="tfa-code">{t("Authentication code")}</Label>
                 <Input
                   id="tfa-code"
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="6-digit code"
+                  placeholder={t("6-digit code")}
                   className="text-center"
                 />
               </div>
@@ -135,20 +140,20 @@ export function TwoFactorCard() {
             <div className="flex justify-center gap-2">
               <Button type="submit" disabled={loading || code.length !== 6}>
                 {loading && <Loader2 className="size-4 animate-spin" />}
-                Verify and enable
+                {t("Verify and enable")}
               </Button>
               <Button type="button" variant="outline" onClick={cancelSetup}>
-                Cancel
+                {t("Cancel")}
               </Button>
             </div>
           </form>
         ) : showDisable ? (
           <form onSubmit={confirmDisable} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Enter your current password to disable two-factor authentication.
+              {t("Enter your current password to disable two-factor authentication.")}
             </p>
             <div className="space-y-1.5">
-              <Label htmlFor="tfa-disable-password">Current password</Label>
+              <Label htmlFor="tfa-disable-password">{t("Current password")}</Label>
               <Input
                 id="tfa-disable-password"
                 type="password"
@@ -163,7 +168,7 @@ export function TwoFactorCard() {
             <div className="flex gap-2">
               <Button type="submit" variant="destructive" disabled={loading || !password}>
                 {loading && <Loader2 className="size-4 animate-spin" />}
-                Disable 2FA
+                {t("Disable 2FA")}
               </Button>
               <Button
                 type="button"
@@ -174,7 +179,7 @@ export function TwoFactorCard() {
                   setError(null)
                 }}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
             </div>
           </form>
@@ -182,21 +187,21 @@ export function TwoFactorCard() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">
-                Require a code from an authenticator app when signing in.
+                {t("Require a code from an authenticator app when signing in.")}
               </p>
               <Badge variant={enabled ? "secondary" : "outline"} className="gap-1">
                 <ShieldCheck className="size-3" />
-                {enabled ? "Enabled" : "Disabled"}
+                {enabled ? t("Enabled") : t("Disabled")}
               </Badge>
             </div>
             {enabled ? (
               <Button variant="outline" onClick={() => setShowDisable(true)}>
-                Disable
+                {t("Disable")}
               </Button>
             ) : (
               <Button onClick={startSetup} disabled={loading}>
                 {loading && <Loader2 className="size-4 animate-spin" />}
-                Enable 2FA
+                {t("Enable 2FA")}
               </Button>
             )}
           </div>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Building2, Trash2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as businessService from "@/services/business.service"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
@@ -38,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton"
  * (no businesses yet), and the populated grid of `BusinessCard`s.
  */
 export default function Businesses() {
+  const { t } = useTranslation()
   const { user, activeBusinessId, setActiveBusinessId } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -56,10 +58,10 @@ export default function Businesses() {
       queryClient.invalidateQueries({ queryKey: ["businesses"] })
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] })
       queryClient.removeQueries({ queryKey: ["business", businessId] })
-      toast.success("Business deleted")
+      toast.success(t("Business deleted"))
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not delete business"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not delete business")),
   })
 
   if (!isSuperAdmin) {
@@ -117,7 +119,7 @@ export default function Businesses() {
                   <EditBusinessDialog business={business} />
                   <ConfirmDialog
                     trigger={
-                      <Button variant="outline" size="icon-sm" aria-label="Delete business">
+                      <Button variant="outline" size="icon-sm" aria-label={t("Delete business")}>
                         <Trash2 className="size-3.5" />
                       </Button>
                     }

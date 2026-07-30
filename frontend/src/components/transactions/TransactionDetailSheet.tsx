@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Printer } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as transactionService from "@/services/transaction.service"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format"
@@ -51,6 +52,7 @@ export function TransactionDetailSheet({
   transactionId: string | null
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
 
@@ -66,9 +68,9 @@ export function TransactionDetailSheet({
     <Sheet open={!!transactionId} onOpenChange={onOpenChange}>
       <SheetContent className="data-[side=right]:sm:max-w-xl">
         <SheetHeader>
-          <SheetTitle>Sale receipt</SheetTitle>
+          <SheetTitle>{t("Sale receipt")}</SheetTitle>
           <SheetDescription>
-            {transaction ? formatDateTime(transaction.createdAt) : "Loading..."}
+            {transaction ? formatDateTime(transaction.createdAt) : t("Loading...")}
           </SheetDescription>
         </SheetHeader>
 
@@ -92,19 +94,19 @@ export function TransactionDetailSheet({
 
                 <div className="mt-6 flex items-start justify-between gap-4 text-sm">
                   <div>
-                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Billed To</p>
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t("Billed To")}</p>
                     <p className="font-medium">{transaction.customerName}</p>
                   </div>
                   <div className="text-right">
                     <p>
                       <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                        Receipt #{" "}
+                        {t("Receipt #")}{" "}
                       </span>
                       <span className="font-medium">{transaction.id.slice(0, 8).toUpperCase()}</span>
                     </p>
                     <p>
                       <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                        Receipt date{" "}
+                        {t("Receipt date")}{" "}
                       </span>
                       <span className="font-medium">{formatDate(transaction.createdAt)}</span>
                     </p>
@@ -115,10 +117,10 @@ export function TransactionDetailSheet({
                   <Table>
                     <TableHeader>
                       <TableRow className="border-none hover:bg-transparent">
-                        <TableHead className="bg-slate-800 text-white">Qty</TableHead>
-                        <TableHead className="bg-slate-800 text-white">Description</TableHead>
-                        <TableHead className="bg-slate-800 text-right text-white">Unit price</TableHead>
-                        <TableHead className="bg-slate-800 text-right text-white">Amount</TableHead>
+                        <TableHead className="bg-slate-800 text-white">{t("Qty")}</TableHead>
+                        <TableHead className="bg-slate-800 text-white">{t("Description")}</TableHead>
+                        <TableHead className="bg-slate-800 text-right text-white">{t("Unit price")}</TableHead>
+                        <TableHead className="bg-slate-800 text-right text-white">{t("Amount")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -146,12 +148,12 @@ export function TransactionDetailSheet({
                 <div className="mt-4 flex justify-end">
                   <div className="w-full max-w-56 space-y-1.5 text-sm">
                     <div className="flex items-center justify-between border-t border-slate-200 pt-2 font-bold">
-                      <span>Total ({currency})</span>
+                      <span>{t("Total ({{currency}})", { currency })}</span>
                       <span>{formatMoney(transaction.totalAmount, currency)}</span>
                     </div>
                     {transaction.paymentMethod === "CREDIT" && (
                       <div className="flex items-center justify-between text-slate-600">
-                        <span>{transaction.balanceDue > 0 ? "Balance due" : "Fully paid"}</span>
+                        <span>{transaction.balanceDue > 0 ? t("Balance due") : t("Fully paid")}</span>
                         {transaction.balanceDue > 0 && (
                           <span className="font-medium">{formatMoney(transaction.balanceDue, currency)}</span>
                         )}
@@ -161,17 +163,17 @@ export function TransactionDetailSheet({
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                  <span>Payment method:</span>
+                  <span>{t("Payment method:")}</span>
                   <Badge variant="secondary" className="border-slate-200 bg-slate-100 text-slate-700">
                     {transaction.paymentMethod}
                   </Badge>
-                  <span className="ml-auto">Served by {transaction.performedBy.fullName}</span>
+                  <span className="ml-auto">{t("Served by {{name}}", { name: transaction.performedBy.fullName })}</span>
                 </div>
 
                 {transaction.paymentMethod === "CREDIT" && transaction.payments.length > 0 && (
                   <div className="mt-4">
                     <p className="mb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                      Payments recorded
+                      {t("Payments recorded")}
                     </p>
                     <ul className="space-y-1 text-sm">
                       {transaction.payments.map((payment) => (
@@ -190,7 +192,7 @@ export function TransactionDetailSheet({
 
                 {transaction.notes && (
                   <div className="mt-4">
-                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Notes</p>
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t("Notes")}</p>
                     <p className="text-sm">{transaction.notes}</p>
                   </div>
                 )}
@@ -199,11 +201,11 @@ export function TransactionDetailSheet({
                   <div className="mt-10 grid grid-cols-2 gap-8 text-sm">
                     <div>
                       <div className="h-8 border-b border-slate-400" />
-                      <p className="mt-1.5 text-xs text-slate-500">Customer signature</p>
+                      <p className="mt-1.5 text-xs text-slate-500">{t("Customer signature")}</p>
                     </div>
                     <div>
                       <div className="h-8 border-b border-slate-400" />
-                      <p className="mt-1.5 text-xs text-slate-500">Received by</p>
+                      <p className="mt-1.5 text-xs text-slate-500">{t("Received by")}</p>
                     </div>
                   </div>
                 )}
@@ -219,7 +221,7 @@ export function TransactionDetailSheet({
                 onClick={() => window.print()}
               >
                 <Printer className="size-4" />
-                Print receipt
+                {t("Print receipt")}
               </Button>
             </div>
           )}

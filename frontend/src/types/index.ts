@@ -38,6 +38,8 @@ export interface AuthUser {
   role: Role
   mustChangePassword?: boolean
   twoFactorEnabled?: boolean
+  /** The user's own UI-language preference (e.g. "en"/"fr"). */
+  language?: string
   createdAt: string
   updatedAt?: string
   businesses: BusinessSummary[]

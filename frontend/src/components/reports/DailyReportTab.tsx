@@ -14,6 +14,7 @@ import { DownloadMenu } from "@/components/reports/DownloadMenu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarDays } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 // Today's date as YYYY-MM-DD, used as the default value for the date picker.
 function todayIso() {
@@ -63,6 +64,7 @@ function fullReportCsvRows(report: DailyReport, currency: string) {
  * exports, each as CSV or PDF.
  */
 export function DailyReportTab() {
+  const { t } = useTranslation()
   const { activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
@@ -197,7 +199,7 @@ export function DailyReportTab() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">By employee</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("By employee")}</h3>
           <ul className="space-y-2 text-sm">
             {report.byEmployee.map((row) => (
               <li key={row.employee.id} className="flex justify-between">
@@ -208,7 +210,7 @@ export function DailyReportTab() {
           </ul>
         </div>
         <div className="rounded-xl border border-border p-4">
-          <h3 className="mb-3 text-sm font-semibold">By product</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("By product")}</h3>
           <ul className="space-y-2 text-sm">
             {report.byProduct.map((row) => (
               <li key={row.product.id} className="flex justify-between">

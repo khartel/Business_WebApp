@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeftRight, PackagePlus, X } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import * as stockService from "@/services/stock.service"
 import type { StockMovement } from "@/services/stock.service"
 import * as warehouseService from "@/services/warehouse.service"
@@ -55,15 +56,16 @@ function formatTime(date: string) {
 // Small colored badge distinguishing a RESTOCK (incoming stock) from a
 // TRANSFER (moved between warehouses) movement.
 function MovementTypeBadge({ type }: { type: StockMovement["type"] }) {
+  const { t } = useTranslation()
   return type === "RESTOCK" ? (
     <Badge className="gap-1 bg-success/15 text-success">
       <PackagePlus className="size-3" />
-      Restock
+      {t("Restock")}
     </Badge>
   ) : (
     <Badge variant="secondary" className="gap-1">
       <ArrowLeftRight className="size-3" />
-      Transfer
+      {t("Transfer")}
     </Badge>
   )
 }
@@ -94,6 +96,7 @@ interface DayGroup {
  * `lib/pdf.ts`).
  */
 export default function StockMovements() {
+  const { t } = useTranslation()
   const { user, activeBusinessId } = useAuth()
   const activeBusiness = useActiveBusiness()
   const canEdit = canManage(user?.role)
@@ -218,22 +221,22 @@ export default function StockMovements() {
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
           className="w-auto"
-          aria-label="From date"
+          aria-label={t("From date")}
         />
-        <span className="text-xs text-muted-foreground">to</span>
+        <span className="text-xs text-muted-foreground">{t("to")}</span>
         <Input
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
           className="w-auto"
-          aria-label="To date"
+          aria-label={t("To date")}
         />
         <Select value={fromWarehouseId} onValueChange={setFromWarehouseId}>
-          <SelectTrigger className="w-40" aria-label="From warehouse">
-            <SelectValue placeholder="From warehouse" />
+          <SelectTrigger className="w-40" aria-label={t("From warehouse")}>
+            <SelectValue placeholder={t("From warehouse")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any source</SelectItem>
+            <SelectItem value={ANY}>{t("Any source")}</SelectItem>
             {warehouses.map((w) => (
               <SelectItem key={w.id} value={w.id}>
                 {w.name}
@@ -242,11 +245,11 @@ export default function StockMovements() {
           </SelectContent>
         </Select>
         <Select value={toWarehouseId} onValueChange={setToWarehouseId}>
-          <SelectTrigger className="w-40" aria-label="To warehouse">
-            <SelectValue placeholder="To warehouse" />
+          <SelectTrigger className="w-40" aria-label={t("To warehouse")}>
+            <SelectValue placeholder={t("To warehouse")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any destination</SelectItem>
+            <SelectItem value={ANY}>{t("Any destination")}</SelectItem>
             {warehouses.map((w) => (
               <SelectItem key={w.id} value={w.id}>
                 {w.name}
@@ -255,25 +258,25 @@ export default function StockMovements() {
           </SelectContent>
         </Select>
         <Select value={type} onValueChange={setType}>
-          <SelectTrigger className="w-36" aria-label="Movement type">
-            <SelectValue placeholder="Type" />
+          <SelectTrigger className="w-36" aria-label={t("Movement type")}>
+            <SelectValue placeholder={t("Type")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any type</SelectItem>
-            <SelectItem value="RESTOCK">Restock</SelectItem>
-            <SelectItem value="TRANSFER">Transfer</SelectItem>
+            <SelectItem value={ANY}>{t("Any type")}</SelectItem>
+            <SelectItem value="RESTOCK">{t("Restock")}</SelectItem>
+            <SelectItem value="TRANSFER">{t("Transfer")}</SelectItem>
           </SelectContent>
         </Select>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             <X className="size-3.5" />
-            Clear filters
+            {t("Clear filters")}
           </Button>
         )}
         <DownloadMenu
           className="ml-auto"
           disabled={movements.length === 0}
-          groups={[{ items: [{ label: "CSV", onClick: downloadAsCsv }, { label: "PDF", onClick: downloadAsPdf }] }]}
+          groups={[{ items: [{ label: t("CSV"), onClick: downloadAsCsv }, { label: t("PDF"), onClick: downloadAsPdf }] }]}
         />
       </div>
 
@@ -296,8 +299,8 @@ export default function StockMovements() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Movements</TableHead>
+                <TableHead>{t("Date")}</TableHead>
+                <TableHead className="text-right">{t("Movements")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -305,7 +308,7 @@ export default function StockMovements() {
                 <TableRow key={group.key} className="cursor-pointer" onClick={() => setSelectedDay(group)}>
                   <TableCell className="font-medium">{group.label}</TableCell>
                   <TableCell className="text-right text-muted-foreground">
-                    {group.movements.length} movement{group.movements.length !== 1 && "s"}
+                    {group.movements.length} {group.movements.length === 1 ? t("movement") : t("movements")}
                   </TableCell>
                 </TableRow>
               ))}
@@ -319,7 +322,9 @@ export default function StockMovements() {
           <SheetHeader>
             <SheetTitle>{selectedDay?.label}</SheetTitle>
             <SheetDescription>
-              {selectedDay?.movements.length} movement{selectedDay?.movements.length !== 1 && "s"} that day
+              {selectedDay?.movements.length}{" "}
+              {(selectedDay?.movements.length ?? 0) === 1 ? t("movement") : t("movements")}{" "}
+              {t("that day")}
             </SheetDescription>
           </SheetHeader>
 
@@ -327,12 +332,12 @@ export default function StockMovements() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>By</TableHead>
+                  <TableHead>{t("Time")}</TableHead>
+                  <TableHead>{t("Type")}</TableHead>
+                  <TableHead>{t("Product")}</TableHead>
+                  <TableHead>{t("Route")}</TableHead>
+                  <TableHead>{t("Quantity")}</TableHead>
+                  <TableHead>{t("By")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -344,7 +349,7 @@ export default function StockMovements() {
                     </TableCell>
                     <TableCell className="font-medium">{movement.product.name}</TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {movement.fromWarehouse?.name ?? "External"} → {movement.toWarehouse.name}
+                      {movement.fromWarehouse?.name ?? t("External")} → {movement.toWarehouse.name}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {movement.quantity} {movement.product.unit}

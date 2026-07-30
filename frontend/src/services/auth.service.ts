@@ -31,6 +31,8 @@ export interface UpdateProfileInput {
   fullName?: string
   phone?: string
   email?: string
+  /** UI-language preference (e.g. "en"/"fr"); saved instantly by the language switcher. */
+  language?: string
 }
 
 /**
