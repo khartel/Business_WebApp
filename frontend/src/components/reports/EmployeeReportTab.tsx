@@ -3,15 +3,17 @@ import { useQuery } from "@tanstack/react-query"
 import * as reportService from "@/services/report.service"
 import { useAuth } from "@/context/AuthContext"
 import { useActiveBusiness } from "@/hooks/useActiveBusiness"
-import { formatMoney } from "@/lib/format"
+import { formatDateTime, formatMoney } from "@/lib/format"
 import { downloadCsv } from "@/lib/csv"
 import { downloadPdfReport } from "@/lib/pdf"
 import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 import { DownloadMenu } from "@/components/reports/DownloadMenu"
+import { TransactionDetailSheet } from "@/components/transactions/TransactionDetailSheet"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users } from "lucide-react"
+import { Receipt, Users } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 // Today's date as YYYY-MM-DD, the default end of the date range.
@@ -28,7 +30,9 @@ function firstOfMonthIso() {
 /**
  * Reports tab showing per-employee sales performance over a custom date range
  * (defaults to month-to-date): total sales, transaction count, cash/transfer split,
- * and each employee's top-selling products. Includes a CSV/PDF download menu.
+ * and each employee's top-selling products. A "View transactions" toggle per card
+ * expands that employee's actual sales for the period, each opening the real receipt
+ * via `TransactionDetailSheet`. Includes a CSV/PDF download menu.
  */
 export function EmployeeReportTab() {
   const { t } = useTranslation()
@@ -37,6 +41,8 @@ export function EmployeeReportTab() {
   const currency = activeBusiness?.currency ?? "USD"
   const [startDate, setStartDate] = useState(firstOfMonthIso)
   const [endDate, setEndDate] = useState(todayIso)
+  const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null)
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: ["report-employees", activeBusinessId, startDate, endDate],
@@ -133,45 +139,86 @@ export function EmployeeReportTab() {
     <div className="space-y-4">
       {dateControls}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {report.employees.map(({ employee, businessRole, summary, topProducts }) => (
-          <div key={employee.id} className="rounded-xl border border-border p-4">
-            <div className="mb-3 flex items-start justify-between">
-              <div>
-                <h3 className="font-heading text-sm font-semibold">{employee.fullName}</h3>
-                <p className="text-xs text-muted-foreground">{businessRole}</p>
+        {report.employees.map(({ employee, businessRole, summary, topProducts, transactions }) => {
+          const isExpanded = expandedEmployeeId === employee.id
+          return (
+            <div key={employee.id} className="rounded-xl border border-border p-4">
+              <div className="mb-3 flex items-start justify-between">
+                <div>
+                  <h3 className="font-heading text-sm font-semibold">{employee.fullName}</h3>
+                  <p className="text-xs text-muted-foreground">{businessRole}</p>
+                </div>
+                <p className="text-right font-medium">{formatMoney(summary.totalAmount, currency)}</p>
               </div>
-              <p className="text-right font-medium">{formatMoney(summary.totalAmount, currency)}</p>
-            </div>
-            <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
-              <div>
-                <p className="font-semibold">{summary.transactionCount}</p>
-                <p className="text-muted-foreground">{t("Sales")}</p>
+              <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <div>
+                  <p className="font-semibold">{summary.transactionCount}</p>
+                  <p className="text-muted-foreground">{t("Sales")}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">{formatMoney(summary.cashTotal, currency)}</p>
+                  <p className="text-muted-foreground">{t("Cash")}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">{formatMoney(summary.transferTotal, currency)}</p>
+                  <p className="text-muted-foreground">{t("Transfer")}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold">{formatMoney(summary.cashTotal, currency)}</p>
-                <p className="text-muted-foreground">{t("Cash")}</p>
-              </div>
-              <div>
-                <p className="font-semibold">{formatMoney(summary.transferTotal, currency)}</p>
-                <p className="text-muted-foreground">{t("Transfer")}</p>
-              </div>
-            </div>
-            {topProducts.length > 0 && (
-              <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">{t("Top products")}</p>
-                <ul className="space-y-1 text-sm">
-                  {topProducts.map((row) => (
-                    <li key={row.product.id} className="flex justify-between">
-                      <span>{row.product.name}</span>
-                      <span className="text-muted-foreground">× {row.totalQuantity}</span>
+              {topProducts.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">{t("Top products")}</p>
+                  <ul className="space-y-1 text-sm">
+                    {topProducts.map((row) => (
+                      <li key={row.product.id} className="flex justify-between">
+                        <span>{row.product.name}</span>
+                        <span className="text-muted-foreground">× {row.totalQuantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {transactions.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start px-0 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setExpandedEmployeeId(isExpanded ? null : employee.id)}
+                >
+                  <Receipt className="size-3.5" />
+                  {isExpanded ? t("Hide transactions") : t("View transactions")}
+                </Button>
+              )}
+
+              {isExpanded && (
+                <ul className="mt-2 space-y-1 border-t border-border pt-2 text-sm">
+                  {transactions.map((tx) => (
+                    <li key={tx.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTransactionId(tx.id)}
+                        className="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-left hover:bg-muted"
+                      >
+                        <span className="text-muted-foreground">{formatDateTime(tx.createdAt)}</span>
+                        <span className="font-medium">{formatMoney(tx.totalAmount, currency)}</span>
+                      </button>
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          )
+        })}
       </div>
+
+      {activeBusinessId && (
+        <TransactionDetailSheet
+          businessId={activeBusinessId}
+          transactionId={selectedTransactionId}
+          onOpenChange={(open) => !open && setSelectedTransactionId(null)}
+        />
+      )}
     </div>
   )
 }

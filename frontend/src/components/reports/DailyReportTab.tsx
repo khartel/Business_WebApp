@@ -11,14 +11,31 @@ import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
 import { SummaryStat } from "@/components/reports/SummaryStat"
 import { DownloadMenu } from "@/components/reports/DownloadMenu"
+import { TransactionDetailSheet } from "@/components/transactions/TransactionDetailSheet"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { CalendarDays } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 // Today's date as YYYY-MM-DD, used as the default value for the date picker.
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
+}
+
+// Time-only (e.g. "2:45 PM"), for the transaction list rows below — the
+// date itself is already the tab's own context, so repeating it per row
+// would be redundant.
+function formatTime(date: string) {
+  return new Date(date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
 // Builds CSV rows for the "Items sold" export: just the per-product quantity/revenue
@@ -59,9 +76,11 @@ function fullReportCsvRows(report: DailyReport, currency: string) {
 
 /**
  * Reports tab showing sales for a single selected day: total sales, transaction count,
- * cash vs transfer totals, and breakdowns by employee and by product. Includes a date
- * picker (defaults to today) and a Download menu offering "Items sold" and "Full report"
- * exports, each as CSV or PDF.
+ * cash vs transfer totals, breakdowns by employee and by product, and the actual list
+ * of that day's transactions (each opening the real receipt via
+ * `TransactionDetailSheet` — the same drill-down component Register's History tab and
+ * the Customers page already use). Includes a date picker (defaults to today) and a
+ * Download menu offering "Items sold" and "Full report" exports, each as CSV or PDF.
  */
 export function DailyReportTab() {
   const { t } = useTranslation()
@@ -69,6 +88,7 @@ export function DailyReportTab() {
   const activeBusiness = useActiveBusiness()
   const currency = activeBusiness?.currency ?? "USD"
   const [date, setDate] = useState(todayIso)
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: ["report-daily", activeBusinessId, date],
@@ -223,6 +243,43 @@ export function DailyReportTab() {
           </ul>
         </div>
       </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("Time")}</TableHead>
+              <TableHead>{t("Served by")}</TableHead>
+              <TableHead>{t("Payment")}</TableHead>
+              <TableHead className="text-right">{t("Total")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {report.transactions.map((tx) => (
+              <TableRow
+                key={tx.id}
+                className="cursor-pointer"
+                onClick={() => setSelectedTransactionId(tx.id)}
+              >
+                <TableCell className="text-muted-foreground">{formatTime(tx.createdAt)}</TableCell>
+                <TableCell>{tx.performedBy.fullName}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{tx.paymentMethod}</Badge>
+                </TableCell>
+                <TableCell className="text-right font-medium">{formatMoney(tx.totalAmount, currency)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {activeBusinessId && (
+        <TransactionDetailSheet
+          businessId={activeBusinessId}
+          transactionId={selectedTransactionId}
+          onOpenChange={(open) => !open && setSelectedTransactionId(null)}
+        />
+      )}
     </div>
   )
 }

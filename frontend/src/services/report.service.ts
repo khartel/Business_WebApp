@@ -45,10 +45,26 @@ export interface EmployeeBreakdown {
   transactionCount: number
 }
 
+// A transaction as embedded in a report's raw transaction list — just
+// enough to render a compact drill-down row. Opening one for the full
+// receipt (payments, line items, etc.) goes through
+// `TransactionDetailSheet`, which re-fetches the complete record by id
+// via `transaction.service.ts`'s `getTransactionById` — this lighter
+// shape is deliberately not the full `Transaction` type from there.
+export interface ReportTransaction {
+  id: string
+  createdAt: string
+  totalAmount: number
+  paymentMethod: "CASH" | "TRANSFER" | "CREDIT"
+  customerName: string
+  performedBy: { id: string; fullName: string; username: string }
+}
+
 // Full report for a single calendar day.
 export interface DailyReport {
   date: string
   summary: PeriodSummary & { cashTransactions: number; transferTransactions: number }
+  transactions: ReportTransaction[]
   byEmployee: Array<EmployeeBreakdown & { cashAmount: number; transferAmount: number }>
   byProduct: ProductBreakdown[]
 }
@@ -94,6 +110,7 @@ export interface EmployeeReport {
     businessRole: string
     summary: { totalAmount: number; transactionCount: number; cashTotal: number; transferTotal: number }
     topProducts: ProductBreakdown[]
+    transactions: ReportTransaction[]
   }>
 }
 

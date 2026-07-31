@@ -30,5 +30,9 @@
   "Share these sign-in details with {{name}} now — this password won't be shown again. They'll be asked to set a new one on their next login.": "Partagez ces identifiants de connexion avec {{name}} maintenant — ce mot de passe ne sera plus jamais affiché. Il/elle devra en définir un nouveau à sa prochaine connexion.",
   "Update {{name}}'s details.": "Mettre à jour les informations de {{name}}.",
   "you": "vous",
-  "\"{{name}}\" created": "« {{name}} » créé(e)"
+  "\"{{name}}\" created": "« {{name}} » créé(e)",
+  "Search team members...": "Rechercher des membres de l'équipe...",
+  "Team member": "Membre de l'équipe",
+  "No email on file": "Aucun e-mail enregistré",
+  "Member since {{date}}": "Membre depuis le {{date}}"
 }

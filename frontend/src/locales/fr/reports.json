@@ -24,5 +24,7 @@
   "{{count}} {{unit}} available": "{{count}} {{unit}} disponible(s)",
   "{{count}} {{unit}} left": "{{count}} {{unit}} restant(s)",
   "to": "à",
-  "Sales": "Ventes"
+  "Sales": "Ventes",
+  "View transactions": "Voir les transactions",
+  "Hide transactions": "Masquer les transactions"
 }

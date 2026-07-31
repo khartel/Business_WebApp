@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Check, Copy, KeyRound, Loader2, ShieldAlert, Trash2 } from "lucide-react"
+import { Check, Copy, KeyRound, Loader2, Search, ShieldAlert, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import * as platformService from "@/services/platform.service"
 import { ApiError } from "@/lib/api-client"
@@ -135,6 +135,7 @@ function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId:
 function AdminConsole({ masterKey }: { masterKey: string }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const [search, setSearch] = useState("")
 
   const query = useQuery({
     queryKey: ["platform-superadmins"],
@@ -151,6 +152,15 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
   })
 
   const superAdmins = query.data ?? []
+  // Client-side filter over the fetched SuperAdmin list, matching on name
+  // or username (case-insensitive).
+  const filteredSuperAdmins = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return superAdmins
+    return superAdmins.filter(
+      (a) => a.fullName.toLowerCase().includes(q) || a.username.toLowerCase().includes(q)
+    )
+  }, [superAdmins, search])
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -170,7 +180,21 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
         <EmptyState icon={<ShieldAlert className="size-6" />} title="No SuperAdmins" description="No SuperAdmin accounts exist yet." />
       ) : (
         <div className="space-y-4">
-          {superAdmins.map((admin) => (
+          <div className="relative max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={t("Search SuperAdmins...")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {filteredSuperAdmins.length === 0 && (
+            <EmptyState icon={<ShieldAlert className="size-6" />} title="No matches" description="Try a different search term." />
+          )}
+
+          {filteredSuperAdmins.map((admin) => (
             <Card key={admin.id}>
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-2">
