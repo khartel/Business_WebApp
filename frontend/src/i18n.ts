@@ -59,6 +59,25 @@ export function storeLanguage(code: string) {
   localStorage.setItem(STORAGE_KEY, code)
 }
 
+const PENDING_SYNC_KEY = "d-inventory:language-pending-sync"
+
+/**
+ * Flags that the current language was chosen explicitly while logged out
+ * (e.g. on the Login/Register screen). Consumed once on the next successful
+ * login so that explicit choice gets pushed to the account instead of being
+ * silently overridden by whatever language the account already had saved.
+ */
+export function markLanguagePendingSync() {
+  localStorage.setItem(PENDING_SYNC_KEY, "1")
+}
+
+/** Reads and clears the pending-sync flag; returns whether it was set. */
+export function consumePendingLanguageSync(): boolean {
+  const pending = localStorage.getItem(PENDING_SYNC_KEY) === "1"
+  localStorage.removeItem(PENDING_SYNC_KEY)
+  return pending
+}
+
 i18n.use(initReactI18next).init({
   lng: getStoredLanguage(),
   fallbackLng: "en",

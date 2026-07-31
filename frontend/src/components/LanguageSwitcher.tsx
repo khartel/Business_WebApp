@@ -1,7 +1,7 @@
 import { Languages } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
-import { storeLanguage } from "@/i18n"
+import { markLanguagePendingSync, storeLanguage } from "@/i18n"
 import * as authService from "@/services/auth.service"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,6 +52,12 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         // failed save just means the next visit may revert to the old
         // preference, not that anything is broken right now.
       }
+    } else {
+      // No account yet to save to (Login/Register screen) — flag this as an
+      // explicit choice so AuthContext pushes it to the account right after
+      // the next successful login, instead of the account's existing saved
+      // language silently overriding it.
+      markLanguagePendingSync()
     }
   }
 

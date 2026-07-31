@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as authService from "@/services/auth.service"
 import type { AuthUser } from "@/types"
-import i18n from "@/i18n"
+import i18n, { consumePendingLanguageSync } from "@/i18n"
 
 // localStorage key used to persist which business the user last had selected,
 // so the choice survives page reloads.
@@ -83,10 +83,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // whatever pre-login/local choice i18next was using (see i18n.ts's
   // localStorage-backed default) — the account preference travels with the
   // user across devices, so it should win once available.
+  //
+  // Exception: if the language was changed explicitly on the Login/Register
+  // screen right before this login (flagged via `markLanguagePendingSync`),
+  // that choice wins instead — it gets pushed to the account rather than
+  // being silently discarded in favor of whatever the account had saved.
   useEffect(() => {
-    if (user?.language && user.language !== i18n.language) {
+    if (!user?.language) return
+
+    if (consumePendingLanguageSync()) {
+      if (user.language !== i18n.language) {
+        const chosenLanguage = i18n.language
+        authService
+          .updateProfile({ language: chosenLanguage })
+          .then(() => {
+            queryClient.setQueryData(["auth", "me"], (current: AuthUser | null | undefined) =>
+              current ? { ...current, language: chosenLanguage } : current
+            )
+          })
+          .catch(() => {
+            // Non-critical: the UI already reflects the chosen language;
+            // a failed save just means it may not follow to another device.
+          })
+      }
+      return
+    }
+
+    if (user.language !== i18n.language) {
       i18n.changeLanguage(user.language)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.language])
 
   // On success, only seed the query cache with the user if login didn't stop
