@@ -5,10 +5,10 @@
  *  1. Request logging (every request is logged to the console).
  *  2. Security headers (helmet) and CORS (must run before rate limiting so
  *     rate-limited/blocked responses still carry CORS headers).
- *  3. Rate limiting (a general API limiter plus a stricter one for login).
+ *  3. Rate limiting (a general API limiter plus stricter ones for login and forgot-password).
  *  4. Body/cookie parsing.
  *  5. Route mounting (auth, business, warehouse, team, product, customer,
- *     stock, transaction, report, and platform/superadmin routers).
+ *     stock, transaction, report, audit-log, and platform/superadmin routers).
  *  6. Health check endpoint.
  *  7. 404 fallback handler.
  *  8. Global error handler (must be registered last).
@@ -21,6 +21,8 @@ const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+const pinoHttp = require("pino-http");
+const logger = require("./utils/logger");
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
@@ -32,6 +34,7 @@ const customerRoutes = require("./routes/customer.routes");
 const stockRoutes = require("./routes/stock.routes");
 const transactionRoutes = require("./routes/transaction.routes");
 const reportRoutes = require("./routes/report.routes");
+const auditLogRoutes = require("./routes/audit-log.routes");
 const platformRoutes = require("./routes/superadmin.routes");
 
 const app = express();
@@ -39,10 +42,10 @@ const app = express();
 // ─────────────────────────────────────────
 // REQUEST LOGGER
 // ─────────────────────────────────────────
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
+// Structured method/url/status/responseTime/request-id logs for every
+// request, at "info" level (quieter "debug"-level details - headers etc -
+// are available via LOG_LEVEL=debug since pino-http logs those too).
+app.use(pinoHttp({ logger }));
 
 // ─────────────────────────────────────────
 // SECURITY MIDDLEWARE
@@ -94,6 +97,15 @@ const loginLimiter = rateLimit({
 });
 app.use("/api/auth/login", loginLimiter);
 
+// Stricter limiter for forgot-password, to protect against inbox-spamming
+// abuse and to stay well under Brevo's own sending quota.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many password reset requests. Please try again later.",
+});
+app.use("/api/auth/forgot-password", forgotPasswordLimiter);
+
 // ─────────────────────────────────────────
 // GENERAL MIDDLEWARE
 // ─────────────────────────────────────────
@@ -113,6 +125,7 @@ app.use("/api/businesses/:businessId/customers", customerRoutes);
 app.use("/api/businesses/:businessId/stock", stockRoutes);
 app.use("/api/businesses/:businessId/transactions", transactionRoutes);
 app.use("/api/businesses/:businessId/reports", reportRoutes);
+app.use("/api/businesses/:businessId/audit-log", auditLogRoutes);
 app.use("/api/platform", platformRoutes);
 
 // ─────────────────────────────────────────
@@ -142,9 +155,12 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   const statusCode = err.isOperational ? err.statusCode : 500;
   const message = err.isOperational ? err.message : "Internal server error";
+  const context = { err, reqId: req.id, method: req.method, path: req.path, userId: req.user?.id };
 
   if (!err.isOperational) {
-    console.error(err.stack);
+    logger.error(context, err.message);
+  } else {
+    logger.debug(context, err.message);
   }
 
   res.status(statusCode).json({

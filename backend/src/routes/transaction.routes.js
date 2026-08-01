@@ -6,6 +6,7 @@ const {
   getSummary,
   getOne,
   recordPayment,
+  undoPayment,
 } = require("../controllers/transaction.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
@@ -15,6 +16,7 @@ const {
   createTransactionSchema,
   listTransactionsQuerySchema,
   recordPaymentSchema,
+  undoPaymentSchema,
 } = require("../validators/transaction.validators");
 
 // Mounted under /api/businesses/:businessId/transactions. Every route
@@ -57,6 +59,15 @@ router.post(
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
   validate(recordPaymentSchema),
   recordPayment
+);
+
+// Undoing a payment is a correction, not routine operation - same roles as
+// deleting a product/customer/warehouse.
+router.delete(
+  "/:transactionId/payments/:paymentId",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(undoPaymentSchema),
+  undoPayment
 );
 
 module.exports = router;

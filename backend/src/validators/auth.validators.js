@@ -14,13 +14,18 @@ const emailOrEmpty = z
   .optional()
   .or(z.literal(""));
 
-/** Validates POST /auth/register - creates a new user account. */
+/**
+ * Validates POST /auth/register - creates a new SuperAdmin account. Email is
+ * required (unlike `updateProfileSchema`/team members) since it's this
+ * account's only self-service password-recovery path - there's nobody above
+ * a SuperAdmin in the business to reset it for them.
+ */
 const registerSchema = {
   body: z.object({
     fullName: z.string().trim().min(1, "Full name is required"),
     username: z.string().trim().min(3, "Username must be at least 3 characters"),
     phone: z.string().trim().min(7, "Phone number is required"),
-    email: emailOrEmpty,
+    email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters"),
   }),
 };
@@ -76,6 +81,21 @@ const disable2FASchema = {
   }),
 };
 
+/** Validates POST /auth/forgot-password - just an email to send the reset link to. */
+const forgotPasswordSchema = {
+  body: z.object({
+    email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
+  }),
+};
+
+/** Validates POST /auth/reset-password - the emailed token plus the new password. */
+const resetPasswordSchema = {
+  body: z.object({
+    token: z.string().min(1, "Reset token is required"),
+    newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  }),
+};
+
 module.exports = {
   registerSchema,
   loginSchema,
@@ -84,4 +104,6 @@ module.exports = {
   verifyLogin2FASchema,
   verify2FASetupSchema,
   disable2FASchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 };

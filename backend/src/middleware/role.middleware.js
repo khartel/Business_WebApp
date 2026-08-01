@@ -1,16 +1,28 @@
 /**
- * Role/business-membership middleware: gates routes by req.user.role, and
- * verifies the authenticated user actually has access to the business
- * referenced in the request before letting it through.
+ * Role/business-membership middleware: gates routes by the caller's role -
+ * their per-business role (req.businessRole) when the request is scoped to
+ * a business `belongsToBusiness` already resolved, falling back to their
+ * account-wide role (req.user.role) otherwise - and verifies the
+ * authenticated user actually has access to the business referenced in the
+ * request before letting it through.
  */
 const { sendError } = require("../utils/response.utils");
 const prisma = require("../utils/prisma");
 
 /**
  * Allow only specific roles. Must run after `authenticate` (relies on
- * req.user being set). Returns a middleware that responds 401 if there's
- * no authenticated user, 403 if req.user.role isn't in the allowed list,
- * otherwise calls next().
+ * req.user being set) and, for business-scoped routes, after
+ * `belongsToBusiness` (relies on req.businessRole when set). Returns a
+ * middleware that responds 401 if there's no authenticated user, 403 if
+ * the caller's effective role isn't in the allowed list, otherwise calls
+ * next().
+ *
+ * The effective role is req.businessRole if `belongsToBusiness` set one -
+ * i.e. the caller's role for the specific business in this request, which
+ * can differ from their account-wide role once they belong to more than
+ * one business - falling back to req.user.role for routes that aren't
+ * business-scoped (e.g. managing businesses themselves).
+ *
  * Usage: authorize("SUPERADMIN", "ADMIN")
  */
 const authorize = (...roles) => {
@@ -22,7 +34,9 @@ const authorize = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    const effectiveRole = req.businessRole ?? req.user.role;
+
+    if (!roles.includes(effectiveRole)) {
       return sendError(res, {
         message: "Access denied. You do not have permission to do this.",
         statusCode: 403,
@@ -38,7 +52,8 @@ const authorize = (...roles) => {
  * referenced by req.params.businessId (or req.body.businessId). A
  * SUPERADMIN must own the business; ADMIN/EMPLOYEE users must have a
  * BusinessUser link to it. On success, attaches the business record as
- * req.business and calls next(); otherwise responds 400/403/500.
+ * req.business, the caller's role for *this* business as req.businessRole,
+ * and calls next(); otherwise responds 400/403/500.
  */
 const belongsToBusiness = async (req, res, next) => {
   try {
@@ -66,6 +81,7 @@ const belongsToBusiness = async (req, res, next) => {
       }
 
       req.business = business;
+      req.businessRole = "SUPERADMIN";
       return next();
     }
 
@@ -83,6 +99,7 @@ const belongsToBusiness = async (req, res, next) => {
     }
 
     req.business = businessUser.business;
+    req.businessRole = businessUser.role;
     next();
   } catch (error) {
     return sendError(res, {

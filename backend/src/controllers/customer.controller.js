@@ -4,6 +4,9 @@ const {
   getCustomerById,
   updateCustomer,
   deleteCustomer,
+  getDeletedCustomers,
+  restoreCustomer,
+  mergeCustomers,
 } = require("../services/customer.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
@@ -82,11 +85,57 @@ const update = asyncHandler(async (req, res) => {
  * Deletes a customer record from the business's directory.
  */
 const remove = asyncHandler(async (req, res) => {
-  const result = await deleteCustomer(req.params.customerId, req.params.businessId);
+  const result = await deleteCustomer(req.params.customerId, req.params.businessId, req.user.id);
 
   return sendSuccess(res, {
     message: result.message,
   });
 });
 
-module.exports = { create, getAll, getOne, update, remove };
+/**
+ * GET /api/businesses/:businessId/customers/deleted
+ * Lists soft-deleted customers for the business (the "Trash" view).
+ */
+const getDeleted = asyncHandler(async (req, res) => {
+  const customers = await getDeletedCustomers(req.params.businessId);
+
+  return sendSuccess(res, {
+    message: "Deleted customers fetched successfully",
+    data: customers,
+  });
+});
+
+/**
+ * POST /api/businesses/:businessId/customers/:customerId/restore
+ * Restores a soft-deleted customer back into the directory.
+ */
+const restore = asyncHandler(async (req, res) => {
+  const customer = await restoreCustomer(req.params.customerId, req.params.businessId, req.user.id);
+
+  return sendSuccess(res, {
+    message: "Customer restored successfully",
+    data: customer,
+  });
+});
+
+/**
+ * POST /api/businesses/:businessId/customers/:customerId/merge
+ * Merges the customer at :customerId (a duplicate) into another customer
+ * (`intoCustomerId` in the body), moving all its transactions over and
+ * soft-deleting the duplicate. Returns the surviving customer.
+ */
+const merge = asyncHandler(async (req, res) => {
+  const customer = await mergeCustomers(
+    req.params.customerId,
+    req.body.intoCustomerId,
+    req.params.businessId,
+    req.user.id
+  );
+
+  return sendSuccess(res, {
+    message: "Customers merged successfully",
+    data: customer,
+  });
+});
+
+module.exports = { create, getAll, getOne, update, remove, getDeleted, restore, merge };

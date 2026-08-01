@@ -5,13 +5,19 @@ import { formatMoney } from "@/lib/format"
 import { Input } from "@/components/ui/input"
 
 // A single line item in the POS cart. `catalogPrice` is the product's
-// original list price, while `unitPrice` is the (possibly discounted) price
-// actually charged; `discountPercent`, when set, is what produced that
-// discount and is shown/editable via `DiscountControl`.
+// original list price *for the selected pack size* (i.e. product.price *
+// unitFactor), while `unitPrice` is the (possibly discounted) price
+// actually charged for that same pack size; `discountPercent`, when set,
+// is what produced that discount and is shown/editable via
+// `DiscountControl`. `unit`/`unitFactor` describe which pack size this
+// line is in (factor 1 for the product's base unit) - `quantity` is a
+// count of that unit, and `availableStock` is always in base-unit terms,
+// so callers must compare `quantity * unitFactor` against it.
 export interface CartLine {
   productId: string
   name: string
   unit: string
+  unitFactor: number
   quantity: number
   catalogPrice: number
   unitPrice: number
@@ -19,14 +25,18 @@ export interface CartLine {
   availableStock: number
 }
 
+// Cart lines are keyed by productId + unit (not just productId), since the
+// same product can appear as two separate lines when sold in two different
+// pack sizes in the same sale - every mutation handler below identifies
+// the target line by both.
 interface CartItemsPanelProps {
   cart: CartLine[]
   currency: string
-  onIncrement: (productId: string) => void
-  onDecrement: (productId: string) => void
-  onPriceChange: (productId: string, price: number) => void
-  onDiscountChange: (productId: string, percent: number | null) => void
-  onRemove: (productId: string) => void
+  onIncrement: (productId: string, unit: string) => void
+  onDecrement: (productId: string, unit: string) => void
+  onPriceChange: (productId: string, unit: string, price: number) => void
+  onDiscountChange: (productId: string, unit: string, percent: number | null) => void
+  onRemove: (productId: string, unit: string) => void
 }
 
 /**
@@ -175,12 +185,17 @@ export function CartItemsPanel({
           </div>
         ) : (
           cart.map((line) => (
-            <div key={line.productId} className="rounded-xl border border-border/60 bg-background/40 p-3">
+            <div key={`${line.productId}-${line.unit}`} className="rounded-xl border border-border/60 bg-background/40 p-3">
               <div className="mb-2 flex items-start justify-between gap-2">
-                <p className="text-sm font-medium leading-snug">{line.name}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-snug">{line.name}</p>
+                  {line.unitFactor !== 1 && (
+                    <p className="text-xs text-muted-foreground">{t("Sold by the {{unit}}", { unit: line.unit })}</p>
+                  )}
+                </div>
                 <button
                   type="button"
-                  onClick={() => onRemove(line.productId)}
+                  onClick={() => onRemove(line.productId, line.unit)}
                   aria-label={t("Remove {{name}}", { name: line.name })}
                   className="shrink-0 rounded text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
@@ -191,7 +206,7 @@ export function CartItemsPanel({
                 <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/60 p-0.5">
                   <button
                     type="button"
-                    onClick={() => onDecrement(line.productId)}
+                    onClick={() => onDecrement(line.productId, line.unit)}
                     className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={t("Decrease quantity")}
                   >
@@ -202,8 +217,8 @@ export function CartItemsPanel({
                   </span>
                   <button
                     type="button"
-                    onClick={() => onIncrement(line.productId)}
-                    disabled={line.quantity >= line.availableStock}
+                    onClick={() => onIncrement(line.productId, line.unit)}
+                    disabled={(line.quantity + 1) * line.unitFactor > line.availableStock}
                     className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
                     aria-label={t("Increase quantity")}
                   >
@@ -216,7 +231,7 @@ export function CartItemsPanel({
                   min="0"
                   step="any"
                   value={line.unitPrice}
-                  onChange={(e) => onPriceChange(line.productId, parseFloat(e.target.value) || 0)}
+                  onChange={(e) => onPriceChange(line.productId, line.unit, parseFloat(e.target.value) || 0)}
                   className="h-7 w-20 text-right text-xs"
                 />
 
@@ -228,7 +243,7 @@ export function CartItemsPanel({
                 <DiscountControl
                   line={line}
                   currency={currency}
-                  onDiscountChange={(percent) => onDiscountChange(line.productId, percent)}
+                  onDiscountChange={(percent) => onDiscountChange(line.productId, line.unit, percent)}
                 />
               </div>
             </div>

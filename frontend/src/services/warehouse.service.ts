@@ -59,3 +59,20 @@ export const setPrimaryWarehouse = (businessId: string, warehouseId: string) =>
 /** Deletes a warehouse. */
 export const deleteWarehouse = (businessId: string, warehouseId: string) =>
   apiRequest<null>(apiClient.delete(`/businesses/${businessId}/warehouses/${warehouseId}`))
+
+// A soft-deleted warehouse as returned by the Trash endpoint — scalar
+// fields only, no stock relation (not loaded for a hidden warehouse).
+export interface DeletedWarehouse {
+  id: string
+  name: string
+  location: string | null
+  deletedAt: string
+}
+
+/** Lists soft-deleted warehouses for a business (the Trash view). */
+export const getDeletedWarehouses = (businessId: string) =>
+  apiRequest<DeletedWarehouse[]>(apiClient.get(`/businesses/${businessId}/warehouses/deleted`))
+
+/** Restores a soft-deleted warehouse back into the active list. */
+export const restoreWarehouse = (businessId: string, warehouseId: string) =>
+  apiRequest<null>(apiClient.post(`/businesses/${businessId}/warehouses/${warehouseId}/restore`))

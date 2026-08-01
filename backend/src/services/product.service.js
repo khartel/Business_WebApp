@@ -1,5 +1,6 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 const { startOfDay, endOfDay } = require("date-fns");
 
 /**
@@ -32,6 +33,33 @@ const assertShortCodeAvailable = async (businessId, shortCode, excludeProductId)
 };
 
 /**
+ * Ensures a product's alternate pack sizes (`units`, e.g. "dozen" = 12)
+ * don't collide with each other or with its own base `unit` - both checked
+ * case-insensitively, since "Dozen" and "dozen" would otherwise both be
+ * offered as if they were different choices at the register.
+ *
+ * @param {string} baseUnit - The product's base `unit` field.
+ * @param {Array<{label: string, factor: number}>} [units]
+ * @throws {AppError} 400 if any label collides with the base unit or with
+ *   another label in the array.
+ */
+const assertUnitsValid = (baseUnit, units) => {
+  if (!units || units.length === 0) return;
+
+  const seen = new Set([baseUnit.trim().toLowerCase()]);
+  for (const { label } of units) {
+    const key = label.trim().toLowerCase();
+    if (seen.has(key)) {
+      throw new AppError(
+        `Alternate unit "${label}" must be different from the product's base unit and from other alternate units`,
+        400
+      );
+    }
+    seen.add(key);
+  }
+};
+
+/**
  * Create a new product for a business. Enforces a case-insensitive unique
  * product name per business (in addition to the short-code uniqueness check
  * delegated to `assertShortCodeAvailable`), and defaults price to 0 if not
@@ -44,13 +72,17 @@ const assertShortCodeAvailable = async (businessId, shortCode, excludeProductId)
  * @param {number|string} [params.price] - Parsed to a float; defaults to 0.
  * @param {string} [params.description]
  * @param {string} [params.shortCode] - Optional fast-lookup code, must be unique.
+ * @param {Array<{label: string, factor: number}>} [params.units] - Optional
+ *   alternate pack sizes (e.g. "dozen" = 12 base units); price for each is
+ *   always product.price * factor, never stored separately.
  * @returns {Promise<object>} The created product including its (empty) stock relation.
  * @throws {AppError} 409 if the name or short code is already taken.
  */
-const createProduct = async ({ businessId, name, unit, price, description, shortCode }) => {
+const createProduct = async ({ businessId, name, unit, price, description, shortCode, units }) => {
   const existing = await prisma.product.findFirst({
     where: {
       businessId,
+      deletedAt: null,
       name: { equals: name, mode: "insensitive" },
     },
   });
@@ -60,6 +92,7 @@ const createProduct = async ({ businessId, name, unit, price, description, short
   }
 
   await assertShortCodeAvailable(businessId, shortCode);
+  assertUnitsValid(unit, units);
 
   const product = await prisma.product.create({
     data: {
@@ -69,8 +102,10 @@ const createProduct = async ({ businessId, name, unit, price, description, short
       price: price ? parseFloat(price) : 0,
       description,
       shortCode,
+      units: units && units.length > 0 ? { create: units } : undefined,
     },
     include: {
+      units: true,
       stock: {
         include: {
           warehouse: {
@@ -99,8 +134,9 @@ const createProduct = async ({ businessId, name, unit, price, description, short
  */
 const getProducts = async (businessId) => {
   const products = await prisma.product.findMany({
-    where: { businessId },
+    where: { businessId, deletedAt: null },
     include: {
+      units: true,
       stock: {
         include: {
           warehouse: {
@@ -142,8 +178,10 @@ const getProductById = async (productId, businessId) => {
     where: {
       id: productId,
       businessId,
+      deletedAt: null,
     },
     include: {
+      units: true,
       stock: {
         include: {
           warehouse: {
@@ -197,14 +235,19 @@ const getProductById = async (productId, businessId) => {
  *
  * @param {string} productId
  * @param {string} businessId - Scopes the lookup to this business.
- * @param {{name?: string, unit?: string, price?: number|string, description?: string, shortCode?: string}} fields
+ * @param {{name?: string, unit?: string, price?: number|string, description?: string, shortCode?: string, units?: Array<{label: string, factor: number}>}} fields
+ *   `units`, when provided, wholesale-replaces the product's alternate pack
+ *   sizes - safe because past sales/stock movements already have their own
+ *   `unitLabel` denormalized onto them, so editing/removing a pack size
+ *   later can't corrupt historical receipts.
  * @returns {Promise<object>} The updated product including stock.
  * @throws {AppError} 404 if not found; 409 if the new name/shortCode collides
- *   with another product in the business.
+ *   with another product in the business; 400 if `units` collide with each
+ *   other or with the base unit.
  */
-const updateProduct = async (productId, businessId, { name, unit, price, description, shortCode }) => {
+const updateProduct = async (productId, businessId, { name, unit, price, description, shortCode, units }) => {
   const product = await prisma.product.findFirst({
-    where: { id: productId, businessId },
+    where: { id: productId, businessId, deletedAt: null },
   });
 
   if (!product) {
@@ -215,6 +258,7 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
     const existing = await prisma.product.findFirst({
       where: {
         businessId,
+        deletedAt: null,
         name: { equals: name, mode: "insensitive" },
         NOT: { id: productId },
       },
@@ -229,78 +273,154 @@ const updateProduct = async (productId, businessId, { name, unit, price, descrip
     await assertShortCodeAvailable(businessId, shortCode, productId);
   }
 
-  const updated = await prisma.product.update({
-    where: { id: productId },
-    data: {
-      ...(name && { name }),
-      ...(unit && { unit }),
-      ...(price !== undefined && { price: parseFloat(price) }),
-      ...(description !== undefined && { description }),
-      ...(shortCode !== undefined && { shortCode }),
-    },
-    include: {
-      stock: {
-        include: {
-          warehouse: {
-            select: {
-              id: true,
-              name: true,
-              isPrimary: true,
+  if (units !== undefined) {
+    assertUnitsValid(unit ?? product.unit, units);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (units !== undefined) {
+      await tx.productUnit.deleteMany({ where: { productId } });
+      if (units.length > 0) {
+        await tx.productUnit.createMany({
+          data: units.map((u) => ({ ...u, productId })),
+        });
+      }
+    }
+
+    return tx.product.update({
+      where: { id: productId },
+      data: {
+        ...(name && { name }),
+        ...(unit && { unit }),
+        ...(price !== undefined && { price: parseFloat(price) }),
+        ...(description !== undefined && { description }),
+        ...(shortCode !== undefined && { shortCode }),
+      },
+      include: {
+        units: true,
+        stock: {
+          include: {
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+                isPrimary: true,
+              },
             },
           },
         },
       },
-    },
+    });
   });
 
   return updated;
 };
 
 /**
- * Delete a product, but only if it has never been sold. This protects the
- * integrity of historical sales/reports, which reference products by ID —
- * deleting a product with transaction history would orphan or corrupt past
- * reporting data, so such products must be "archived" conceptually rather
- * than deleted. On success, removes the product's stock rows first (in a
- * transaction with the product delete) so no stock records are left behind.
+ * Soft-delete a product: hides it from the catalog/POS/pickers by setting
+ * `deletedAt`, but never touches its `WarehouseStock`, `TransactionItem`, or
+ * `StockMovement` rows, so historical sales/reports stay perfectly intact
+ * regardless of transaction history. Records an audit entry in the same
+ * transaction.
  *
  * @param {string} productId
  * @param {string} businessId - Scopes the lookup to this business.
+ * @param {string} actorId - ID of the user performing the deletion.
  * @returns {Promise<{message: string}>}
- * @throws {AppError} 404 if not found; a plain error if it has sales history.
+ * @throws {AppError} 404 if not found.
  */
-const deleteProduct = async (productId, businessId) => {
+const deleteProduct = async (productId, businessId, actorId) => {
   const product = await prisma.product.findFirst({
-    where: { id: productId, businessId },
+    where: { id: productId, businessId, deletedAt: null },
   });
 
   if (!product) {
     throw new AppError("Product not found", 404);
   }
 
-  // Check if product has been used in transactions
-  const transactionCount = await prisma.transactionItem.count({
-    where: { productId },
-  });
+  const actor = await prisma.user.findUnique({ where: { id: actorId } });
 
-  if (transactionCount > 0) {
-    throw new AppError(
-      "Cannot delete a product that has transaction history. Consider archiving it instead."
-    );
-  }
-
-  // Delete stock entries first then product
   await prisma.$transaction(async (tx) => {
-    await tx.warehouseStock.deleteMany({
-      where: { productId },
+    // Also clears shortCode - it's a unique-per-business "quick lookup"
+    // nickname (@@unique([businessId, shortCode])), so a deleted product
+    // must give it up or it'd permanently block reuse by a future product.
+    await tx.product.update({
+      where: { id: productId },
+      data: { deletedAt: new Date(), shortCode: null },
     });
 
-    await tx.product.delete({
-      where: { id: productId },
+    await recordAudit(tx, {
+      businessId,
+      actorId,
+      actorName: actor?.fullName ?? null,
+      action: "product.deleted",
+      entityType: "Product",
+      entityId: productId,
+      metadata: { name: product.name },
     });
   });
 
   return { message: "Product deleted successfully" };
+};
+
+/**
+ * List soft-deleted products for a business (the "Trash" view) — newest
+ * deletion first. Doesn't include stock/units, since a deleted product's
+ * only useful info here is "what was it and can I get it back."
+ *
+ * @param {string} businessId
+ * @returns {Promise<object[]>}
+ */
+const getDeletedProducts = async (businessId) => {
+  return prisma.product.findMany({
+    where: { businessId, deletedAt: { not: null } },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+/**
+ * Restore a soft-deleted product by clearing `deletedAt`. Its `shortCode`
+ * was cleared at delete time (to free the slot for reuse) and stays cleared
+ * on restore — the product comes back into the catalog without one, and can
+ * be given a new one via a normal update if wanted.
+ *
+ * @param {string} productId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @param {string} actorId
+ * @returns {Promise<object>} The restored product.
+ * @throws {AppError} 404 if not found among this business's deleted products.
+ */
+const restoreProduct = async (productId, businessId, actorId) => {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, businessId, deletedAt: { not: null } },
+  });
+
+  if (!product) {
+    throw new AppError("Deleted product not found", 404);
+  }
+
+  const actor = await prisma.user.findUnique({ where: { id: actorId } });
+
+  const restored = await prisma.$transaction(async (tx) => {
+    const result = await tx.product.update({
+      where: { id: productId },
+      data: { deletedAt: null },
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId,
+      actorName: actor?.fullName ?? null,
+      action: "product.restored",
+      entityType: "Product",
+      entityId: productId,
+      metadata: { name: product.name },
+    });
+
+    return result;
+  });
+
+  return restored;
 };
 
 /**
@@ -315,7 +435,10 @@ const deleteProduct = async (productId, businessId) => {
  * @param {object} params
  * @param {string} params.businessId
  * @param {string} params.warehouseId - Destination warehouse; must belong to businessId.
- * @param {Array<{productId: string, quantity: number, lowStockThreshold?: number}>} params.items
+ * @param {Array<{productId: string, quantity: number, lowStockThreshold?: number, unitLabel?: string, unitQuantity?: number}>} params.items
+ *   `unitLabel`/`unitQuantity` are display-only passthroughs (e.g. "3
+ *   carton(s)") - `quantity` must already be the base-unit amount to apply
+ *   to WarehouseStock; no conversion happens here.
  * @param {string} params.movedById - User who logged the delivery.
  * @param {string} [params.notes]
  * @returns {Promise<object[]>} One StockMovement record per item received.
@@ -323,7 +446,7 @@ const deleteProduct = async (productId, businessId) => {
  */
 const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }) => {
   const warehouse = await prisma.warehouse.findFirst({
-    where: { id: warehouseId, businessId },
+    where: { id: warehouseId, businessId, deletedAt: null },
   });
 
   if (!warehouse) {
@@ -332,7 +455,7 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
 
   const productIds = items.map((item) => item.productId);
   const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, businessId },
+    where: { id: { in: productIds }, businessId, deletedAt: null },
   });
 
   if (products.length !== new Set(productIds).size) {
@@ -342,7 +465,7 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
   const movements = await prisma.$transaction(async (tx) => {
     const created = [];
 
-    for (const { productId, quantity, lowStockThreshold } of items) {
+    for (const { productId, quantity, lowStockThreshold, unitLabel, unitQuantity } of items) {
       const existingStock = await tx.warehouseStock.findUnique({
         where: { warehouseId_productId: { warehouseId, productId } },
       });
@@ -373,6 +496,8 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
           toWarehouseId: warehouseId,
           productId,
           quantity,
+          unitLabel,
+          unitQuantity,
           type: "RESTOCK",
           status: "COMPLETED",
           movedById,
@@ -406,9 +531,10 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
  */
 const getAllStock = async (businessId) => {
   const warehouses = await prisma.warehouse.findMany({
-    where: { businessId },
+    where: { businessId, deletedAt: null },
     include: {
       stock: {
+        where: { product: { deletedAt: null } },
         include: {
           product: {
             select: {
@@ -640,6 +766,8 @@ module.exports = {
   getProductById,
   updateProduct,
   deleteProduct,
+  getDeletedProducts,
+  restoreProduct,
   receiveStock,
   getAllStock,
   moveStock,

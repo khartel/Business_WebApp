@@ -160,7 +160,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyTwoFactor: async (tempToken, code) =>
         (await verifyTwoFactorMutation.mutateAsync({ tempToken, code })).user,
       logout: async () => {
-        await logoutMutation.mutateAsync()
+        try {
+          await logoutMutation.mutateAsync()
+        } catch {
+          // Best-effort: the server call now requires a still-valid session
+          // (it revokes it), so it can fail if the session was already
+          // invalid (e.g. a double-click race, or it expired/was already
+          // revoked elsewhere). Either way, clear local state so the user
+          // still ends up logged out instead of getting stuck.
+          queryClient.setQueryData(["auth", "me"], null)
+          setActiveBusinessId(null)
+          queryClient.clear()
+        }
       },
       refetchMe: meQuery.refetch,
     }),

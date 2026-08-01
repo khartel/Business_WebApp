@@ -6,6 +6,7 @@
 // per-business role system entirely.
 import axios, { type AxiosError } from "axios"
 import { ApiError, type ApiFailure, type ApiSuccess } from "@/lib/api-client"
+import type { AuditLogEntry } from "@/services/auditLog.service"
 
 // Separate axios instance (no `withCredentials`) since auth here is via the
 // master key header, not the session cookie.
@@ -68,4 +69,15 @@ export const resetSuperAdminPassword = (masterKey: string, userId: string) =>
       {},
       { headers: { "x-master-key": masterKey } }
     )
+  )
+
+/**
+ * Lists platform-level audit events (a business being deleted, SuperAdmin
+ * accounts being registered/removed) — the ones no per-business Activity
+ * Log page can ever show, since the business is gone by the time you'd
+ * look, or there was no business involved at all.
+ */
+export const getPlatformActivity = (masterKey: string) =>
+  platformRequest<AuditLogEntry[]>(
+    platformClient.get("/platform/activity", { headers: { "x-master-key": masterKey } })
   )

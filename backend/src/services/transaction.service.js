@@ -1,5 +1,6 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 
 // Shared include shape so every read path (create/list/get-one) returns the
 // same structure, including the credit-payment history needed to compute
@@ -60,7 +61,9 @@ const withCreditStats = (transaction) => {
  * @param {string} params.performedById - Staff member making the sale.
  * @param {"CASH"|"TRANSFER"|"CREDIT"} params.paymentMethod
  * @param {string} [params.customerName] - Free-text name; blank defaults to "Casual Customer".
- * @param {Array<{productId: string, quantitySold: number, unitPrice: number, discountPercent?: number}>} params.items
+ * @param {Array<{productId: string, quantitySold: number, unitPrice: number, discountPercent?: number, unitLabel?: string, unitQuantity?: number}>} params.items
+ *   `unitLabel`/`unitQuantity` are display-only passthroughs (e.g. "2
+ *   dozen") - `quantitySold`/`unitPrice` must already be in base-unit terms.
  * @param {string} [params.notes]
  * @returns {Promise<object>} The created transaction with computed
  *   `amountPaid`/`balanceDue` (see `withCreditStats`).
@@ -80,6 +83,7 @@ const createTransaction = async ({
     where: {
       businessId,
       isPrimary: true,
+      deletedAt: null,
     },
   });
 
@@ -89,35 +93,19 @@ const createTransaction = async ({
     );
   }
 
-  // Validate all items and check stock
+  // Validate all items (existence, quantity/price sanity) up front.
   const itemsWithDetails = await Promise.all(
     items.map(async (item) => {
       const product = await prisma.product.findFirst({
         where: {
           id: item.productId,
           businessId,
+          deletedAt: null,
         },
       });
 
       if (!product) {
         throw new AppError(`Product not found: ${item.productId}`, 404);
-      }
-
-      const stock = await prisma.warehouseStock.findUnique({
-        where: {
-          warehouseId_productId: {
-            warehouseId: primaryWarehouse.id,
-            productId: item.productId,
-          },
-        },
-      });
-
-      if (!stock || stock.quantity < item.quantitySold) {
-        throw new AppError(
-          `Insufficient stock for "${product.name}". ` +
-          `Available: ${stock ? stock.quantity : 0} ${product.unit}, ` +
-          `Requested: ${item.quantitySold} ${product.unit}`
-        );
       }
 
       if (item.quantitySold <= 0) {
@@ -131,14 +119,46 @@ const createTransaction = async ({
       return {
         productId: item.productId,
         productName: product.name,
+        productUnit: product.unit,
         quantitySold: item.quantitySold,
         unitPrice: item.unitPrice,
         subtotal: item.quantitySold * item.unitPrice,
         discountPercent: item.discountPercent ?? null,
-        currentStock: stock.quantity,
+        unitLabel: item.unitLabel ?? null,
+        unitQuantity: item.unitQuantity ?? null,
       };
     })
   );
+
+  // Check stock sufficiency per *product*, summing quantitySold across every
+  // line item for that product first - a sale can list the same product
+  // twice if it was rung up in two different pack sizes (e.g. "2 dozen" and
+  // "3 pcs" of the same item, via ProductUnit), so checking each line in
+  // isolation would under-count what's actually being taken out of stock.
+  const totalRequestedByProduct = new Map();
+  for (const item of itemsWithDetails) {
+    totalRequestedByProduct.set(
+      item.productId,
+      (totalRequestedByProduct.get(item.productId) ?? 0) + item.quantitySold
+    );
+  }
+
+  for (const [productId, totalRequested] of totalRequestedByProduct) {
+    const stock = await prisma.warehouseStock.findUnique({
+      where: {
+        warehouseId_productId: { warehouseId: primaryWarehouse.id, productId },
+      },
+    });
+    const { productName, productUnit } = itemsWithDetails.find((i) => i.productId === productId);
+
+    if (!stock || stock.quantity < totalRequested) {
+      throw new AppError(
+        `Insufficient stock for "${productName}". ` +
+        `Available: ${stock ? stock.quantity : 0} ${productUnit}, ` +
+        `Requested: ${totalRequested} ${productUnit}`
+      );
+    }
+  }
 
   const totalAmount = itemsWithDetails.reduce(
     (sum, item) => sum + item.subtotal,
@@ -155,7 +175,7 @@ const createTransaction = async ({
     let customerId = null;
     if (trimmedCustomerName) {
       const existingCustomer = await tx.customer.findFirst({
-        where: { businessId, name: { equals: trimmedCustomerName, mode: "insensitive" } },
+        where: { businessId, deletedAt: null, name: { equals: trimmedCustomerName, mode: "insensitive" } },
       });
       customerId = existingCustomer
         ? existingCustomer.id
@@ -179,12 +199,19 @@ const createTransaction = async ({
             unitPrice: item.unitPrice,
             subtotal: item.subtotal,
             discountPercent: item.discountPercent,
+            unitLabel: item.unitLabel,
+            unitQuantity: item.unitQuantity,
           })),
         },
       },
       include: TRANSACTION_INCLUDE,
     });
 
+    // An atomic `decrement` (rather than computing `currentStock -
+    // quantitySold` off a pre-transaction read) is required here: two items
+    // in the same sale can reference the same product (sold in two
+    // different pack sizes), so their updates must accumulate instead of
+    // each overwriting the other with a stale snapshot.
     await Promise.all(
       itemsWithDetails.map((item) =>
         tx.warehouseStock.update({
@@ -195,7 +222,7 @@ const createTransaction = async ({
             },
           },
           data: {
-            quantity: item.currentStock - item.quantitySold,
+            quantity: { decrement: item.quantitySold },
           },
         })
       )
@@ -382,6 +409,66 @@ const recordCreditPayment = async (transactionId, businessId, { amount, recorded
 };
 
 /**
+ * Undo a previously-recorded credit payment — deletes the CreditPayment row
+ * outright (this is a "that was a mistake" correction, not a customer
+ * refund with its own paper trail, so there's no separate voided/reversed
+ * state to track) and, if the transaction had been marked settled because
+ * of that payment, clears `paidAt` back to null since the balance is now
+ * outstanding again. Both happen in one `$transaction` so the payment
+ * record and the settlement flag can never drift apart.
+ *
+ * @param {string} transactionId
+ * @param {string} paymentId - Must belong to transactionId.
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @param {string} actorId - User undoing the payment (for the audit entry).
+ * @returns {Promise<object>} The updated transaction with refreshed credit stats.
+ * @throws {AppError} 404 if the transaction or payment isn't found.
+ */
+const undoCreditPayment = async (transactionId, paymentId, businessId, actorId) => {
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, businessId },
+  });
+
+  if (!transaction) {
+    throw new AppError("Transaction not found", 404);
+  }
+
+  const payment = await prisma.creditPayment.findFirst({
+    where: { id: paymentId, transactionId },
+  });
+
+  if (!payment) {
+    throw new AppError("Payment not found", 404);
+  }
+
+  const actor = await prisma.user.findUnique({ where: { id: actorId } });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.creditPayment.delete({ where: { id: paymentId } });
+
+    const result = await tx.transaction.update({
+      where: { id: transactionId },
+      data: transaction.paidAt ? { paidAt: null } : {},
+      include: TRANSACTION_INCLUDE,
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId,
+      actorName: actor?.fullName ?? null,
+      action: "credit_payment.undone",
+      entityType: "Transaction",
+      entityId: transactionId,
+      metadata: { amount: payment.amount, customerName: transaction.customerName },
+    });
+
+    return result;
+  });
+
+  return withCreditStats(updated);
+};
+
+/**
  * Build the dashboard summary: today's transactions in full (with a
  * cash/transfer split and per-employee/per-product breakdowns computed in
  * memory), plus lightweight aggregate totals (via Prisma `aggregate`, not
@@ -539,4 +626,5 @@ module.exports = {
   getTransactionById,
   getTransactionSummary,
   recordCreditPayment,
+  undoCreditPayment,
 };

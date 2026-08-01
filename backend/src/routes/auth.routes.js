@@ -5,6 +5,8 @@ const {
   login,
   verifyLogin2FA,
   logout,
+  forgotPassword,
+  resetPassword,
   me,
   changePassword,
   updateProfile,
@@ -22,6 +24,8 @@ const {
   verifyLogin2FASchema,
   verify2FASetupSchema,
   disable2FASchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } = require("../validators/auth.validators");
 
 /**
@@ -29,15 +33,19 @@ const {
  * logout, and the logged-in user's own profile/security settings.
  * The "Public routes" section needs no session; everything under
  * "Protected routes" runs behind `authenticate` (valid session cookie).
+ * Logout is protected (not public) because revoking the session requires
+ * knowing whose tokenVersion to bump - see auth.controller.js's `logout`.
  */
 
 // Public routes
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
 router.post("/login/2fa", validate(verifyLogin2FASchema), verifyLogin2FA);
-router.post("/logout", logout);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 
 // Protected routes (must be logged in)
+router.post("/logout", authenticate, logout);
 router.get("/me", authenticate, me);
 router.patch("/me", authenticate, validate(updateProfileSchema), updateProfile);
 router.post("/change-password", authenticate, validate(changePasswordSchema), changePassword);

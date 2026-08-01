@@ -1,6 +1,16 @@
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { ChevronRight, User, KeyRound, ShieldCheck, Receipt, Palette, type LucideIcon } from "lucide-react"
+import {
+  ChevronRight,
+  User,
+  KeyRound,
+  ShieldCheck,
+  Receipt,
+  Palette,
+  History,
+  ArchiveRestore,
+  type LucideIcon,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SettingsCardProps {
@@ -89,6 +99,18 @@ export default function SettingsHub() {
           title="Appearance"
           description="Theme and display language"
           onClick={() => navigate("/settings/appearance")}
+        />
+        <SettingsCard
+          icon={History}
+          title="Activity log"
+          description="Who deleted, added, or changed what"
+          onClick={() => navigate("/settings/activity")}
+        />
+        <SettingsCard
+          icon={ArchiveRestore}
+          title="Trash"
+          description="Restore deleted products, customers, and warehouses"
+          onClick={() => navigate("/settings/trash")}
         />
       </div>
     </div>

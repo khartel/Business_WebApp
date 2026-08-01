@@ -2,6 +2,9 @@ const {
   registerSuperAdmin,
   loginUser,
   verifyLoginTwoFactor,
+  invalidateSessions,
+  requestPasswordReset,
+  resetPassword,
   getMe,
   updatePassword,
   updateProfile: updateProfileService,
@@ -89,13 +92,47 @@ const verifyLogin2FA = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/auth/logout
- * Logout user
+ * Logout user - revokes every outstanding JWT for this account (via
+ * tokenVersion) in addition to clearing the session cookie, so a leaked
+ * token doesn't stay valid after a legitimate logout.
  */
 const logout = asyncHandler(async (req, res) => {
+  await invalidateSessions(req.user.id);
   res.clearCookie("token");
 
   return sendSuccess(res, {
     message: "Logged out successfully",
+  });
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * Always responds with the same generic message regardless of whether the
+ * email matched an account or the send actually succeeded - the service
+ * function never surfaces that distinction, so there's nothing to leak here.
+ */
+const forgotPassword = asyncHandler(async (req, res) => {
+  await requestPasswordReset(req.body.email);
+
+  return sendSuccess(res, {
+    message:
+      "If an account with that email exists, we've sent password-reset instructions. If you don't have an email on file, ask your business owner or admin to reset it from the Team page instead.",
+  });
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Public endpoint (no session cookie yet) - the emailed token is the proof
+ * of identity. Does not auto-login; the user signs in with their new
+ * password afterward.
+ */
+const resetPasswordHandler = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  await resetPassword(token, newPassword);
+
+  return sendSuccess(res, {
+    message: "Password reset successfully. Please log in with your new password.",
   });
 });
 
@@ -183,6 +220,8 @@ module.exports = {
   login,
   verifyLogin2FA,
   logout,
+  forgotPassword,
+  resetPassword: resetPasswordHandler,
   me,
   changePassword,
   updateProfile,

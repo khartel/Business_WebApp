@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 
 /**
  * Get all superadmins with their businesses
@@ -60,6 +61,17 @@ const removeSuperAdmin = async (userId) => {
   if (user.role !== "SUPERADMIN") {
     throw new AppError("User is not a SuperAdmin", 400);
   }
+
+  // Recorded before the delete (not tied to any one business, and there's
+  // no authenticated actor here - this is a master-key-gated platform
+  // action, not a normal session) so it survives on the Platform Admin
+  // console's Activity tab even though the user row itself is about to go.
+  await recordAudit(prisma, {
+    action: "superadmin.removed",
+    entityType: "User",
+    entityId: userId,
+    metadata: { username: user.username, fullName: user.fullName },
+  });
 
   // Delete user - Prisma will handle the rest via cascading deletes defined in schema.prisma
   await prisma.user.delete({ where: { id: userId } });

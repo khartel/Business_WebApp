@@ -9,9 +9,14 @@ export type MovementType = "RESTOCK" | "TRANSFER"
 
 // A single inventory movement record. `fromWarehouse` is null for RESTOCK
 // movements since stock isn't coming from another warehouse in the system.
+// `unitLabel`/`unitQuantity` are display-only: set when the movement was
+// entered in a pack size other than the product's base unit (e.g. "3
+// cartons") - `quantity` is always the base-unit amount actually applied.
 export interface StockMovement {
   id: string
   quantity: number
+  unitLabel: string | null
+  unitQuantity: number | null
   type: MovementType
   status: "PENDING" | "COMPLETED" | "CANCELLED"
   notes: string | null
@@ -37,6 +42,8 @@ export interface ReceiveStockItem {
   productId: string
   quantity: number
   lowStockThreshold?: number
+  unitLabel?: string
+  unitQuantity?: number
 }
 
 // Payload for receiving new stock (RESTOCK) into a single warehouse,

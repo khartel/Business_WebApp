@@ -5,3 +5,6 @@ node_modules
 
 /generated/prisma
 /coverage
+
+# Console output captured when running the dev server in the background
+backend.log

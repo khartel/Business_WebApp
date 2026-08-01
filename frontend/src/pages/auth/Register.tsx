@@ -16,7 +16,7 @@ const registerSchema = z
     fullName: z.string().min(1, "Full name is required"),
     username: z.string().min(3, "Username must be at least 3 characters"),
     phone: z.string().min(7, "Phone number is required"),
-    email: z.string().email("Invalid email address").optional().or(z.literal("")),
+    email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
   })
@@ -29,9 +29,11 @@ type RegisterValues = z.infer<typeof registerSchema>
 
 /**
  * Register page — sign-up form for creating a new SUPERADMIN (business
- * owner) account: full name, username, phone, optional email, and a
- * password with confirmation (validated via `registerSchema`, including a
- * password-match refinement).
+ * owner) account: full name, username, phone, email, and a password with
+ * confirmation (validated via `registerSchema`, including a password-match
+ * refinement). Email is required (unlike a team member added via the Team
+ * page) since it's this account's only self-service password-recovery path
+ * — see ForgotPassword.tsx.
  *
  * Data: no queries; submits via `authService.register` (stripping
  * `confirmPassword` from the payload first), then redirects to `/login`
@@ -66,7 +68,7 @@ export default function Register() {
   return (
     <AuthShell
       title="Create your account"
-      description="Set up your business on D-Inventory"
+      description="Set up your business on VAE Inventory"
       footer={
         <>
           {t("Already have an account?")}{" "}
@@ -103,9 +105,9 @@ export default function Register() {
         />
         <AuthField
           icon={Mail}
-          label="Email (optional)"
+          label="Email"
           type="email"
-          placeholder="Email (optional)"
+          placeholder="Email"
           autoComplete="email"
           error={errors.email?.message}
           {...register("email")}

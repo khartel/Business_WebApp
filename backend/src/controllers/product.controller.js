@@ -4,6 +4,8 @@ const {
   getProductById,
   updateProduct,
   deleteProduct,
+  getDeletedProducts,
+  restoreProduct,
   receiveStock,
   getAllStock,
   moveStock,
@@ -19,7 +21,7 @@ const asyncHandler = require("../utils/asyncHandler");
  * that. Returns the created product.
  */
 const create = asyncHandler(async (req, res) => {
-  const { name, unit, price, description, shortCode } = req.body;
+  const { name, unit, price, description, shortCode, units } = req.body;
 
   const product = await createProduct({
     businessId: req.params.businessId,
@@ -28,6 +30,7 @@ const create = asyncHandler(async (req, res) => {
     price,
     description,
     shortCode,
+    units,
   });
 
   return sendSuccess(res, {
@@ -72,12 +75,12 @@ const getOne = asyncHandler(async (req, res) => {
  * shortCode). Returns the updated product.
  */
 const update = asyncHandler(async (req, res) => {
-  const { name, unit, price, description, shortCode } = req.body;
+  const { name, unit, price, description, shortCode, units } = req.body;
 
   const product = await updateProduct(
     req.params.productId,
     req.params.businessId,
-    { name, unit, price, description, shortCode }
+    { name, unit, price, description, shortCode, units }
   );
 
   return sendSuccess(res, {
@@ -88,17 +91,44 @@ const update = asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/businesses/:businessId/products/:productId
- * Deletes a product from the business's catalog. Rejected if the product
- * already has transaction history (sell it as archived instead).
+ * Soft-deletes a product from the business's catalog - hidden everywhere,
+ * but its stock/sales history is left completely intact.
  */
 const remove = asyncHandler(async (req, res) => {
   const result = await deleteProduct(
     req.params.productId,
-    req.params.businessId
+    req.params.businessId,
+    req.user.id
   );
 
   return sendSuccess(res, {
     message: result.message,
+  });
+});
+
+/**
+ * GET /api/businesses/:businessId/products/deleted
+ * Lists soft-deleted products for the business (the "Trash" view).
+ */
+const getDeleted = asyncHandler(async (req, res) => {
+  const products = await getDeletedProducts(req.params.businessId);
+
+  return sendSuccess(res, {
+    message: "Deleted products fetched successfully",
+    data: products,
+  });
+});
+
+/**
+ * POST /api/businesses/:businessId/products/:productId/restore
+ * Restores a soft-deleted product back into the active catalog.
+ */
+const restore = asyncHandler(async (req, res) => {
+  const product = await restoreProduct(req.params.productId, req.params.businessId, req.user.id);
+
+  return sendSuccess(res, {
+    message: "Product restored successfully",
+    data: product,
   });
 });
 
@@ -182,6 +212,8 @@ module.exports = {
   getOne,
   update,
   remove,
+  getDeleted,
+  restore,
   receiveStockController,
   getStock,
   moveStockBetweenWarehouses,

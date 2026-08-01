@@ -11,12 +11,14 @@ export interface LoginInput {
   rememberMe?: boolean
 }
 
-// Fields required to create a new account.
+// Fields required to create a new account. `email` is required here (unlike
+// `UpdateProfileInput`/team members) - it's the SuperAdmin's only self-service
+// password-recovery path, since there's nobody above them in the business.
 export interface RegisterInput {
   fullName: string
   username: string
   phone: string
-  email?: string
+  email: string
   password: string
 }
 
@@ -93,3 +95,15 @@ export const changePassword = (input: ChangePasswordInput) =>
 /** Updates the current user's profile fields. */
 export const updateProfile = (input: UpdateProfileInput) =>
   apiRequest<AuthUser>(apiClient.patch("/auth/me", input))
+
+/**
+ * Requests a password-reset email. Always resolves successfully regardless
+ * of whether the email matched an account - the backend never reveals that
+ * distinction, so there's nothing to branch on here.
+ */
+export const forgotPassword = (email: string) =>
+  apiRequest<null>(apiClient.post("/auth/forgot-password", { email }))
+
+/** Completes a password reset using the token from the emailed link. */
+export const resetPassword = (token: string, newPassword: string) =>
+  apiRequest<null>(apiClient.post("/auth/reset-password", { token, newPassword }))

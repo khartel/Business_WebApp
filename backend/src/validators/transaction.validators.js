@@ -39,6 +39,11 @@ const createTransactionSchema = {
             quantitySold: z.coerce.number().positive("Quantity must be greater than 0"),
             unitPrice: z.coerce.number().positive("Unit price must be greater than 0"),
             discountPercent: z.coerce.number().min(0).max(100).optional(),
+            // Display-only: which pack size was actually rung up (e.g.
+            // "dozen" x 2), when not the product's base unit.
+            // quantitySold/unitPrice above must already be in base-unit terms.
+            unitLabel: z.string().trim().optional(),
+            unitQuantity: z.coerce.number().positive().optional(),
           })
         )
         .min(1, "At least one item is required"),
@@ -74,10 +79,20 @@ const recordPaymentSchema = {
   }),
 };
 
+/** Validates DELETE .../transactions/:transactionId/payments/:paymentId - undoes a recorded credit payment. */
+const undoPaymentSchema = {
+  params: z.object({
+    businessId: z.string().uuid("Invalid business id"),
+    transactionId: z.string().uuid("Invalid transaction id"),
+    paymentId: z.string().uuid("Invalid payment id"),
+  }),
+};
+
 module.exports = {
   businessIdParamSchema,
   transactionIdParamSchema,
   createTransactionSchema,
   listTransactionsQuerySchema,
   recordPaymentSchema,
+  undoPaymentSchema,
 };

@@ -92,22 +92,22 @@ export function EditBusinessDialog({ business }: { business: BusinessListItem })
           <div className="space-y-1.5">
             <Label htmlFor={`edit-biz-name-${business.id}`}>{t("Business name")}</Label>
             <Input id={`edit-biz-name-${business.id}`} {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
+            {errors.name?.message && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-biz-phone-${business.id}`}>{t("Phone number")}</Label>
             <Input id={`edit-biz-phone-${business.id}`} {...register("phone")} />
-            {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
+            {errors.phone?.message && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-biz-email-${business.id}`}>{t("Email (optional)")}</Label>
             <Input id={`edit-biz-email-${business.id}`} type="email" {...register("email")} />
-            {errors.email && <p className="text-xs text-destructive">{t(errors.email.message)}</p>}
+            {errors.email?.message && <p className="text-xs text-destructive">{t(errors.email.message)}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-biz-location-${business.id}`}>{t("Location")}</Label>
             <Input id={`edit-biz-location-${business.id}`} {...register("location")} />
-            {errors.location && <p className="text-xs text-destructive">{t(errors.location.message)}</p>}
+            {errors.location?.message && <p className="text-xs text-destructive">{t(errors.location.message)}</p>}
           </div>
 
           <DialogFooter>

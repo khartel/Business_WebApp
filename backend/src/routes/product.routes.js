@@ -6,6 +6,8 @@ const {
   getOne,
   update,
   remove,
+  getDeleted,
+  restore,
 } = require("../controllers/product.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
@@ -29,6 +31,11 @@ router.use(belongsToBusiness);
 
 // All roles can view products
 router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getAll);
+
+// Registered before "/:productId" so "deleted" isn't swallowed as an id.
+// Trash view is a management concern, same roles as delete/restore below.
+router.get("/deleted", authorize("SUPERADMIN", "ADMIN"), getDeleted);
+
 router.get(
   "/:productId",
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
@@ -49,6 +56,12 @@ router.delete(
   authorize("SUPERADMIN", "ADMIN"),
   validate(productIdParamSchema),
   remove
+);
+router.post(
+  "/:productId/restore",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(productIdParamSchema),
+  restore
 );
 
 module.exports = router;

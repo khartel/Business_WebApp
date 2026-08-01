@@ -45,6 +45,11 @@ const receiveStockSchema = {
           productId: z.string().uuid("Invalid product id"),
           quantity: z.coerce.number().positive("Quantity must be greater than 0"),
           lowStockThreshold: z.coerce.number().nonnegative().optional(),
+          // Display-only: which pack size was actually entered (e.g.
+          // "carton" x 3), when not the product's base unit. `quantity`
+          // above must already be the converted base-unit amount.
+          unitLabel: z.string().trim().optional(),
+          unitQuantity: z.coerce.number().positive().optional(),
         })
       )
       .min(1, "Add at least one product"),

@@ -8,12 +8,17 @@ import { apiClient, apiRequest } from "@/lib/api-client"
 export type PaymentMethod = "CASH" | "TRANSFER" | "CREDIT"
 
 // One line item (product + quantity + price) within a transaction.
+// `unitLabel`/`unitQuantity` are display-only: set when the sale was rung
+// up in a pack size other than the product's base unit (e.g. "2 dozen") -
+// `quantitySold`/`unitPrice` are always in base-unit terms regardless.
 export interface TransactionItem {
   id: string
   quantitySold: number
   unitPrice: number
   subtotal: number
   discountPercent: number | null
+  unitLabel: string | null
+  unitQuantity: number | null
   product: { id: string; name: string; unit: string }
 }
 
@@ -58,6 +63,8 @@ export interface CreateTransactionInput {
     quantitySold: number
     unitPrice: number
     discountPercent?: number
+    unitLabel?: string
+    unitQuantity?: number
   }>
 }
 
@@ -96,4 +103,10 @@ export const createTransaction = (businessId: string, input: CreateTransactionIn
 export const recordPayment = (businessId: string, transactionId: string, amount: number) =>
   apiRequest<Transaction>(
     apiClient.post(`/businesses/${businessId}/transactions/${transactionId}/payments`, { amount })
+  )
+
+/** Undoes a previously-recorded credit payment (a correction, not a customer refund). */
+export const undoPayment = (businessId: string, transactionId: string, paymentId: string) =>
+  apiRequest<Transaction>(
+    apiClient.delete(`/businesses/${businessId}/transactions/${transactionId}/payments/${paymentId}`)
   )

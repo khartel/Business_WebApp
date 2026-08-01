@@ -4,7 +4,10 @@ const QRCode = require("qrcode");
 const prisma = require("../utils/prisma");
 const { generateToken, verifyToken, generateShortLivedToken } = require("../utils/jwt.utils");
 const { getCurrencyForCountry } = require("../utils/currencies");
+const { sendEmail, passwordResetEmailHtml } = require("../utils/email.utils");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 
 /**
  * Fields of a Business that are safe/relevant to expose to a logged-in user
@@ -42,11 +45,13 @@ const USER_WITH_BUSINESSES_INCLUDE = {
 };
 
 /**
- * Register a new SuperAdmin
+ * Register a new SuperAdmin. Email is required (unlike a team member added
+ * via the Team page, who stays email-optional since they always have an
+ * admin/owner above them) - it's the SuperAdmin's only self-service password-
+ * recovery path, since there's nobody above them in the business.
  */
 const registerSuperAdmin = async ({ fullName, username, phone, email, password }) => {
-  // Clean email
-  const cleanEmail = email && email.trim() !== "" ? email.trim() : null;
+  const cleanEmail = email.trim();
 
   // Check if username already exists
   const existingUsername = await prisma.user.findUnique({
@@ -57,15 +62,12 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
     throw new AppError("Username is already taken", 409);
   }
 
-  // Check if email already exists (only if provided)
-  if (cleanEmail) {
-    const existingEmail = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
+  const existingEmail = await prisma.user.findUnique({
+    where: { email: cleanEmail },
+  });
 
-    if (existingEmail) {
-      throw new AppError("Email is already registered", 409);
-    }
+  if (existingEmail) {
+    throw new AppError("Email is already registered", 409);
   }
 
   // Hash password
@@ -77,7 +79,7 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
       fullName,
       username,
       phone,
-      email: cleanEmail,  // null if not provided
+      email: cleanEmail,
       passwordHash,
       role: "SUPERADMIN",
     },
@@ -90,6 +92,18 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
       role: true,
       createdAt: true,
     },
+  });
+
+  // Not tied to a business yet at this point (a SuperAdmin creates their
+  // first business separately) - a platform-level event, surfaced on the
+  // Platform Admin console's Activity tab rather than any per-business one.
+  await recordAudit(prisma, {
+    actorId: user.id,
+    actorName: user.fullName,
+    action: "superadmin.registered",
+    entityType: "User",
+    entityId: user.id,
+    metadata: { username: user.username },
   });
 
   return user;
@@ -107,6 +121,7 @@ const issueSession = (user, rememberMe) => {
       id: user.id,
       username: user.username,
       role: user.role,
+      tokenVersion: user.tokenVersion,
     },
     rememberMe
   );
@@ -212,6 +227,93 @@ const verifyLoginTwoFactor = async (tempToken, code) => {
 
   const rememberMe = payload.rememberMe ?? false;
   return { ...issueSession(user, rememberMe), rememberMe };
+};
+
+/**
+ * Revokes every JWT previously issued to this user by bumping their
+ * `tokenVersion` - `authenticate` rejects any token whose `tokenVersion`
+ * claim no longer matches the stored value. Called on logout so a
+ * leaked/stolen token stops working immediately instead of staying valid
+ * until it naturally expires. Note this signs the user out everywhere
+ * (every device/session), not just the one calling logout - there's no
+ * per-session store to revoke a single token in isolation.
+ *
+ * @param {string} userId - ID of the user logging out.
+ */
+const invalidateSessions = async (userId) => {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
+};
+
+/**
+ * Starts a self-service password reset: if `email` matches an account,
+ * emails them a short-lived, purpose-tagged reset link (same idiom as the
+ * "2fa-pending" token used mid-login - a plain JWT, verified later via
+ * `verifyToken` + a `purpose` check). Deliberately returns nothing and never
+ * throws for "no such account" or "send failed" - the controller always
+ * responds with the same generic message either way, so this endpoint can't
+ * be used to probe which emails are registered. A send failure is still
+ * logged server-side so it's not silently invisible to us.
+ *
+ * @param {string} email
+ */
+const requestPasswordReset = async (email) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) return;
+
+  const resetToken = generateShortLivedToken({ id: user.id, purpose: "password-reset" }, "30m");
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+
+  try {
+    await sendEmail({
+      to: { email: user.email, name: user.fullName },
+      subject: "Reset your VAE Inventory password",
+      html: passwordResetEmailHtml(resetUrl),
+    });
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "Failed to send password-reset email");
+  }
+};
+
+/**
+ * Completes a password reset: verifies the token from the emailed link,
+ * sets the new password, and invalidates every existing session (same
+ * `invalidateSessions` used on logout) - a forgotten/possibly-leaked
+ * password being reset is exactly the situation where signing out every
+ * other device is the right call.
+ *
+ * @param {string} token
+ * @param {string} newPassword
+ * @throws {AppError} 401 if the token is missing/invalid/expired/wrong-purpose.
+ */
+const resetPassword = async (token, newPassword) => {
+  let payload;
+  try {
+    payload = verifyToken(token);
+  } catch {
+    throw new AppError("This reset link is invalid or has expired. Please request a new one.", 401);
+  }
+
+  if (payload.purpose !== "password-reset") {
+    throw new AppError("This reset link is invalid or has expired. Please request a new one.", 401);
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: payload.id } });
+  if (!user) {
+    throw new AppError("This reset link is invalid or has expired. Please request a new one.", 401);
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash, mustChangePassword: false },
+  });
+
+  await invalidateSessions(user.id);
 };
 
 /**
@@ -403,7 +505,7 @@ const setupTwoFactor = async (userId) => {
     data: { twoFactorSecret: secret, twoFactorEnabled: false },
   });
 
-  const otpauthUrl = generateURI({ issuer: "D-Inventory", label: user.username, secret });
+  const otpauthUrl = generateURI({ issuer: "VAE Inventory", label: user.username, secret });
   const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
 
   return { secret, qrCodeDataUrl };
@@ -465,6 +567,9 @@ module.exports = {
   registerSuperAdmin,
   loginUser,
   verifyLoginTwoFactor,
+  invalidateSessions,
+  requestPasswordReset,
+  resetPassword,
   getMe,
   updatePassword,
   updateProfile,

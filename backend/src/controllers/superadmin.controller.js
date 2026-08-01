@@ -3,6 +3,7 @@ const {
   removeSuperAdmin,
   resetSuperAdminPassword,
 } = require("../services/superadmin.service");
+const { listPlatformAuditLog } = require("../services/audit-log.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
 
@@ -47,4 +48,19 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getAllSuperAdmins, deleteSuperAdmin, resetPassword };
+/**
+ * GET /api/platform/activity
+ * Platform/support endpoint (master-key gated). Lists platform-level audit
+ * events that no per-business Activity Log page can show: a business being
+ * deleted (the business is gone by the time you'd look there) and SuperAdmin
+ * accounts being registered/removed.
+ */
+const getActivity = asyncHandler(async (req, res) => {
+  const entries = await listPlatformAuditLog();
+  return sendSuccess(res, {
+    message: "Platform activity fetched successfully",
+    data: entries,
+  });
+});
+
+module.exports = { getAllSuperAdmins, deleteSuperAdmin, resetPassword, getActivity };

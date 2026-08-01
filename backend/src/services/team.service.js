@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 
 const PASSWORD_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
@@ -53,6 +54,8 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
   // Clean email — convert empty string to null
   const cleanEmail = email && email.trim() !== "" ? email.trim() : null;
 
+  const adder = await prisma.user.findUnique({ where: { id: addedById } });
+
   // Check if username already exists
   const existingUsername = await prisma.user.findUnique({
     where: { username },
@@ -72,24 +75,38 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
     }
 
     // Add existing user to this business
-    const businessUser = await prisma.businessUser.create({
-      data: {
-        businessId,
-        userId: existingUsername.id,
-        role,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-            phone: true,
-            email: true,
-            role: true,
+    const businessUser = await prisma.$transaction(async (tx) => {
+      const created = await tx.businessUser.create({
+        data: {
+          businessId,
+          userId: existingUsername.id,
+          role,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+              phone: true,
+              email: true,
+              role: true,
+            },
           },
         },
-      },
+      });
+
+      await recordAudit(tx, {
+        businessId,
+        actorId: addedById,
+        actorName: adder?.fullName ?? null,
+        action: "team.member_added",
+        entityType: "BusinessUser",
+        entityId: created.id,
+        metadata: { username, role },
+      });
+
+      return created;
     });
 
     return businessUser;
@@ -145,6 +162,16 @@ const addTeamMember = async ({ businessId, fullName, username, phone, email, rol
           },
         },
       },
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId: addedById,
+      actorName: adder?.fullName ?? null,
+      action: "team.member_added",
+      entityType: "BusinessUser",
+      entityId: businessUser.id,
+      metadata: { username, role },
     });
 
     return businessUser;
@@ -226,8 +253,22 @@ const removeTeamMember = async (businessUserId, businessId, requesterId) => {
     throw new AppError("Cannot remove the business owner", 403);
   }
 
-  await prisma.businessUser.delete({
-    where: { id: businessUserId },
+  const remover = await prisma.user.findUnique({ where: { id: requesterId } });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.businessUser.delete({
+      where: { id: businessUserId },
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId: requesterId,
+      actorName: remover?.fullName ?? null,
+      action: "team.member_removed",
+      entityType: "BusinessUser",
+      entityId: businessUserId,
+      metadata: { username: businessUser.user.username },
+    });
   });
 
   return { message: "Team member removed successfully" };
@@ -241,10 +282,11 @@ const removeTeamMember = async (businessUserId, businessId, requesterId) => {
  * @param {string} businessUserId
  * @param {string} businessId - Scopes the lookup to this business.
  * @param {"ADMIN"|"EMPLOYEE"} role - New role to assign.
+ * @param {string} requesterId - ID of the user performing the change.
  * @returns {Promise<object>} The updated BusinessUser with nested user info.
  * @throws {AppError} 404 if not found; 403 if targeting the owner.
  */
-const updateTeamMemberRole = async (businessUserId, businessId, role) => {
+const updateTeamMemberRole = async (businessUserId, businessId, role, requesterId) => {
   if (!["ADMIN", "EMPLOYEE"].includes(role)) {
     throw new AppError("Invalid role. Can only set ADMIN or EMPLOYEE");
   }
@@ -254,6 +296,7 @@ const updateTeamMemberRole = async (businessUserId, businessId, role) => {
       id: businessUserId,
       businessId,
     },
+    include: { user: { select: { username: true } } },
   });
 
   if (!businessUser) {
@@ -264,21 +307,37 @@ const updateTeamMemberRole = async (businessUserId, businessId, role) => {
     throw new AppError("Cannot change the role of the business owner", 403);
   }
 
-  const updated = await prisma.businessUser.update({
-    where: { id: businessUserId },
-    data: { role },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          username: true,
-          phone: true,
-          email: true,
-          role: true,
+  const changer = await prisma.user.findUnique({ where: { id: requesterId } });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.businessUser.update({
+      where: { id: businessUserId },
+      data: { role },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            phone: true,
+            email: true,
+            role: true,
+          },
         },
       },
-    },
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId: requesterId,
+      actorName: changer?.fullName ?? null,
+      action: "team.role_changed",
+      entityType: "BusinessUser",
+      entityId: businessUserId,
+      metadata: { username: businessUser.user.username, fromRole: businessUser.role, toRole: role },
+    });
+
+    return result;
   });
 
   return updated;

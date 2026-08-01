@@ -6,6 +6,7 @@ describe("Auth", () => {
       fullName: "Jane Owner",
       username: "jane_owner",
       phone: "08012345678",
+      email: "jane_owner@example.com",
       password: "password123",
     });
 
@@ -28,6 +29,7 @@ describe("Auth", () => {
       fullName: "Jane Owner",
       username: "jane_owner2",
       phone: "08012345678",
+      email: "jane_owner2@example.com",
       password: "password123",
     });
 
@@ -56,6 +58,7 @@ describe("Auth", () => {
       fullName: "First",
       username: "duplicate_user",
       phone: "08000000001",
+      email: "duplicate_user_1@example.com",
       password: "password123",
     });
 
@@ -63,6 +66,7 @@ describe("Auth", () => {
       fullName: "Second",
       username: "duplicate_user",
       phone: "08000000002",
+      email: "duplicate_user_2@example.com",
       password: "password123",
     });
 

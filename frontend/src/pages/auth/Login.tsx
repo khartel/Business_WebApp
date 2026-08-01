@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { User, Lock, Loader2, ShieldCheck } from "lucide-react"
-import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
@@ -189,15 +188,9 @@ export default function Login() {
               </label>
             )}
           />
-          <button
-            type="button"
-            onClick={() =>
-              toast.info(t("Ask your business owner or admin to reset your password from the Team page."))
-            }
-            className="text-sm text-primary hover:underline"
-          >
+          <Link to="/forgot-password" className="text-sm text-primary hover:underline">
             {t("Forgot password?")}
-          </button>
+          </Link>
         </div>
 
         {serverError && <p className="text-sm text-destructive">{serverError}</p>}

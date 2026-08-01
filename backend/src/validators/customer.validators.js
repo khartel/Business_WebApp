@@ -44,10 +44,19 @@ const listCustomersQuerySchema = {
   }),
 };
 
+/** Validates POST .../customers/:customerId/merge - merges :customerId into `intoCustomerId`. */
+const mergeCustomerSchema = {
+  params: customerIdParamSchema.params,
+  body: z.object({
+    intoCustomerId: z.string().uuid("Invalid target customer id"),
+  }),
+};
+
 module.exports = {
   businessIdParamSchema,
   customerIdParamSchema,
   createCustomerSchema,
   updateCustomerSchema,
   listCustomersQuerySchema,
+  mergeCustomerSchema,
 };

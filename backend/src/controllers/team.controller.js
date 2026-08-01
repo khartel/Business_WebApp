@@ -81,7 +81,8 @@ const updateRole = asyncHandler(async (req, res) => {
   const member = await updateTeamMemberRole(
     req.params.businessUserId,
     req.params.businessId,
-    role
+    role,
+    req.user.id
   );
 
   return sendSuccess(res, {

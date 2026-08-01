@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Contact, Search, Trash2 } from "lucide-react"
+import { Contact, History, Merge, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as customerService from "@/services/customer.service"
@@ -16,7 +16,9 @@ import { ErrorState } from "@/components/ErrorState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog"
 import { CustomerDetailSheet } from "@/components/customers/CustomerDetailSheet"
+import { MergeCustomerDialog } from "@/components/customers/MergeCustomerDialog"
 import { RecordPaymentDialog } from "@/components/customers/RecordPaymentDialog"
+import { CreditPaymentHistoryDialog } from "@/components/customers/CreditPaymentHistoryDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -132,6 +134,15 @@ function CustomersTab({ businessId, currency }: { businessId: string; currency: 
                     {canEdit && (
                       <div className="flex justify-end gap-2">
                         <CustomerFormDialog customer={customer} />
+                        <MergeCustomerDialog
+                          businessId={businessId}
+                          customer={customer}
+                          trigger={
+                            <Button variant="outline" size="icon-sm" aria-label={t("Merge into another customer")}>
+                              <Merge className="size-3.5" />
+                            </Button>
+                          }
+                        />
                         <ConfirmDialog
                           trigger={
                             <Button variant="outline" size="icon-sm" aria-label={t("Delete customer")}>
@@ -235,18 +246,31 @@ function CreditTab({ businessId, currency }: { businessId: string; currency: str
                   {formatMoney(tx.balanceDue, currency)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <RecordPaymentDialog
-                    businessId={businessId}
-                    transactionId={tx.id}
-                    customerName={tx.customerName}
-                    balanceDue={tx.balanceDue}
-                    currency={currency}
-                    trigger={
-                      <Button variant="outline" size="sm">
-                        {t("Record payment")}
-                      </Button>
-                    }
-                  />
+                  <div className="flex justify-end gap-2">
+                    <CreditPaymentHistoryDialog
+                      businessId={businessId}
+                      transactionId={tx.id}
+                      customerName={tx.customerName}
+                      currency={currency}
+                      trigger={
+                        <Button variant="outline" size="icon-sm" aria-label={t("Payment history")}>
+                          <History className="size-3.5" />
+                        </Button>
+                      }
+                    />
+                    <RecordPaymentDialog
+                      businessId={businessId}
+                      transactionId={tx.id}
+                      customerName={tx.customerName}
+                      balanceDue={tx.balanceDue}
+                      currency={currency}
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          {t("Record payment")}
+                        </Button>
+                      }
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

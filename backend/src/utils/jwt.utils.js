@@ -4,11 +4,12 @@
  * generateShortLivedToken below.
  */
 const jwt = require("jsonwebtoken");
+const logger = require("./logger");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  console.error("FATAL ERROR: JWT_SECRET is not defined in .env file.");
+  logger.fatal("JWT_SECRET is not defined in .env file.");
   process.exit(1);
 }
 

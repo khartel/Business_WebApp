@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Check, Copy, KeyRound, Loader2, Search, ShieldAlert, Trash2 } from "lucide-react"
+import { Check, Copy, History, KeyRound, Loader2, Search, ShieldAlert, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import * as platformService from "@/services/platform.service"
+import type { AuditLogEntry } from "@/services/auditLog.service"
 import { ApiError } from "@/lib/api-client"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { AuthShell } from "@/components/auth/AuthShell"
@@ -14,8 +15,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { EmptyState } from "@/components/EmptyState"
 import { ErrorState } from "@/components/ErrorState"
+
+// Human-readable label + one-line detail for each platform-level audit
+// action. Deliberately separate from Settings > Activity Log's `describe()`
+// (frontend/src/pages/settings/SettingsActivity.tsx) - that one covers
+// per-business actions, this covers the fixed, much smaller set of
+// platform-level ones (see `listPlatformAuditLog` on the backend).
+function describePlatformEvent(entry: AuditLogEntry): { label: string; detail: string } {
+  const m = entry.metadata ?? {}
+  switch (entry.action) {
+    case "business.deleted":
+      return { label: "Deleted business", detail: String(m.name ?? "") }
+    case "superadmin.registered":
+      return { label: "New SuperAdmin registered", detail: String(m.username ?? "") }
+    case "superadmin.removed":
+      return { label: "SuperAdmin removed", detail: String(m.fullName ?? m.username ?? "") }
+    default:
+      return { label: entry.action, detail: "" }
+  }
+}
 
 /**
  * UnlockGate — the entry screen for the platform admin console. Prompts for
@@ -123,6 +152,64 @@ function ResetPasswordAction({ masterKey, userId }: { masterKey: string; userId:
 }
 
 /**
+ * ActivityTab — platform-level audit trail: a business being deleted, or a
+ * SuperAdmin account being registered/removed. These can never show up on
+ * any per-business Activity Log page (Settings > Activity Log) - a deleted
+ * business is gone by the time you'd look there, and account
+ * registration/removal isn't tied to a business at all.
+ */
+function ActivityTab({ masterKey }: { masterKey: string }) {
+  const { t } = useTranslation()
+
+  const query = useQuery({
+    queryKey: ["platform-activity"],
+    queryFn: () => platformService.getPlatformActivity(masterKey),
+  })
+
+  const entries = query.data ?? []
+
+  if (query.isLoading) return <Skeleton className="h-64 rounded-xl" />
+  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        icon={<History className="size-6" />}
+        title="No activity yet"
+        description="Business deletions and SuperAdmin registrations/removals will show up here."
+      />
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("When")}</TableHead>
+            <TableHead>{t("Action")}</TableHead>
+            <TableHead>{t("Detail")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map((entry) => {
+            const { label, detail } = describePlatformEvent(entry)
+            return (
+              <TableRow key={entry.id}>
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {formatDateTime(entry.createdAt)}
+                </TableCell>
+                <TableCell className="font-medium">{t(label)}</TableCell>
+                <TableCell className="text-muted-foreground">{detail}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+/**
  * AdminConsole — the unlocked platform admin view. Lists every SuperAdmin
  * account on the platform (each account "owns" its own set of businesses)
  * and lets the operator reset a SuperAdmin's password or delete the
@@ -172,6 +259,12 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
         <ThemeToggle />
       </div>
 
+      <Tabs defaultValue="superadmins">
+        <TabsList>
+          <TabsTrigger value="superadmins">{t("SuperAdmins")}</TabsTrigger>
+          <TabsTrigger value="activity">{t("Activity")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="superadmins" className="space-y-6">
       {query.isLoading ? (
         <Skeleton className="h-64 rounded-xl" />
       ) : query.isError ? (
@@ -245,6 +338,11 @@ function AdminConsole({ masterKey }: { masterKey: string }) {
           ))}
         </div>
       )}
+        </TabsContent>
+        <TabsContent value="activity">
+          <ActivityTab masterKey={masterKey} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

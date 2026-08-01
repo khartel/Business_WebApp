@@ -16,6 +16,7 @@ async function createSuperAdminWithBusiness(overrides = {}) {
     fullName: "Test Owner",
     username,
     phone: "08000000000",
+    email: `${username}@example.com`,
     password,
   });
 

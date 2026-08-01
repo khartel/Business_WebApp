@@ -49,7 +49,7 @@ export function SidebarBrand() {
       <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_16px_var(--glow-primary)]">
         <Boxes className="size-5" />
       </div>
-      <span className="font-heading text-lg font-semibold text-white">D-Inventory</span>
+      <span className="font-heading text-lg font-semibold text-white">VAE Inventory</span>
     </Link>
   )
 }
@@ -103,7 +103,7 @@ export function Sidebar() {
       <SidebarBrand />
       <SidebarNav />
       <div className="border-t border-sidebar-border p-4 text-xs text-sidebar-foreground/40">
-        D-Inventory &copy; {new Date().getFullYear()}
+        VAE Inventory &copy; {new Date().getFullYear()}
       </div>
     </aside>
   )

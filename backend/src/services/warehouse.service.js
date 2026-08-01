@@ -1,5 +1,6 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 
 /**
  * Create a new warehouse for a business. Enforces the invariant that a
@@ -38,9 +39,9 @@ const createWarehouse = async ({ businessId, name, location, isPrimary, userId }
     });
   }
 
-  // If this is the first warehouse, make it primary automatically
+  // If this is the first (active) warehouse, make it primary automatically
   const warehouseCount = await prisma.warehouse.count({
-    where: { businessId },
+    where: { businessId, deletedAt: null },
   });
 
   const shouldBePrimary = isPrimary || warehouseCount === 0;
@@ -71,7 +72,7 @@ const createWarehouse = async ({ businessId, name, location, isPrimary, userId }
  */
 const getWarehouses = async (businessId) => {
   const warehouses = await prisma.warehouse.findMany({
-    where: { businessId },
+    where: { businessId, deletedAt: null },
     include: {
       stock: {
         include: {
@@ -114,6 +115,7 @@ const getWarehouseById = async (warehouseId, businessId) => {
     where: {
       id: warehouseId,
       businessId,
+      deletedAt: null,
     },
     include: {
       stock: {
@@ -161,7 +163,7 @@ const getWarehouseById = async (warehouseId, businessId) => {
 const setPrimaryWarehouse = async (warehouseId, businessId) => {
   // Make sure warehouse belongs to this business
   const warehouse = await prisma.warehouse.findFirst({
-    where: { id: warehouseId, businessId },
+    where: { id: warehouseId, businessId, deletedAt: null },
   });
 
   if (!warehouse) {
@@ -195,7 +197,7 @@ const setPrimaryWarehouse = async (warehouseId, businessId) => {
  */
 const updateWarehouse = async (warehouseId, businessId, { name, location }) => {
   const warehouse = await prisma.warehouse.findFirst({
-    where: { id: warehouseId, businessId },
+    where: { id: warehouseId, businessId, deletedAt: null },
   });
 
   if (!warehouse) {
@@ -214,21 +216,25 @@ const updateWarehouse = async (warehouseId, businessId, { name, location }) => {
 };
 
 /**
- * Delete a warehouse. Two safety rules prevent data loss / an unsellable
- * state: the primary warehouse can never be deleted directly (another one
- * must be promoted first via `setPrimaryWarehouse`), and a warehouse still
- * holding any stock can't be deleted until that stock is moved elsewhere
- * via `moveStock` — otherwise the stock rows (and their history) would be
- * silently destroyed.
+ * Soft-delete a warehouse. Two safety rules still apply since they're about
+ * *current* operational state, not history: the primary warehouse can never
+ * be deleted directly (another one must be promoted first via
+ * `setPrimaryWarehouse`), and a warehouse still holding any stock can't be
+ * deleted until that stock is moved elsewhere via `moveStock`. Once past
+ * those, the warehouse is simply hidden (`deletedAt` set) — its
+ * `Transaction`/`StockMovement` history is never touched, since nothing is
+ * actually deleted at the database level. Records an audit entry in the
+ * same transaction.
  *
  * @param {string} warehouseId
  * @param {string} businessId - Scopes the lookup to this business.
+ * @param {string} actorId - ID of the user performing the deletion.
  * @returns {Promise<{message: string}>}
  * @throws {AppError} 404 if not found; error if it's primary or still has stock.
  */
-const deleteWarehouse = async (warehouseId, businessId) => {
+const deleteWarehouse = async (warehouseId, businessId, actorId) => {
   const warehouse = await prisma.warehouse.findFirst({
-    where: { id: warehouseId, businessId },
+    where: { id: warehouseId, businessId, deletedAt: null },
   });
 
   if (!warehouse) {
@@ -241,9 +247,10 @@ const deleteWarehouse = async (warehouseId, businessId) => {
     );
   }
 
-  // Check if warehouse has stock
+  // Check if warehouse has any stock currently held (not just a
+  // WarehouseStock row that was created once and later drawn down to 0).
   const stockCount = await prisma.warehouseStock.count({
-    where: { warehouseId },
+    where: { warehouseId, quantity: { gt: 0 } },
   });
 
   if (stockCount > 0) {
@@ -252,11 +259,85 @@ const deleteWarehouse = async (warehouseId, businessId) => {
     );
   }
 
-  await prisma.warehouse.delete({
-    where: { id: warehouseId },
+  const actor = await prisma.user.findUnique({ where: { id: actorId } });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.warehouse.update({
+      where: { id: warehouseId },
+      data: { deletedAt: new Date() },
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId,
+      actorName: actor?.fullName ?? null,
+      action: "warehouse.deleted",
+      entityType: "Warehouse",
+      entityId: warehouseId,
+      metadata: { name: warehouse.name },
+    });
   });
 
   return { message: "Warehouse deleted successfully" };
+};
+
+/**
+ * List soft-deleted warehouses for a business (the "Trash" view), newest
+ * deletion first.
+ *
+ * @param {string} businessId
+ * @returns {Promise<object[]>}
+ */
+const getDeletedWarehouses = async (businessId) => {
+  return prisma.warehouse.findMany({
+    where: { businessId, deletedAt: { not: null } },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+/**
+ * Restore a soft-deleted warehouse by clearing `deletedAt`. It comes back
+ * as a non-primary warehouse regardless of what it was before deletion —
+ * `deleteWarehouse` already refuses to delete the primary warehouse, so a
+ * deleted one was never primary to begin with.
+ *
+ * @param {string} warehouseId
+ * @param {string} businessId - Scopes the lookup to this business.
+ * @param {string} actorId
+ * @returns {Promise<object>} The restored warehouse.
+ * @throws {AppError} 404 if not found among this business's deleted warehouses.
+ */
+const restoreWarehouse = async (warehouseId, businessId, actorId) => {
+  const warehouse = await prisma.warehouse.findFirst({
+    where: { id: warehouseId, businessId, deletedAt: { not: null } },
+  });
+
+  if (!warehouse) {
+    throw new AppError("Deleted warehouse not found", 404);
+  }
+
+  const actor = await prisma.user.findUnique({ where: { id: actorId } });
+
+  const restored = await prisma.$transaction(async (tx) => {
+    const result = await tx.warehouse.update({
+      where: { id: warehouseId },
+      data: { deletedAt: null },
+    });
+
+    await recordAudit(tx, {
+      businessId,
+      actorId,
+      actorName: actor?.fullName ?? null,
+      action: "warehouse.restored",
+      entityType: "Warehouse",
+      entityId: warehouseId,
+      metadata: { name: warehouse.name },
+    });
+
+    return result;
+  });
+
+  return restored;
 };
 
 module.exports = {
@@ -266,4 +347,6 @@ module.exports = {
   setPrimaryWarehouse,
   updateWarehouse,
   deleteWarehouse,
+  getDeletedWarehouses,
+  restoreWarehouse,
 };

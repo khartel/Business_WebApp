@@ -4,16 +4,28 @@ import { Plus, Search, ShoppingBasket, X } from "lucide-react"
 import type { Product } from "@/services/product.service"
 import { formatMoney } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { getUnitChoices } from "@/lib/units"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { UnitChoice } from "@/lib/units"
 
 /**
  * POS product picker: a search box with a live filtered dropdown (matches
  * against product name or short code, client-side against the in-memory
  * `products` list — no network call), and, once a product is selected, a
- * quantity input + "Add" button that calls `onAdd(product, quantity)` to
- * push it into the cart. Enforces that quantity is within available stock
- * (`canAdd`) and disables adding out-of-stock products entirely.
+ * unit selector (always shown - see `getUnitChoices`, which always offers
+ * at least the base unit, plus configured alternates and the implicit
+ * pcs/dozen pairing), a quantity input, and an "Add" button that calls
+ * `onAdd(product, quantity, unit)` to push it into the cart. Enforces that
+ * quantity (converted via the selected unit's factor) is within available
+ * stock (`canAdd`) and disables adding out-of-stock products entirely.
  */
 export function ProductSearch({
   products,
@@ -22,11 +34,12 @@ export function ProductSearch({
 }: {
   products: Product[]
   currency: string
-  onAdd: (product: Product, quantity: number) => void
+  onAdd: (product: Product, quantity: number, unit: UnitChoice) => void
 }) {
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState("1")
+  const [unitLabel, setUnitLabel] = useState<string>("")
   const searchRef = useRef<HTMLInputElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation()
@@ -42,19 +55,29 @@ export function ProductSearch({
       .slice(0, 6)
   }, [products, query, selected])
 
-  // As soon as a product is selected, jump focus to the quantity field and
-  // select its text so the cashier can immediately type a new quantity.
+  // As soon as a product is selected, default the unit back to its base
+  // unit and jump focus to the quantity field, selecting its text so the
+  // cashier can immediately type a new quantity.
   useEffect(() => {
     if (selected) {
+      setUnitLabel(selected.unit)
       qtyRef.current?.focus()
       qtyRef.current?.select()
     }
   }, [selected])
 
+  // Pack-size choices for the selected product - see `getUnitChoices`.
+  const unitChoices: UnitChoice[] = useMemo(() => {
+    if (!selected) return []
+    return getUnitChoices(selected)
+  }, [selected])
+  const selectedUnit = unitChoices.find((u) => u.label === unitLabel) ?? unitChoices[0]
+  const unitFactor = selectedUnit?.factor ?? 1
+
   const stock = selected?.primaryStock?.quantity ?? 0
   const qtyNum = parseFloat(quantity) || 0
   const isOutOfStock = !!selected && stock <= 0
-  const canAdd = !!selected && qtyNum > 0 && qtyNum <= stock
+  const canAdd = !!selected && qtyNum > 0 && qtyNum * unitFactor <= stock
 
   // Resets the picker back to its empty state and refocuses the search box,
   // used both after adding to cart and when the user clears the search.
@@ -62,12 +85,13 @@ export function ProductSearch({
     setSelected(null)
     setQuery("")
     setQuantity("1")
+    setUnitLabel("")
     searchRef.current?.focus()
   }
 
   const handleAdd = () => {
-    if (!selected || !canAdd) return
-    onAdd(selected, qtyNum)
+    if (!selected || !canAdd || !selectedUnit) return
+    onAdd(selected, qtyNum, selectedUnit)
     clear()
   }
 
@@ -157,22 +181,35 @@ export function ProductSearch({
           <div className="min-w-0 flex-1">
             <p className="truncate font-heading text-base font-semibold">{selected.name}</p>
             <p className="text-sm text-muted-foreground">
-              {formatMoney(selected.price, currency)} ·{" "}
+              {formatMoney(selected.price * unitFactor, currency)} ·{" "}
               {isOutOfStock
                 ? t("Out of stock")
                 : t("{{count}} {{unit}} available", { count: stock, unit: selected.unit })}
             </p>
-            {!isOutOfStock && qtyNum > stock && (
+            {!isOutOfStock && qtyNum * unitFactor > stock && (
               <p className="mt-0.5 text-xs text-destructive">
                 {t("Only {{count}} {{unit}} in stock", { count: stock, unit: selected.unit })}
               </p>
             )}
           </div>
+          <Select value={unitLabel} onValueChange={setUnitLabel}>
+            <SelectTrigger className="h-11 w-28 shrink-0 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {unitChoices.map((choice) => (
+                <SelectItem key={choice.label} value={choice.label}>
+                  {choice.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             ref={qtyRef}
             type="number"
             min="0"
             step="any"
+            aria-label={t("Quantity")}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             onKeyDown={(e) => {

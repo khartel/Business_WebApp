@@ -1,4 +1,4 @@
-# D-Inventory
+# VAE Inventory
 
 A multi-business inventory and sales management tool — built so a small business owner (and their staff) can track stock, record sales, manage warehouses, and see reports across one or more businesses from a single login.
 

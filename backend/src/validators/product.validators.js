@@ -27,6 +27,18 @@ const shortCodeField = z
   .optional()
   .transform((value) => (value ? value : undefined));
 
+// Optional alternate pack sizes (e.g. "dozen" = 12 base units). Price for
+// each is always derived as product.price * factor - no separate price
+// field to manage here.
+const unitsField = z
+  .array(
+    z.object({
+      label: z.string().trim().min(1, "Unit label is required"),
+      factor: z.coerce.number().positive("Factor must be greater than 0"),
+    })
+  )
+  .optional();
+
 /** Validates POST /businesses/:businessId/products - creates a product; price defaults are handled downstream if omitted. */
 const createProductSchema = {
   params: businessIdParamSchema.params,
@@ -36,6 +48,7 @@ const createProductSchema = {
     price: z.coerce.number().nonnegative("Price cannot be negative").optional(),
     description: z.string().trim().optional(),
     shortCode: shortCodeField,
+    units: unitsField,
   }),
 };
 
@@ -48,6 +61,7 @@ const updateProductSchema = {
     price: z.coerce.number().nonnegative("Price cannot be negative").optional(),
     description: z.string().trim().optional(),
     shortCode: shortCodeField,
+    units: unitsField,
   }),
 };
 

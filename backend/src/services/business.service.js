@@ -1,6 +1,7 @@
 const prisma = require("../utils/prisma");
 const { getCurrencyForCountry } = require("../utils/currencies");
 const AppError = require("../utils/AppError");
+const { recordAudit } = require("../utils/auditLog");
 
 /**
  * Create a new business (SuperAdmin only). Also derives the business's
@@ -62,6 +63,16 @@ const createBusiness = async ({ name, phone, email, country, location, ownerId }
       userId: ownerId,
       role: "SUPERADMIN",
     },
+  });
+
+  await recordAudit(prisma, {
+    businessId: business.id,
+    actorId: ownerId,
+    actorName: business.owner?.fullName ?? null,
+    action: "business.created",
+    entityType: "Business",
+    entityId: business.id,
+    metadata: { name: business.name },
   });
 
   return {
@@ -301,7 +312,26 @@ const deleteBusiness = async (businessId, ownerId) => {
     throw new AppError("Business not found or access denied", 404);
   }
 
-  await prisma.business.delete({ where: { id: businessId } });
+  const owner = await prisma.user.findUnique({ where: { id: ownerId } });
+
+  // The audit entry is written with `businessId` set *before* the cascading
+  // delete fires in the same transaction; the AuditLog->Business relation is
+  // onDelete: SetNull, so the row survives (businessId becomes null) instead
+  // of being cascade-deleted along with everything else - metadata.name
+  // keeps it readable afterward.
+  await prisma.$transaction(async (tx) => {
+    await recordAudit(tx, {
+      businessId,
+      actorId: ownerId,
+      actorName: owner?.fullName ?? null,
+      action: "business.deleted",
+      entityType: "Business",
+      entityId: businessId,
+      metadata: { name: existing.name },
+    });
+
+    await tx.business.delete({ where: { id: businessId } });
+  });
 
   return { message: "Business deleted successfully" };
 };

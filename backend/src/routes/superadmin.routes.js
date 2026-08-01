@@ -4,6 +4,7 @@ const {
   getAllSuperAdmins,
   deleteSuperAdmin,
   resetPassword,
+  getActivity,
 } = require("../controllers/superadmin.controller");
 const { validateMasterKey } = require("../middleware/masterkey.middleware");
 const { validate } = require("../middleware/validate.middleware");
@@ -30,5 +31,7 @@ router.post(
   validate(userIdParamSchema),
   resetPassword
 );
+
+router.get("/activity", getActivity);
 
 module.exports = router;

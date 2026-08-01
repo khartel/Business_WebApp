@@ -12,10 +12,20 @@ export interface ProductStockEntry {
   warehouse: { id: string; name: string; isPrimary: boolean; location?: string | null }
 }
 
+// An alternate pack size for a product (e.g. "dozen" = 12 base units).
+// Price for one of these is always product.price * factor - there's no
+// separate price to store per unit.
+export interface ProductUnit {
+  id: string
+  label: string
+  factor: number
+}
+
 // A catalog product. `stock` lists per-warehouse quantities; `totalQuantity`
 // is the sum across all warehouses and `primaryStock` is the stock entry for
 // the business's primary warehouse (both computed server-side for
-// convenience).
+// convenience). `units` lists any alternate pack sizes beyond the base
+// `unit` (e.g. selling the same product individually or "by the dozen").
 export interface Product {
   id: string
   businessId: string
@@ -29,16 +39,19 @@ export interface Product {
   stock: ProductStockEntry[]
   totalQuantity: number
   primaryStock: ProductStockEntry | null
+  units: ProductUnit[]
 }
 
 // Fields required to add a new product. `shortCode` is an optional
-// quick-search/scan code used in POS lookups.
+// quick-search/scan code used in POS lookups. `units`, when provided,
+// wholesale-replaces the product's alternate pack sizes on update.
 export interface CreateProductInput {
   name: string
   unit: string
   price?: number
   description?: string
   shortCode?: string
+  units?: Array<{ label: string; factor: number }>
 }
 
 // Partial product fields for edits.
@@ -63,3 +76,21 @@ export const updateProduct = (businessId: string, productId: string, input: Upda
 /** Deletes a product from the catalog. */
 export const deleteProduct = (businessId: string, productId: string) =>
   apiRequest<null>(apiClient.delete(`/businesses/${businessId}/products/${productId}`))
+
+// A soft-deleted product as returned by the Trash endpoint — scalar fields
+// only, no stock/units relations (those aren't loaded for a hidden product).
+export interface DeletedProduct {
+  id: string
+  name: string
+  unit: string
+  price: number
+  deletedAt: string
+}
+
+/** Lists soft-deleted products for a business (the Trash view). */
+export const getDeletedProducts = (businessId: string) =>
+  apiRequest<DeletedProduct[]>(apiClient.get(`/businesses/${businessId}/products/deleted`))
+
+/** Restores a soft-deleted product back into the active catalog. */
+export const restoreProduct = (businessId: string, productId: string) =>
+  apiRequest<null>(apiClient.post(`/businesses/${businessId}/products/${productId}/restore`))

@@ -50,6 +50,7 @@ model User {
   twoFactorSecret    String?
   twoFactorEnabled   Boolean  @default(false)
   language           String   @default("en")
+  tokenVersion       Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -59,6 +60,7 @@ model User {
   transactions    Transaction[]
   stockMovements  StockMovement[]
   creditPayments  CreditPayment[]
+  auditLogs       AuditLog[]
 }
 
 // ─────────────────────────────────────────
@@ -87,6 +89,7 @@ model Business {
   products      Product[]
   customers     Customer[]
   transactions  Transaction[]
+  auditLogs     AuditLog[]
 }
 
 // ─────────────────────────────────────────
@@ -111,13 +114,17 @@ model BusinessUser {
 // ─────────────────────────────────────────
 
 model Warehouse {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   businessId String
   name       String
   location   String?
-  isPrimary  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isPrimary  Boolean   @default(false)
+  // Soft-delete: hidden from active lists/pickers when set, but its stock
+  // rows and transaction/stock-movement history are left completely
+  // untouched (no cascade fires for a soft-delete).
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   stock         WarehouseStock[]
@@ -131,22 +138,42 @@ model Warehouse {
 // ─────────────────────────────────────────
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   businessId  String
   name        String
   unit        String
-  price       Float    @default(0)
+  price       Float     @default(0)
   description String?
   shortCode   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // Soft-delete: hidden from the catalog/POS/pickers when set, but past
+  // TransactionItem/StockMovement rows still resolve this product fine
+  // regardless (no cascade fires for a soft-delete).
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   stock            WarehouseStock[]
   transactionItems TransactionItem[]
   stockMovements   StockMovement[]
+  units            ProductUnit[]
 
   @@unique([businessId, shortCode])
+}
+
+// ─────────────────────────────────────────
+// PRODUCT UNITS (alternate pack sizes, e.g. "dozen" = 12 base units)
+// ─────────────────────────────────────────
+
+model ProductUnit {
+  id        String @id @default(uuid())
+  productId String
+  label     String
+  factor    Float
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, label])
 }
 
 // ─────────────────────────────────────────
@@ -173,12 +200,15 @@ model WarehouseStock {
 // ─────────────────────────────────────────
 
 model Customer {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   businessId String
   name       String
   phone      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  // Soft-delete: hidden from the directory/pickers when set; past
+  // transactions keep their `customerName` snapshot regardless.
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -231,13 +261,18 @@ model CreditPayment {
 // ─────────────────────────────────────────
 
 model TransactionItem {
-  id              String @id @default(uuid())
+  id              String  @id @default(uuid())
   transactionId   String
   productId       String
   quantitySold    Float
   unitPrice       Float
   subtotal        Float
   discountPercent Float?
+  // Display-only: the pack size actually rung up (e.g. "dozen" x 2), when
+  // it wasn't the product's base unit. quantitySold/unitPrice/subtotal
+  // above are always in base-unit terms regardless of what's shown here.
+  unitLabel       String?
+  unitQuantity    Float?
 
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -254,6 +289,11 @@ model StockMovement {
   toWarehouseId   String
   productId       String
   quantity        Float
+  // Display-only: the pack size actually entered (e.g. "carton" x 3), when
+  // it wasn't the product's base unit. `quantity` above is always the
+  // base-unit amount actually applied to WarehouseStock.
+  unitLabel       String?
+  unitQuantity    Float?
   type            MovementType   @default(TRANSFER)
   status          MovementStatus @default(COMPLETED)
   movedById       String
@@ -264,4 +304,31 @@ model StockMovement {
   fromWarehouse Warehouse? @relation("MovementFrom", fields: [fromWarehouseId], references: [id], onDelete: Cascade)
   toWarehouse   Warehouse  @relation("MovementTo", fields: [toWarehouseId], references: [id], onDelete: Cascade)
   product       Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOG (administrative/destructive actions only - not routine
+// sales/stock activity, which already has its own history views)
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  businessId String?
+  actorId    String?
+  // Denormalized snapshots so an entry stays readable even after the
+  // business/actor it describes is gone - an audit trail has to outlive
+  // the thing it's describing. `metadata` holds action-specific details
+  // (e.g. { name: "Soap Carton" } for a delete, { fromRole, toRole } for a
+  // role change).
+  actorName  String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  actor    User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
 }

@@ -121,19 +121,19 @@ export function CreateBusinessDialog({
           <div className="space-y-1.5">
             <Label htmlFor="biz-name">{t("Business name")}</Label>
             <Input id="biz-name" {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
+            {errors.name?.message && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="biz-phone">{t("Phone number")}</Label>
             <Input id="biz-phone" {...register("phone")} />
-            {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
+            {errors.phone?.message && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="biz-email">{t("Email (optional)")}</Label>
             <Input id="biz-email" type="email" {...register("email")} />
-            {errors.email && <p className="text-xs text-destructive">{t(errors.email.message)}</p>}
+            {errors.email?.message && <p className="text-xs text-destructive">{t(errors.email.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -155,13 +155,13 @@ export function CreateBusinessDialog({
                 ))}
               </SelectContent>
             </Select>
-            {errors.country && <p className="text-xs text-destructive">{t(errors.country.message)}</p>}
+            {errors.country?.message && <p className="text-xs text-destructive">{t(errors.country.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="biz-location">{t("Location")}</Label>
             <Input id="biz-location" placeholder={t("City, area")} {...register("location")} />
-            {errors.location && <p className="text-xs text-destructive">{t(errors.location.message)}</p>}
+            {errors.location?.message && <p className="text-xs text-destructive">{t(errors.location.message)}</p>}
           </div>
 
           <DialogFooter>

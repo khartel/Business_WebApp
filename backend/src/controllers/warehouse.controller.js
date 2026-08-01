@@ -5,6 +5,8 @@ const {
   setPrimaryWarehouse,
   updateWarehouse,
   deleteWarehouse,
+  getDeletedWarehouses,
+  restoreWarehouse,
 } = require("../services/warehouse.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
@@ -107,7 +109,8 @@ const update = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
   const result = await deleteWarehouse(
     req.params.warehouseId,
-    req.params.businessId
+    req.params.businessId,
+    req.user.id
   );
 
   return sendSuccess(res, {
@@ -115,4 +118,34 @@ const remove = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { create, getAll, getOne, setPrimary, update, remove };
+/**
+ * GET /api/businesses/:businessId/warehouses/deleted
+ * Lists soft-deleted warehouses for the business (the "Trash" view).
+ */
+const getDeleted = asyncHandler(async (req, res) => {
+  const warehouses = await getDeletedWarehouses(req.params.businessId);
+
+  return sendSuccess(res, {
+    message: "Deleted warehouses fetched successfully",
+    data: warehouses,
+  });
+});
+
+/**
+ * POST /api/businesses/:businessId/warehouses/:warehouseId/restore
+ * Restores a soft-deleted warehouse back into the active list.
+ */
+const restore = asyncHandler(async (req, res) => {
+  const warehouse = await restoreWarehouse(
+    req.params.warehouseId,
+    req.params.businessId,
+    req.user.id
+  );
+
+  return sendSuccess(res, {
+    message: "Warehouse restored successfully",
+    data: warehouse,
+  });
+});
+
+module.exports = { create, getAll, getOne, setPrimary, update, remove, getDeleted, restore };

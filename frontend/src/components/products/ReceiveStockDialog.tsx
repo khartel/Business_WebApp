@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next"
 import * as stockService from "@/services/stock.service"
 import * as warehouseService from "@/services/warehouse.service"
 import * as productService from "@/services/product.service"
+import { getUnitChoices } from "@/lib/units"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
@@ -44,6 +45,10 @@ const schema = z
         z.object({
           productId: z.string().min(1, "Select a product"),
           quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+          // Which pack size `quantity` is counted in - empty string means
+          // the product's base unit. Converted to a base-unit quantity at
+          // submit time, so this never reaches the backend as-is.
+          unit: z.string().optional(),
         })
       )
       .min(1, "Add at least one product"),
@@ -60,7 +65,11 @@ const schema = z
 type FormValues = z.input<typeof schema>
 type ParsedValues = z.output<typeof schema>
 
-const emptyValues: FormValues = { warehouseId: "", items: [{ productId: "", quantity: 0 }], notes: "" }
+const emptyValues: FormValues = {
+  warehouseId: "",
+  items: [{ productId: "", quantity: 0, unit: "" }],
+  notes: "",
+}
 
 /**
  * Dialog for recording incoming stock: pick a warehouse, then add one or more
@@ -107,8 +116,35 @@ export function ReceiveStockDialog() {
   const { fields, append, remove } = useFieldArray({ control, name: "items" })
   const watchedItems = watch("items")
 
+  // Resolves a row's chosen pack size to its conversion factor (1 for the
+  // base unit or when no unit was picked) via `getUnitChoices`, so the
+  // implicit pcs/dozen pairing is honored here too, not just configured
+  // alternate units.
+  const getUnitFactor = (productId: string, unitLabel: string | undefined) => {
+    if (!unitLabel) return 1
+    const product = productsQuery.data?.find((p) => p.id === productId)
+    if (!product) return 1
+    return getUnitChoices(product).find((u) => u.label === unitLabel)?.factor ?? 1
+  }
+
   const mutation = useMutation({
-    mutationFn: (values: ParsedValues) => stockService.receiveStock(activeBusinessId!, values),
+    mutationFn: (values: ParsedValues) =>
+      stockService.receiveStock(activeBusinessId!, {
+        warehouseId: values.warehouseId,
+        notes: values.notes,
+        // The backend always expects a base-unit quantity; a row entered
+        // as "3 cartons" becomes "72 pcs" here. unitLabel/unitQuantity are
+        // passed through purely so stock-movement history can still say
+        // "3 cartons" instead of "72 pcs".
+        items: values.items.map((item) => {
+          const factor = getUnitFactor(item.productId, item.unit)
+          return {
+            productId: item.productId,
+            quantity: item.quantity * factor,
+            ...(item.unit && factor !== 1 && { unitLabel: item.unit, unitQuantity: item.quantity }),
+          }
+        }),
+      }),
     onSuccess: (_, values) => {
       queryClient.invalidateQueries({ queryKey: ["products", activeBusinessId] })
       queryClient.invalidateQueries({ queryKey: ["warehouses", activeBusinessId] })
@@ -170,12 +206,15 @@ export function ReceiveStockDialog() {
                 </Select>
               )}
             />
-            {errors.warehouseId && <p className="text-xs text-destructive">{t(errors.warehouseId.message)}</p>}
+            {errors.warehouseId?.message && <p className="text-xs text-destructive">{t(errors.warehouseId.message)}</p>}
           </div>
 
           <div className="space-y-3">
             <Label>{t("Products")}</Label>
-            {fields.map((field, index) => (
+            {fields.map((field, index) => {
+              const rowProduct = productsQuery.data?.find((p) => p.id === watchedItems?.[index]?.productId)
+              const rowProductIdError = errors.items?.[index]?.productId?.message
+              return (
               <div key={field.id} className="flex items-start gap-2">
                 <div className="flex-1">
                   <Controller
@@ -192,12 +231,32 @@ export function ReceiveStockDialog() {
                       />
                     )}
                   />
-                  {errors.items?.[index]?.productId && (
+                  {rowProductIdError && (
                     <p className="mt-1 text-xs text-destructive">
-                      {t(errors.items[index]?.productId?.message)}
+                      {t(rowProductIdError)}
                     </p>
                   )}
                 </div>
+                {rowProduct && (
+                  <Controller
+                    control={control}
+                    name={`items.${index}.unit`}
+                    render={({ field: unitField }) => (
+                      <Select value={unitField.value || rowProduct.unit} onValueChange={unitField.onChange}>
+                        <SelectTrigger className="w-28 shrink-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getUnitChoices(rowProduct).map((u) => (
+                            <SelectItem key={u.label} value={u.label}>
+                              {u.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                )}
                 <Input
                   type="number"
                   step="any"
@@ -217,12 +276,18 @@ export function ReceiveStockDialog() {
                   <Trash2 className="size-3.5" />
                 </Button>
               </div>
-            ))}
+              )
+            })}
             {errors.items?.root?.message && (
               <p className="text-xs text-destructive">{t(errors.items.root.message)}</p>
             )}
 
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", quantity: 0 })}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append({ productId: "", quantity: 0, unit: "" })}
+            >
               <Plus className="size-3.5" />
               {t("Add another product")}
             </Button>

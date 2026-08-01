@@ -85,15 +85,23 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     setSubmitAttempted(false)
   }
 
-  // Adds `quantity` of `product` to the cart, merging into an existing line
-  // if the product is already present. Refuses (with a toast) to exceed the
-  // product's available stock at its primary warehouse.
-  const addToCart = (product: productService.Product, quantity: number) => {
+  // Adds `quantity` of `product`, sold in the given pack size `unit`, to
+  // the cart. Merges into an existing line only if the same product *and*
+  // the same unit are already present - picking a different pack size for
+  // a product already in the cart becomes a separate line instead, since
+  // "2 dozen" and "3 pcs" of the same product can't share one quantity.
+  // Refuses (with a toast) to exceed the product's available stock (always
+  // in base-unit terms) at its primary warehouse.
+  const addToCart = (
+    product: productService.Product,
+    quantity: number,
+    unit: { label: string; factor: number }
+  ) => {
     const availableStock = product.primaryStock?.quantity ?? 0
     setCart((prev) => {
-      const existing = prev.find((line) => line.productId === product.id)
+      const existing = prev.find((line) => line.productId === product.id && line.unit === unit.label)
       const nextQty = (existing?.quantity ?? 0) + quantity
-      if (nextQty > availableStock) {
+      if (nextQty * unit.factor > availableStock) {
         toast.error(
           t("Only {{count}} {{unit}} of {{name}} in stock", {
             count: availableStock,
@@ -105,18 +113,20 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
       }
       if (existing) {
         return prev.map((line) =>
-          line.productId === product.id ? { ...line, quantity: nextQty } : line
+          line.productId === product.id && line.unit === unit.label ? { ...line, quantity: nextQty } : line
         )
       }
+      const price = product.price * unit.factor
       return [
         ...prev,
         {
           productId: product.id,
           name: product.name,
-          unit: product.unit,
+          unit: unit.label,
+          unitFactor: unit.factor,
           quantity,
-          catalogPrice: product.price,
-          unitPrice: product.price,
+          catalogPrice: price,
+          unitPrice: price,
           availableStock,
         },
       ]
@@ -135,9 +145,15 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
         notes: paymentMethod === "TRANSFER" ? transferNote || undefined : undefined,
         items: cart.map((line) => ({
           productId: line.productId,
-          quantitySold: line.quantity,
-          unitPrice: line.unitPrice,
+          // The backend always deals in base-unit quantities/prices, so a
+          // line sold "2 dozen at $100/dozen" becomes "24 pcs at
+          // $8.3333/pcs" here - subtotal (quantity * price) is unchanged
+          // either way. unitLabel/unitQuantity are stored purely so the
+          // receipt can still say "2 dozen" instead of "24 pcs".
+          quantitySold: line.quantity * line.unitFactor,
+          unitPrice: Math.round((line.unitPrice / line.unitFactor) * 10000) / 10000,
           discountPercent: line.discountPercent,
+          ...(line.unitFactor !== 1 && { unitLabel: line.unit, unitQuantity: line.quantity }),
         })),
       }),
     onSuccess: (transaction) => {
@@ -183,9 +199,13 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
 
         <div className="flex-1 lg:min-h-0">
           {/*
-            Cart line editing handlers, all operating on `cart` by productId:
+            Cart line editing handlers, all operating on `cart` by
+            (productId, unit) - a product can have two separate lines (e.g.
+            "dozen" and "pcs") in the same sale, so both fields are needed
+            to target the right one:
             - onIncrement/onDecrement: adjust quantity by 1, clamped to
-              available stock (increment) or removed once it hits 0 (decrement).
+              available stock in base-unit terms (increment) or removed
+              once it hits 0 (decrement).
             - onPriceChange: sets a custom unit price and derives the
               equivalent discountPercent off the catalog price for display.
             - onDiscountChange: sets a discount percent and derives the
@@ -195,11 +215,11 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           <CartItemsPanel
             cart={cart}
             currency={currency}
-            onIncrement={(productId) =>
+            onIncrement={(productId, unit) =>
               setCart((prev) =>
                 prev.map((line) => {
-                  if (line.productId !== productId) return line
-                  if (line.quantity >= line.availableStock) {
+                  if (line.productId !== productId || line.unit !== unit) return line
+                  if ((line.quantity + 1) * line.unitFactor > line.availableStock) {
                     toast.error(
                       t("Only {{count}} {{unit}} in stock", {
                         count: line.availableStock,
@@ -212,19 +232,21 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
                 })
               )
             }
-            onDecrement={(productId) =>
+            onDecrement={(productId, unit) =>
               setCart((prev) =>
                 prev
                   .map((line) =>
-                    line.productId === productId ? { ...line, quantity: line.quantity - 1 } : line
+                    line.productId === productId && line.unit === unit
+                      ? { ...line, quantity: line.quantity - 1 }
+                      : line
                   )
                   .filter((line) => line.quantity > 0)
               )
             }
-            onPriceChange={(productId, price) =>
+            onPriceChange={(productId, unit, price) =>
               setCart((prev) =>
                 prev.map((line) => {
-                  if (line.productId !== productId) return line
+                  if (line.productId !== productId || line.unit !== unit) return line
                   const discountPercent =
                     line.catalogPrice > 0 && price < line.catalogPrice
                       ? Math.round((1 - price / line.catalogPrice) * 1000) / 10
@@ -233,10 +255,10 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
                 })
               )
             }
-            onDiscountChange={(productId, percent) =>
+            onDiscountChange={(productId, unit, percent) =>
               setCart((prev) =>
                 prev.map((line) => {
-                  if (line.productId !== productId) return line
+                  if (line.productId !== productId || line.unit !== unit) return line
                   if (percent === null) {
                     return { ...line, unitPrice: line.catalogPrice, discountPercent: undefined }
                   }
@@ -248,7 +270,9 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
                 })
               )
             }
-            onRemove={(productId) => setCart((prev) => prev.filter((line) => line.productId !== productId))}
+            onRemove={(productId, unit) =>
+              setCart((prev) => prev.filter((line) => !(line.productId === productId && line.unit === unit)))
+            }
           />
         </div>
       </div>

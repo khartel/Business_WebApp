@@ -7,6 +7,8 @@ const {
   setPrimary,
   update,
   remove,
+  getDeleted,
+  restore,
 } = require("../controllers/warehouse.controller");
 const { authenticate } = require("../middleware/auth.middleware");
 const { authorize, belongsToBusiness } = require("../middleware/role.middleware");
@@ -24,6 +26,10 @@ router.use(belongsToBusiness);
 
 // All roles can view warehouses
 router.get("/", authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"), getAll);
+
+// Registered before "/:warehouseId" so "deleted" isn't swallowed as an id.
+router.get("/deleted", authorize("SUPERADMIN", "ADMIN"), getDeleted);
+
 router.get(
   "/:warehouseId",
   authorize("SUPERADMIN", "ADMIN", "EMPLOYEE"),
@@ -50,6 +56,12 @@ router.delete(
   authorize("SUPERADMIN", "ADMIN"),
   validate(warehouseIdParamSchema),
   remove
+);
+router.post(
+  "/:warehouseId/restore",
+  authorize("SUPERADMIN", "ADMIN"),
+  validate(warehouseIdParamSchema),
+  restore
 );
 
 module.exports = router;

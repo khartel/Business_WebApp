@@ -124,23 +124,37 @@ export function TransactionDetailSheet({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transaction.items.map((item) => (
-                        <TableRow key={item.id} className="border-slate-200 hover:bg-transparent">
-                          <TableCell>
-                            {item.quantitySold} {item.product.unit}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {item.product.name}
-                            {!!item.discountPercent && (
-                              <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
-                                -{item.discountPercent}%
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">{formatMoney(item.unitPrice, currency)}</TableCell>
-                          <TableCell className="text-right">{formatMoney(item.subtotal, currency)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {transaction.items.map((item) => {
+                        // unitQuantity/unitLabel are only set when the sale
+                        // was rung up in a pack size other than the
+                        // product's base unit (e.g. "2 dozen") - the
+                        // per-unit price shown is derived from the actual
+                        // subtotal so it's always consistent with it, with
+                        // no separate stored price to go stale.
+                        const soldInAltUnit = item.unitQuantity != null && item.unitLabel
+                        const displayQty = soldInAltUnit ? item.unitQuantity : item.quantitySold
+                        const displayUnit = soldInAltUnit ? item.unitLabel : item.product.unit
+                        const displayUnitPrice = soldInAltUnit
+                          ? item.subtotal / item.unitQuantity!
+                          : item.unitPrice
+                        return (
+                          <TableRow key={item.id} className="border-slate-200 hover:bg-transparent">
+                            <TableCell>
+                              {displayQty} {displayUnit}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {item.product.name}
+                              {!!item.discountPercent && (
+                                <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                  -{item.discountPercent}%
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">{formatMoney(displayUnitPrice, currency)}</TableCell>
+                            <TableCell className="text-right">{formatMoney(item.subtotal, currency)}</TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>

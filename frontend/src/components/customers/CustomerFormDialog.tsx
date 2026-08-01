@@ -109,7 +109,7 @@ export function CustomerFormDialog({ customer }: { customer?: Customer }) {
           <div className="space-y-1.5">
             <Label htmlFor="cust-name">{t("Name")}</Label>
             <Input id="cust-name" autoFocus {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
+            {errors.name?.message && <p className="text-xs text-destructive">{t(errors.name.message)}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cust-phone">{t("Phone (optional)")}</Label>

@@ -83,7 +83,7 @@ export default function SelectBusiness() {
           <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-success text-primary-foreground shadow-[0_0_16px_var(--glow-primary)]">
             <Building2 className="size-5" />
           </div>
-          <span className="font-heading text-lg font-semibold">D-Inventory</span>
+          <span className="font-heading text-lg font-semibold">VAE Inventory</span>
         </div>
 
         <div className="flex items-center gap-3">

@@ -4,6 +4,7 @@ const {
   getTransactionById,
   getTransactionSummary,
   recordCreditPayment,
+  undoCreditPayment,
 } = require("../services/transaction.service");
 const { sendSuccess } = require("../utils/response.utils");
 const asyncHandler = require("../utils/asyncHandler");
@@ -112,4 +113,24 @@ const recordPayment = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { create, getAll, getSummary, getOne, recordPayment };
+/**
+ * DELETE /api/businesses/:businessId/transactions/:transactionId/payments/:paymentId
+ * Undoes a previously-recorded credit payment (a correction, not a customer
+ * refund) — deletes the payment and, if it had settled the sale, re-opens
+ * the outstanding balance.
+ */
+const undoPayment = asyncHandler(async (req, res) => {
+  const transaction = await undoCreditPayment(
+    req.params.transactionId,
+    req.params.paymentId,
+    req.params.businessId,
+    req.user.id
+  );
+
+  return sendSuccess(res, {
+    message: "Payment undone",
+    data: transaction,
+  });
+});
+
+module.exports = { create, getAll, getSummary, getOne, recordPayment, undoPayment };

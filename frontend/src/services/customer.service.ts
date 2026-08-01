@@ -84,3 +84,26 @@ export const updateCustomer = (businessId: string, customerId: string, input: Up
 /** Deletes a customer. */
 export const deleteCustomer = (businessId: string, customerId: string) =>
   apiRequest<null>(apiClient.delete(`/businesses/${businessId}/customers/${customerId}`))
+
+// A soft-deleted customer as returned by the Trash endpoint — scalar fields
+// only, no transaction history/stats (those aren't loaded for a hidden customer).
+export interface DeletedCustomer {
+  id: string
+  name: string
+  phone: string | null
+  deletedAt: string
+}
+
+/** Lists soft-deleted customers for a business (the Trash view). */
+export const getDeletedCustomers = (businessId: string) =>
+  apiRequest<DeletedCustomer[]>(apiClient.get(`/businesses/${businessId}/customers/deleted`))
+
+/** Restores a soft-deleted customer back into the directory. */
+export const restoreCustomer = (businessId: string, customerId: string) =>
+  apiRequest<null>(apiClient.post(`/businesses/${businessId}/customers/${customerId}/restore`))
+
+/** Merges a duplicate customer (`customerId`) into another (`intoCustomerId`), moving its transactions over. */
+export const mergeCustomer = (businessId: string, customerId: string, intoCustomerId: string) =>
+  apiRequest<Customer>(
+    apiClient.post(`/businesses/${businessId}/customers/${customerId}/merge`, { intoCustomerId })
+  )
