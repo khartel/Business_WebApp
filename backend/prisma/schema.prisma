@@ -232,6 +232,11 @@ model Transaction {
   notes         String?
   paidAt        DateTime?
   createdAt     DateTime      @default(now())
+  // Only ever set for CASH sales where the cashier chose to record what the
+  // customer physically handed over - null for TRANSFER/CREDIT, and null for
+  // CASH sales too if the amount received just wasn't entered.
+  amountTendered Float?
+  changeGiven    Float?
 
   business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   warehouse     Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)

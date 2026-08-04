@@ -46,7 +46,7 @@ function itemsSoldCsvRows(report: DailyReport, currency: string) {
     ["Currency", currency],
     [],
     ["Product", "Quantity", "Revenue"],
-    ...report.byProduct.map((row) => [row.product.name, row.totalQuantity, row.totalRevenue]),
+    ...report.byProduct.map((row) => [row.product.name, `${row.totalQuantity} ${row.product.unit}`, row.totalRevenue]),
     [],
     ["Total", "", report.summary.totalAmount],
   ]
@@ -70,7 +70,7 @@ function fullReportCsvRows(report: DailyReport, currency: string) {
     [],
     ["By product"],
     ["Product", "Quantity", "Revenue"],
-    ...report.byProduct.map((row) => [row.product.name, row.totalQuantity, row.totalRevenue]),
+    ...report.byProduct.map((row) => [row.product.name, `${row.totalQuantity} ${row.product.unit}`, row.totalRevenue]),
   ]
 }
 
@@ -117,7 +117,7 @@ export function DailyReportTab() {
       sections: [
         {
           head: ["Product", "Quantity", "Revenue"],
-          body: report.byProduct.map((row) => [row.product.name, row.totalQuantity, formatMoney(row.totalRevenue, currency)]),
+          body: report.byProduct.map((row) => [row.product.name, `${row.totalQuantity} ${row.product.unit}`, formatMoney(row.totalRevenue, currency)]),
           foot: ["Total", "", formatMoney(report.summary.totalAmount, currency)],
         },
       ],
@@ -157,7 +157,7 @@ export function DailyReportTab() {
         {
           heading: "By product",
           head: ["Product", "Quantity", "Revenue"],
-          body: report.byProduct.map((row) => [row.product.name, row.totalQuantity, formatMoney(row.totalRevenue, currency)]),
+          body: report.byProduct.map((row) => [row.product.name, `${row.totalQuantity} ${row.product.unit}`, formatMoney(row.totalRevenue, currency)]),
           foot: ["Total", "", formatMoney(report.summary.totalAmount, currency)],
         },
       ],
@@ -235,7 +235,7 @@ export function DailyReportTab() {
             {report.byProduct.map((row) => (
               <li key={row.product.id} className="flex justify-between">
                 <span>
-                  {row.product.name} × {row.totalQuantity}
+                  {row.product.name} × {row.totalQuantity} {row.product.unit}
                 </span>
                 <span className="font-medium">{formatMoney(row.totalRevenue, currency)}</span>
               </li>

@@ -381,28 +381,18 @@ export function ProductFormDialog({ product }: { product?: Product }) {
                 {...register("pcsPerContainer")}
               />
               <p className="text-xs text-muted-foreground">
-                {t("Leave blank to only sell whole {{unit}}s. Fill it in to also sell/restock this product in pcs, priced automatically at the {{unit}} price divided by this count.", { unit: unitValue })}
+                {t("Optional. Skip this if you only sell whole {{unit}}s.", { unit: unitValue })}
               </p>
               {errors.pcsPerContainer?.message && (
                 <p className="text-xs text-destructive">{t(errors.pcsPerContainer.message)}</p>
               )}
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label htmlFor="prod-shortcode">{t("Short code (optional)")}</Label>
-            <Input id="prod-shortcode" placeholder={t("e.g. fn14")} {...register("shortCode")} />
-            <p className="text-xs text-muted-foreground">{t("A quick nickname to find this product faster at the register.")}</p>
-            {errors.shortCode?.message && <p className="text-xs text-destructive">{t(errors.shortCode.message)}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="prod-description">{t("Description (optional)")}</Label>
-            <Textarea id="prod-description" rows={3} {...register("description")} />
-          </div>
 
           <div className="space-y-2">
             <Label>{t("Alternate units (optional)")}</Label>
             <p className="text-xs text-muted-foreground">
-              {t("Sell or restock this product in other pack sizes too - bigger (\"dozen\" = 12 {{unit}}, factor 12) or smaller (\"pcs\" = 1/12 of a {{unit}}, factor 1/12). Price is always the base price times the factor.", { unit: unitValue || t("units") })}
+              {t("Other pack sizes this product can be sold in, like dozen or pcs.")}
             </p>
             {unitFields.map((field, index) => {
               const isCustomRow = customUnitRows[index] ?? false
@@ -507,6 +497,17 @@ export function ProductFormDialog({ product }: { product?: Product }) {
               <Plus className="size-3.5" />
               {t("Add alternate unit")}
             </Button>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="prod-shortcode">{t("Short code (optional)")}</Label>
+            <Input id="prod-shortcode" placeholder={t("e.g. fn14")} {...register("shortCode")} />
+            <p className="text-xs text-muted-foreground">{t("For quick lookup at the register.")}</p>
+            {errors.shortCode?.message && <p className="text-xs text-destructive">{t(errors.shortCode.message)}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="prod-description">{t("Description (optional)")}</Label>
+            <Textarea id="prod-description" rows={3} {...register("description")} />
           </div>
 
           <DialogFooter>

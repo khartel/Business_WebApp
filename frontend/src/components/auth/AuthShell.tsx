@@ -34,10 +34,11 @@ export function AuthShell({ title, description, children, footer }: AuthShellPro
 
       <div className="w-full max-w-sm rounded-[2rem] border border-border/60 bg-white/60 p-8 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success text-primary-foreground shadow-lg shadow-primary/20">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success text-primary-foreground shadow-lg shadow-primary/20">
             <Boxes className="size-6" />
           </div>
-          <h1 className="font-heading text-xl font-semibold">{t(title)}</h1>
+          <p className="font-heading text-base font-bold tracking-tight">VAE Inventory</p>
+          <h1 className="mt-3 font-heading text-xl font-semibold">{t(title)}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t(description)}</p>
         </div>
 

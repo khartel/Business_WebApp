@@ -24,6 +24,16 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   } as unknown as typeof ResizeObserver
 }
 
+// jsdom also doesn't implement IntersectionObserver, which SideRays uses to
+// pause its WebGL loop when scrolled out of view.
+if (typeof globalThis.IntersectionObserver === "undefined") {
+  globalThis.IntersectionObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof IntersectionObserver
+}
+
 if (!window.matchMedia) {
   window.matchMedia = (query: string) => ({
     matches: false,

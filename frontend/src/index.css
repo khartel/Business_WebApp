@@ -177,6 +177,19 @@
   .animate-aurora-3 { animation: aurora-3 24s ease-in-out infinite; }
 }
 
+/* No `size:` here on purpose - leaving it unset means the receipt follows
+   whatever paper size the user picks in their print dialog (A4, A5, Letter,
+   ...) instead of forcing one. `margin` just keeps a consistent frame around
+   the content on any of them. Browser-injected print headers/footers (page
+   title, URL, date, page number) live outside this page box entirely - they
+   come from the browser's own "Headers and footers" print-dialog setting,
+   which no page CSS can reach; turning that checkbox off is the only way to
+   remove them, and it's a one-time, per-browser setting rather than
+   something this app can control per-print. */
+@page {
+  margin: 12mm;
+}
+
 /* Receipt printing: hide the whole app by default when printing, reveal only
    the element flagged .receipt-print-area. The receipt itself is styled as a
    plain white document (see TransactionDetailSheet), so printing just needs to
@@ -189,18 +202,90 @@
   .receipt-print-area * {
     visibility: visible;
   }
-  /* The receipt sits inside a fixed-position Sheet panel, which would otherwise
-     confine the absolutely-positioned receipt to the panel's width. Dropping the
-     Sheet back into normal flow lets the receipt use the full printable page. */
-  [data-slot="sheet-overlay"] {
+  /* `visibility: hidden` above makes the app invisible but does NOT remove it
+     from layout - the whole sidebar/topbar/page-content tree under #root
+     still reserves its full height. Since the receipt's dialog is portal-
+     rendered as a LATER sibling of #root (not a descendant), that reserved
+     space sits before it in document flow, which pushed the receipt onto a
+     second printed page instead of the top of page one. Removing #root from
+     layout entirely (not just hiding it) fixes this; the dialog portal is
+     unaffected since it's a sibling, not a child, of #root. */
+  #root {
     display: none !important;
   }
-  [data-slot="sheet-content"] {
+  /* The receipt sits inside a fixed-position Dialog panel, which would otherwise
+     confine the absolutely-positioned receipt to the panel's width/centering.
+     Dropping that Dialog back into normal flow lets the receipt use the full
+     printable page.
+     TransactionDetailSheet can be opened from on top of another already-open
+     Dialog (e.g. a customer's transaction history) - both stay mounted at
+     once, and `visibility: hidden` above doesn't remove an element from
+     layout, so the OTHER dialog's invisible box would still occupy space and
+     skew the receipt's layout. `:has()` scopes the position reset to only the
+     Dialog that actually contains the receipt, and fully removes any other
+     open Dialog instead of just hiding it. */
+  [data-slot="dialog-overlay"] {
+    display: none !important;
+  }
+  [data-slot="dialog-content"]:not(:has(.receipt-print-area)) {
+    display: none !important;
+  }
+  [data-slot="dialog-content"]:has(.receipt-print-area) {
     position: static !important;
+    /* Tailwind v4 compiles -translate-x-1/2/-translate-y-1/2 to the native
+       `translate` property, not a `transform:` string - and a non-none
+       `translate` (like `transform`) establishes its own containing block,
+       which would otherwise keep the receipt confined to the dialog's
+       original centered width even after `position: static` above. */
+    transform: none !important;
+    translate: none !important;
+    /* Undo the screen-only `sm:max-w-xl` (and `max-w-[calc(100%-2rem)]`)
+       constraint from the Dialog component - without this the receipt stays
+       pinned to a ~576px-wide box in the corner of the printed page instead
+       of filling (and so reading as centered on) whatever paper size was
+       chosen. */
+    width: 100% !important;
+    max-width: 100% !important;
+    /* This is `flex flex-col` on screen so the header/footer can stay put
+       while the body scrolls (see ui/dialog.tsx) - print has no scrolling,
+       and a `flex: 1` body div inside an auto-height flex container with no
+       explicit height reference computes an unreliable (near-zero) height
+       rather than growing to fit its actual content. Forcing plain block
+       flow sidesteps that entirely. */
+    display: block !important;
+  }
+  /* Same reasoning as above, scoped to DialogContent's direct children only
+     (DialogHeader, the scrollable body wrapper, DialogFooter) - NOT to
+     .receipt-print-area's own descendants two levels down, which still need
+     their internal flex/grid rows (the business-name/RECEIPT header row,
+     the totals block, etc.) to lay out correctly. */
+  [data-slot="dialog-content"]:has(.receipt-print-area) > div {
+    display: block !important;
+  }
+  /* DialogContent (and the scrollable body div inside it) are capped with
+     max-height + overflow so long dialogs scroll internally on screen - but
+     an ancestor's overflow: hidden/auto still clips an absolutely-positioned
+     descendant's paint even after it escapes that ancestor as its
+     containing block, so a receipt taller than the on-screen scroll box
+     would get cut off when printed unless every ancestor's clipping is
+     lifted, not just the immediate dialog-content's. */
+  [data-slot="dialog-content"]:has(.receipt-print-area),
+  [data-slot="dialog-content"]:has(.receipt-print-area) * {
+    overflow: visible !important;
+    max-height: none !important;
   }
   .receipt-print-area {
-    position: absolute;
-    inset: 0;
+    /* Previously `position: absolute; inset: 0` to escape the centered
+       dialog's width/centering - now unnecessary (and actively harmful)
+       since the whole ancestor chain above is already back in plain block
+       flow at full width: an absolutely-positioned box with inset:0 sizes
+       itself to whatever it resolves as its containing block rather than
+       growing to fit its own content, and with the flex-column changes
+       above that resolved to a too-short box, silently clipping/exposing
+       the plain page background beneath the table and footer instead of
+       the receipt's own white card background. Plain static flow just
+       sizes to its real content, no containing-block guesswork involved. */
+    position: static;
     width: 100%;
     backdrop-filter: none !important;
     box-shadow: none !important;

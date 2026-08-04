@@ -8,12 +8,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/table"
 
 /**
- * Slide-over sheet that renders a single transaction as a printable sales receipt,
+ * Centered dialog that renders a single transaction as a printable sales receipt,
  * plus a "Print receipt" button (uses the browser's native `window.print()`; the
  * `.receipt-print-area` / `print:hidden` classes control what's included when printing).
  *
@@ -34,7 +35,7 @@ import {
  * - onOpenChange: called when the sheet is dismissed.
  *
  * Branding data source: the receipt's title, footer note, and whether to show the
- * signature lines are NOT hardcoded — they come from the active business's own
+ * signature line are NOT hardcoded — they come from the active business's own
  * settings (`activeBusiness.receiptTitle`, `receiptFooterNote`, `receiptShowSignature`,
  * set on the Settings page) via `useActiveBusiness()`, each with a sensible fallback
  * ("RECEIPT", "Thank you for your business!", and `true` respectively) so receipts
@@ -63,18 +64,34 @@ export function TransactionDetailSheet({
   })
 
   const transaction = transactionQuery.data
+  // The backend defaults every anonymous walk-in sale's customerName to the
+  // literal string "Casual Customer" - treat that as "no name on file" and
+  // omit the Billed To block entirely, rather than printing a placeholder.
+  const hasCustomerName = !!transaction?.customerName && transaction.customerName !== "Casual Customer"
 
   return (
-    <Sheet open={!!transactionId} onOpenChange={onOpenChange}>
-      <SheetContent className="data-[side=right]:sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle>{t("Sale receipt")}</SheetTitle>
-          <SheetDescription>
+    <Dialog open={!!transactionId} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader className="print:hidden">
+          <DialogTitle>{t("Sale receipt")}</DialogTitle>
+          <DialogDescription>
             {transaction ? formatDateTime(transaction.createdAt) : t("Loading...")}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4 px-4 pb-4">
+        {transaction && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="absolute top-2 right-11 print:hidden"
+            aria-label={t("Print receipt")}
+            onClick={() => window.print()}
+          >
+            <Printer className="size-4" />
+          </Button>
+        )}
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
           {transactionQuery.isLoading || !transaction ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
@@ -92,11 +109,13 @@ export function TransactionDetailSheet({
                   </p>
                 </div>
 
-                <div className="mt-6 flex items-start justify-between gap-4 text-sm">
-                  <div>
-                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t("Billed To")}</p>
-                    <p className="font-medium">{transaction.customerName}</p>
-                  </div>
+                <div className={`mt-6 flex items-start gap-4 text-sm ${hasCustomerName ? "justify-between" : "justify-end"}`}>
+                  {hasCustomerName && (
+                    <div>
+                      <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t("Billed To")}</p>
+                      <p className="font-medium">{transaction.customerName}</p>
+                    </div>
+                  )}
                   <div className="text-right">
                     <p>
                       <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
@@ -173,6 +192,18 @@ export function TransactionDetailSheet({
                         )}
                       </div>
                     )}
+                    {transaction.amountTendered != null && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>{t("Amount received")}</span>
+                        <span className="font-medium">{formatMoney(transaction.amountTendered, currency)}</span>
+                      </div>
+                    )}
+                    {transaction.changeGiven != null && transaction.changeGiven > 0 && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>{t("Change")}</span>
+                        <span className="font-medium">{formatMoney(transaction.changeGiven, currency)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -212,12 +243,8 @@ export function TransactionDetailSheet({
                 )}
 
                 {(activeBusiness?.receiptShowSignature ?? true) && (
-                  <div className="mt-10 grid grid-cols-2 gap-8 text-sm">
-                    <div>
-                      <div className="h-8 border-b border-slate-400" />
-                      <p className="mt-1.5 text-xs text-slate-500">{t("Customer signature")}</p>
-                    </div>
-                    <div>
+                  <div className="mt-10 flex justify-end text-sm">
+                    <div className="w-full max-w-56">
                       <div className="h-8 border-b border-slate-400" />
                       <p className="mt-1.5 text-xs text-slate-500">{t("Received by")}</p>
                     </div>
@@ -228,19 +255,19 @@ export function TransactionDetailSheet({
                   {activeBusiness?.receiptFooterNote ?? "Thank you for your business!"}
                 </p>
               </div>
-
-              <Button
-                variant="outline"
-                className="w-full print:hidden"
-                onClick={() => window.print()}
-              >
-                <Printer className="size-4" />
-                {t("Print receipt")}
-              </Button>
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+
+        {transaction && (
+          <DialogFooter className="print:hidden">
+            <Button variant="outline" className="w-full" onClick={() => window.print()}>
+              <Printer className="size-4" />
+              {t("Print receipt")}
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }

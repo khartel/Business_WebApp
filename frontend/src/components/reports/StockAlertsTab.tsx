@@ -65,8 +65,20 @@ export function StockAlertsTab() {
   }
 
   const alertRows = [
-    ...report.outOfStock.map((item) => [item.product.name, item.warehouse.name, "Out of stock", item.quantity, item.lowStockThreshold]),
-    ...report.lowStock.map((item) => [item.product.name, item.warehouse.name, "Low stock", item.quantity, item.lowStockThreshold]),
+    ...report.outOfStock.map((item) => [
+      item.product.name,
+      item.warehouse.name,
+      "Out of stock",
+      `${item.quantity} ${item.product.unit}`,
+      `${item.lowStockThreshold} ${item.product.unit}`,
+    ]),
+    ...report.lowStock.map((item) => [
+      item.product.name,
+      item.warehouse.name,
+      "Low stock",
+      `${item.quantity} ${item.product.unit}`,
+      `${item.lowStockThreshold} ${item.product.unit}`,
+    ]),
   ]
 
   const downloadAsCsv = () => {

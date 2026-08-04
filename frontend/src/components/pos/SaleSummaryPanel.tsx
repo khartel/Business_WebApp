@@ -20,6 +20,9 @@ interface SaleSummaryPanelProps {
   customerNameError?: string
   transferNote: string
   onTransferNoteChange: (value: string) => void
+  amountTendered: string
+  onAmountTenderedChange: (value: string) => void
+  amountTenderedError?: string
   onComplete: () => void
   isSubmitting: boolean
 }
@@ -46,11 +49,17 @@ export function SaleSummaryPanel({
   customerNameError,
   transferNote,
   onTransferNoteChange,
+  amountTendered,
+  onAmountTenderedChange,
+  amountTenderedError,
   onComplete,
   isSubmitting,
 }: SaleSummaryPanelProps) {
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
   const { t } = useTranslation()
+
+  const tenderedNum = amountTendered.trim() === "" ? null : Number(amountTendered)
+  const changeDue = tenderedNum != null && !Number.isNaN(tenderedNum) ? tenderedNum - total : null
 
   return (
     <div className="flex h-full flex-col justify-between gap-4 rounded-3xl border border-border/60 bg-card/60 p-5 shadow-lg backdrop-blur-2xl dark:bg-card/40">
@@ -113,6 +122,21 @@ export function SaleSummaryPanel({
           </button>
         </div>
 
+        {paymentMethod === "CASH" && (
+          <div className="space-y-1.5">
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              placeholder={t("Amount received (optional)")}
+              value={amountTendered}
+              onChange={(e) => onAmountTenderedChange(e.target.value)}
+            />
+            {amountTenderedError && <p className="text-xs text-destructive">{amountTenderedError}</p>}
+          </div>
+        )}
+
         {paymentMethod === "TRANSFER" && (
           <Input
             placeholder={t("Transfer note (e.g. reference, sender name)")}
@@ -129,11 +153,21 @@ export function SaleSummaryPanel({
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl bg-muted/60 px-4 py-3">
-          <span className="text-sm font-medium text-muted-foreground">{t("Total")}</span>
-          <span className="font-heading text-2xl font-bold tabular-nums">
-            {formatMoney(total, currency)}
-          </span>
+        <div className="rounded-xl bg-muted/60 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">{t("Total")}</span>
+            <span className="font-heading text-2xl font-bold tabular-nums">
+              {formatMoney(total, currency)}
+            </span>
+          </div>
+          {paymentMethod === "CASH" && changeDue != null && changeDue >= 0 && (
+            <div className="mt-1.5 flex items-center justify-between border-t border-border/60 pt-1.5">
+              <span className="text-sm font-medium text-muted-foreground">{t("Change due")}</span>
+              <span className="font-heading text-lg font-semibold text-success tabular-nums">
+                {formatMoney(changeDue, currency)}
+              </span>
+            </div>
+          )}
         </div>
 
         <Button

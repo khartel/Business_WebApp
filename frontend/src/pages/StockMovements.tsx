@@ -28,12 +28,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -317,18 +317,18 @@ export default function StockMovements() {
         </div>
       )}
 
-      <Sheet open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
-        <SheetContent className="data-[side=right]:sm:max-w-3xl">
-          <SheetHeader>
-            <SheetTitle>{selectedDay?.label}</SheetTitle>
-            <SheetDescription>
+      <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selectedDay?.label}</DialogTitle>
+            <DialogDescription>
               {selectedDay?.movements.length}{" "}
               {(selectedDay?.movements.length ?? 0) === 1 ? t("movement") : t("movements")}{" "}
               {t("that day")}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="mx-4 mb-4 w-auto overflow-x-auto rounded-lg border border-border">
+          <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -362,8 +362,8 @@ export default function StockMovements() {
               </TableBody>
             </Table>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

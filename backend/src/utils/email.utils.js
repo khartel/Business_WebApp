@@ -1,7 +1,8 @@
 /**
- * Thin wrapper around Brevo's transactional-email API. The only email this
- * app sends today is the password-reset link; `sendEmail` stays generic in
- * case a second email type (e.g. a team-invite notice) is added later.
+ * Thin wrapper around Brevo's transactional-email API. Sends the
+ * password-reset link and the new-account welcome email today; `sendEmail`
+ * stays generic in case more email types (e.g. a team-invite notice) are
+ * added later.
  */
 const { BrevoClient } = require("@getbrevo/brevo");
 
@@ -61,4 +62,40 @@ const passwordResetEmailHtml = (resetUrl) => `
 </html>
 `;
 
-module.exports = { sendEmail, passwordResetEmailHtml };
+/**
+ * Branded HTML body for the "welcome" email sent right after a new
+ * SuperAdmin registers. Same inline-styles-only approach as the
+ * password-reset email, for the same reason (email client CSS support).
+ */
+const welcomeEmailHtml = (fullName) => `
+<html>
+  <body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:32px;">
+            <tr>
+              <td style="font-size:18px;font-weight:600;color:#111827;padding-bottom:16px;">VAE Inventory</td>
+            </tr>
+            <tr>
+              <td style="font-size:15px;color:#374151;line-height:1.5;padding-bottom:24px;">
+                Welcome, ${fullName}! Your account is ready. Sign in to set up your business —
+                add warehouses, products, and team members — and start tracking sales.
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-bottom:8px;">
+                <a href="${process.env.CLIENT_URL}/login" style="background:#059669;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600;display:inline-block;">
+                  Sign in
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`;
+
+module.exports = { sendEmail, passwordResetEmailHtml, welcomeEmailHtml };

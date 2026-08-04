@@ -14,7 +14,7 @@ const asyncHandler = require("../utils/asyncHandler");
  * Make a sale
  */
 const create = asyncHandler(async (req, res) => {
-  const { paymentMethod, items, notes, customerName } = req.body;
+  const { paymentMethod, items, notes, customerName, amountTendered } = req.body;
 
   const transaction = await createTransaction({
     businessId: req.params.businessId,
@@ -23,6 +23,7 @@ const create = asyncHandler(async (req, res) => {
     customerName,
     items,
     notes,
+    amountTendered,
   });
 
   return sendSuccess(res, {

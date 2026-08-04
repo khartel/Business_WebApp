@@ -65,10 +65,14 @@ const withCreditStats = (transaction) => {
  *   `unitLabel`/`unitQuantity` are display-only passthroughs (e.g. "2
  *   dozen") - `quantitySold`/`unitPrice` must already be in base-unit terms.
  * @param {string} [params.notes]
+ * @param {number} [params.amountTendered] - What the customer physically
+ *   handed over; only meaningful (and only stored) for CASH sales. Ignored
+ *   for TRANSFER/CREDIT. When given, `changeGiven` is derived from it.
  * @returns {Promise<object>} The created transaction with computed
  *   `amountPaid`/`balanceDue` (see `withCreditStats`).
  * @throws {AppError} If there's no primary warehouse, a product isn't
- *   found, stock is insufficient, or quantity/price aren't positive.
+ *   found, stock is insufficient, quantity/price aren't positive, or (CASH
+ *   only) amountTendered is less than the total.
  */
 const createTransaction = async ({
   businessId,
@@ -77,6 +81,7 @@ const createTransaction = async ({
   customerName,
   items,
   notes,
+  amountTendered,
 }) => {
   // Get the primary warehouse for this business
   const primaryWarehouse = await prisma.warehouse.findFirst({
@@ -165,6 +170,20 @@ const createTransaction = async ({
     0
   );
 
+  // Only CASH sales tender physical money that could warrant giving change;
+  // silently ignore it for TRANSFER/CREDIT rather than rejecting it, same as
+  // how customerName is silently optional outside CREDIT.
+  let changeGiven = null;
+  if (paymentMethod === "CASH" && amountTendered != null) {
+    if (amountTendered < totalAmount - 0.01) {
+      throw new AppError(
+        `Amount received (${amountTendered}) is less than the total (${totalAmount})`
+      );
+    }
+    changeGiven = Math.round((amountTendered - totalAmount) * 100) / 100;
+  }
+  const storedAmountTendered = paymentMethod === "CASH" ? (amountTendered ?? null) : null;
+
   const trimmedCustomerName = customerName?.trim();
 
   const transaction = await prisma.$transaction(async (tx) => {
@@ -192,6 +211,8 @@ const createTransaction = async ({
         totalAmount,
         customerName: trimmedCustomerName || "Casual Customer",
         notes,
+        amountTendered: storedAmountTendered,
+        changeGiven,
         items: {
           create: itemsWithDetails.map((item) => ({
             productId: item.productId,

@@ -78,10 +78,10 @@ export function ProductReportTab() {
       ["Product", "Quantity sold", "Revenue", "Avg unit price", "Current stock"],
       ...report.bestSelling.map((row) => [
         row.product.name,
-        row.totalQuantity,
+        `${row.totalQuantity} ${row.product.unit}`,
         row.totalRevenue,
         row.avgUnitPrice,
-        row.currentStock.total,
+        `${row.currentStock.total} ${row.product.unit}`,
       ]),
     ])
   }
@@ -99,10 +99,10 @@ export function ProductReportTab() {
           head: ["Product", "Quantity sold", "Revenue", "Avg unit price", "Current stock"],
           body: report.bestSelling.map((row) => [
             row.product.name,
-            row.totalQuantity,
+            `${row.totalQuantity} ${row.product.unit}`,
             formatMoney(row.totalRevenue, currency),
             formatMoney(row.avgUnitPrice, currency),
-            row.currentStock.total,
+            `${row.currentStock.total} ${row.product.unit}`,
           ]),
         },
       ],

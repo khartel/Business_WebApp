@@ -5,12 +5,12 @@ import { formatDate } from "@/lib/format"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // Derives up-to-two-letter initials from a full name, for the avatar fallback.
 function initials(fullName: string) {
@@ -18,18 +18,18 @@ function initials(fullName: string) {
 }
 
 /**
- * Read-only slide-over showing a single team member's profile: avatar,
+ * Read-only centered dialog showing a single team member's profile: avatar,
  * full name, role, phone, email, and when they joined this business.
  * Management actions (role change, password reset, remove) stay on the
- * Team page's table row — this sheet never duplicates them, same
+ * Team page's table row — this dialog never duplicates them, same
  * read-only-drill-down convention as `WarehouseDetailSheet`/
  * `ProductDetailSheet`.
  *
  * Props:
- * - member: the member to show, or null to close the sheet. Unlike the
- *   other detail sheets, this one doesn't fetch its own data — the Team
- *   page's list query already has every field this sheet needs.
- * - onOpenChange: called when the sheet is dismissed.
+ * - member: the member to show, or null to close the dialog. Unlike the
+ *   other detail dialogs, this one doesn't fetch its own data — the Team
+ *   page's list query already has every field this dialog needs.
+ * - onOpenChange: called when the dialog is dismissed.
  */
 export function TeamMemberDetailSheet({
   member,
@@ -41,15 +41,15 @@ export function TeamMemberDetailSheet({
   const { t } = useTranslation()
 
   return (
-    <Sheet open={!!member} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>{member?.user.fullName ?? t("Team member")}</SheetTitle>
-          <SheetDescription>@{member?.user.username}</SheetDescription>
-        </SheetHeader>
+    <Dialog open={!!member} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{member?.user.fullName ?? t("Team member")}</DialogTitle>
+          <DialogDescription>@{member?.user.username}</DialogDescription>
+        </DialogHeader>
 
         {member && (
-          <div className="space-y-6 px-4 pb-4">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
             <div className="flex items-center gap-3">
               <Avatar className="size-12">
                 <AvatarFallback>{initials(member.user.fullName)}</AvatarFallback>
@@ -78,7 +78,7 @@ export function TeamMemberDetailSheet({
             </div>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

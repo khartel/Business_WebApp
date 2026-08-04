@@ -399,6 +399,26 @@ const restoreProduct = async (productId, businessId, actorId) => {
     throw new AppError("Deleted product not found", 404);
   }
 
+  // A product's name is freed up for reuse the moment it's deleted (see
+  // createProduct's uniqueness check, which also filters deletedAt: null) -
+  // so a new active product may have already claimed this name while this
+  // one was in the trash. Restoring it anyway would leave two active
+  // products with the same name and nothing in the schema to catch that.
+  const collision = await prisma.product.findFirst({
+    where: {
+      businessId,
+      deletedAt: null,
+      name: { equals: product.name, mode: "insensitive" },
+    },
+  });
+
+  if (collision) {
+    throw new AppError(
+      `Can't restore: another active product is already named "${product.name}". Rename it first.`,
+      409
+    );
+  }
+
   const actor = await prisma.user.findUnique({ where: { id: actorId } });
 
   const restored = await prisma.$transaction(async (tx) => {

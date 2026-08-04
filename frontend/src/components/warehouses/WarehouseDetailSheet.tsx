@@ -8,12 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -24,14 +24,14 @@ import {
 } from "@/components/ui/table"
 
 /**
- * Slide-over sheet showing a single warehouse's stocked products with an in-sheet
+ * Centered dialog showing a single warehouse's stocked products with an in-dialog
  * search box to filter them by name (client-side, case-insensitive substring match).
  *
  * Props:
- * - warehouseId: when null the sheet is closed; setting it triggers the detail fetch
+ * - warehouseId: when null the dialog is closed; setting it triggers the detail fetch
  *   (query is `enabled: !!warehouseId`).
- * - onOpenChange: called when the sheet is dismissed; the local search text is reset
- *   whenever the sheet closes.
+ * - onOpenChange: called when the dialog is dismissed; the local search text is reset
+ *   whenever the dialog closes.
  *
  * Each row shows "Out" when quantity is 0, or "Low" when quantity is at/below that
  * entry's `lowStockThreshold`.
@@ -62,20 +62,20 @@ export function WarehouseDetailSheet({
   )
 
   return (
-    <Sheet
+    <Dialog
       open={!!warehouseId}
       onOpenChange={(open) => {
         onOpenChange(open)
         if (!open) setSearch("")
       }}
     >
-      <SheetContent className="sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>{warehouse?.name ?? t("Warehouse")}</SheetTitle>
-          <SheetDescription>{warehouse?.location || t("No location on file")}</SheetDescription>
-        </SheetHeader>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{warehouse?.name ?? t("Warehouse")}</DialogTitle>
+          <DialogDescription>{warehouse?.location || t("No location on file")}</DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4 px-4 pb-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
           {query.isLoading || !warehouse ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
@@ -134,7 +134,7 @@ export function WarehouseDetailSheet({
             </>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

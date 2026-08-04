@@ -185,122 +185,127 @@ export function ReceiveStockDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="receive-warehouse">{t("Warehouse")}</Label>
-            <Controller
-              control={control}
-              name="warehouseId"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="receive-warehouse" className="w-full">
-                    <SelectValue placeholder={t("Select a warehouse")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehousesQuery.data?.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name} {w.isPrimary && t("(Primary)")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.warehouseId?.message && <p className="text-xs text-destructive">{t(errors.warehouseId.message)}</p>}
-          </div>
-
-          <div className="space-y-3">
-            <Label>{t("Products")}</Label>
-            {fields.map((field, index) => {
-              const rowProduct = productsQuery.data?.find((p) => p.id === watchedItems?.[index]?.productId)
-              const rowProductIdError = errors.items?.[index]?.productId?.message
-              return (
-              <div key={field.id} className="flex items-start gap-2">
-                <div className="flex-1">
-                  <Controller
-                    control={control}
-                    name={`items.${index}.productId`}
-                    render={({ field: pickerField }) => (
-                      <ProductPicker
-                        products={productsQuery.data ?? []}
-                        value={pickerField.value}
-                        onChange={pickerField.onChange}
-                        excludeIds={(watchedItems ?? [])
-                          .map((item, i) => (i === index ? "" : item?.productId))
-                          .filter((id): id is string => !!id)}
-                      />
-                    )}
-                  />
-                  {rowProductIdError && (
-                    <p className="mt-1 text-xs text-destructive">
-                      {t(rowProductIdError)}
-                    </p>
-                  )}
-                </div>
-                {rowProduct && (
-                  <Controller
-                    control={control}
-                    name={`items.${index}.unit`}
-                    render={({ field: unitField }) => (
-                      <Select value={unitField.value || rowProduct.unit} onValueChange={unitField.onChange}>
-                        <SelectTrigger className="w-28 shrink-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getUnitChoices(rowProduct).map((u) => (
-                            <SelectItem key={u.label} value={u.label}>
-                              {u.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
+        <form
+          onSubmit={handleSubmit((values) => mutation.mutate(values))}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label htmlFor="receive-warehouse">{t("Warehouse")}</Label>
+              <Controller
+                control={control}
+                name="warehouseId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="receive-warehouse" className="w-full">
+                      <SelectValue placeholder={t("Select a warehouse")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehousesQuery.data?.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>
+                          {w.name} {w.isPrimary && t("(Primary)")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-                <Input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder={t("Qty")}
-                  className="w-24"
-                  {...register(`items.${index}.quantity`)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("Remove product")}
-                  disabled={fields.length === 1}
-                  onClick={() => remove(index)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </div>
-              )
-            })}
-            {errors.items?.root?.message && (
-              <p className="text-xs text-destructive">{t(errors.items.root.message)}</p>
-            )}
+              />
+              {errors.warehouseId?.message && <p className="text-xs text-destructive">{t(errors.warehouseId.message)}</p>}
+            </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => append({ productId: "", quantity: 0, unit: "" })}
-            >
-              <Plus className="size-3.5" />
-              {t("Add another product")}
-            </Button>
-          </div>
+            <div className="space-y-3">
+              <Label>{t("Products")}</Label>
+              {fields.map((field, index) => {
+                const rowProduct = productsQuery.data?.find((p) => p.id === watchedItems?.[index]?.productId)
+                const rowProductIdError = errors.items?.[index]?.productId?.message
+                return (
+                <div key={field.id} className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <Controller
+                      control={control}
+                      name={`items.${index}.productId`}
+                      render={({ field: pickerField }) => (
+                        <ProductPicker
+                          products={productsQuery.data ?? []}
+                          value={pickerField.value}
+                          onChange={pickerField.onChange}
+                          excludeIds={(watchedItems ?? [])
+                            .map((item, i) => (i === index ? "" : item?.productId))
+                            .filter((id): id is string => !!id)}
+                        />
+                      )}
+                    />
+                    {rowProductIdError && (
+                      <p className="mt-1 text-xs text-destructive">
+                        {t(rowProductIdError)}
+                      </p>
+                    )}
+                  </div>
+                  {rowProduct && (
+                    <Controller
+                      control={control}
+                      name={`items.${index}.unit`}
+                      render={({ field: unitField }) => (
+                        <Select value={unitField.value || rowProduct.unit} onValueChange={unitField.onChange}>
+                          <SelectTrigger className="w-28 shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getUnitChoices(rowProduct).map((u) => (
+                              <SelectItem key={u.label} value={u.label}>
+                                {u.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  )}
+                  <Input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder={t("Qty")}
+                    className="w-24"
+                    {...register(`items.${index}.quantity`)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={t("Remove product")}
+                    disabled={fields.length === 1}
+                    onClick={() => remove(index)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+                )
+              })}
+              {errors.items?.root?.message && (
+                <p className="text-xs text-destructive">{t(errors.items.root.message)}</p>
+              )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="receive-notes">{t("Notes (optional)")}</Label>
-            <Textarea
-              id="receive-notes"
-              rows={2}
-              placeholder={t("e.g. supplier, delivery reference")}
-              {...register("notes")}
-            />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => append({ productId: "", quantity: 0, unit: "" })}
+              >
+                <Plus className="size-3.5" />
+                {t("Add another product")}
+              </Button>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="receive-notes">{t("Notes (optional)")}</Label>
+              <Textarea
+                id="receive-notes"
+                rows={2}
+                placeholder={t("e.g. supplier, delivery reference")}
+                {...register("notes")}
+              />
+            </div>
           </div>
 
           <DialogFooter>

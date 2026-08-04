@@ -10,12 +10,12 @@ import { TransactionDetailSheet } from "@/components/transactions/TransactionDet
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -27,19 +27,23 @@ import {
 import { History } from "lucide-react"
 
 /**
- * Slide-over sheet showing a single customer's profile: visit count, total spent,
- * outstanding credit ("Owes"), and their transaction history.
+ * Centered dialog showing a single customer's profile: visit count, total spent,
+ * outstanding credit ("Owes"), and their transaction history. Wide enough
+ * (`sm:max-w-2xl`) for the three stat tiles and the transaction table's Date/
+ * Payment/Total columns to sit comfortably without truncating or needing a
+ * horizontal scrollbar — a right-side sheet was tried here first but was too
+ * narrow for this much side-by-side content.
  *
  * Props:
- * - customerId: when null the sheet is closed; setting it triggers the detail fetch
- *   (query is `enabled: !!customerId`).
- * - onOpenChange: called when the sheet is dismissed.
+ * - customerId: when null the dialog is closed; setting it triggers the detail
+ *   fetch (query is `enabled: !!customerId`).
+ * - onOpenChange: called when the dialog is dismissed.
  *
  * Behavior:
  * - `outstandingCredit` is the customer's running unpaid balance across CREDIT
  *   transactions, computed server-side and just displayed here.
  * - Clicking a transaction row opens a nested `TransactionDetailSheet` (tracked via
- *   local `transactionId` state) layered on top of this sheet.
+ *   local `transactionId` state) layered on top of this dialog.
  */
 export function CustomerDetailSheet({
   businessId,
@@ -65,14 +69,14 @@ export function CustomerDetailSheet({
 
   return (
     <>
-      <Sheet open={!!customerId} onOpenChange={onOpenChange}>
-        <SheetContent className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{customer?.name ?? t("Customer")}</SheetTitle>
-            <SheetDescription>{customer?.phone || t("No phone on file")}</SheetDescription>
-          </SheetHeader>
+      <Dialog open={!!customerId} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{customer?.name ?? t("Customer")}</DialogTitle>
+            <DialogDescription>{customer?.phone || t("No phone on file")}</DialogDescription>
+          </DialogHeader>
 
-          <div className="space-y-4 px-4 pb-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
             {query.isLoading || !customer ? (
               <Skeleton className="h-64 rounded-xl" />
             ) : (
@@ -136,8 +140,8 @@ export function CustomerDetailSheet({
               </>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <TransactionDetailSheet
         businessId={businessId}

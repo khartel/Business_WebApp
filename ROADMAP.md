@@ -521,7 +521,48 @@ All five remaining "small deferred niceties" plus code-splitting, done together 
 
 **Hosting decision (2026-08-01, affects Phase E)**: Victor plans to self-host on an existing server at his workplace for roughly the first year, then migrate to a real online host later. Phase E's plan (Docker + CI + Railway/Render + managed Postgres) was written assuming a cloud PaaS from day one — when Phase E is actually picked up, it needs a quick pass to confirm the plan still fits an on-prem/self-hosted first step (e.g. Docker Compose for local orchestration still applies either way, but managed Postgres/PaaS specifics don't until the later migration).
 
-## 12. Next up (current, as of 2026-08-01)
+### Report unit display (done 2026-08-02)
+
+Every quantity shown across the Daily/Weekly/Monthly/Employee/Product/Stock Alerts report tabs — on-screen, in CSV exports, and in PDF exports — now pairs the number with `product.unit` (e.g. "24 pcs"), matching the convention already used on printed receipts. Touches `DailyReportTab.tsx`, `WeeklyReportTab.tsx`, `MonthlyReportTab.tsx`, `EmployeeReportTab.tsx`, `ProductReportTab.tsx`, `StockAlertsTab.tsx`.
+
+### Pre-deployment review pass (done 2026-08-02)
+
+Full backend security/correctness audit (background agent, since the diff-based `security-review` skill didn't apply — already on `main` with no pending feature diff) plus a live Playwright UI/UX walkthrough (light/dark/mobile) and functional testing of the previous batch's new features (customer merge, credit-payment undo, trash/restore). Found and fixed two real issues:
+- `restoreProduct` didn't check for an active name collision before restoring — could silently create two active products with the same name. Now throws a 409 with a clear message ("rename it first") instead.
+- Removed the unused `socket.io` backend dependency — dropped several high-severity `npm audit` findings it was pulling in with nothing using it.
+- `prisma`'s `dependencies`-vs-`devDependencies` placement was flagged by the audit but deliberately left as-is, pending Phase E's eventual deploy-pipeline design (may need the CLI available in a production-like environment for `prisma migrate deploy`).
+
+### Detail popups: Sheet → centered Dialog, plus dialog height/print fixes (done 2026-08-02/03)
+
+Victor's feedback on `CustomerDetailSheet`: the right-side slide-over cramped its stats grid and forced the transaction table to scroll horizontally. Converted every detail popup in the app from `Sheet` to a centered `Dialog` — Customer, Product, Team Member, Warehouse, Transaction/receipt, and the Stock Movements day-detail modal — leaving only the mobile nav drawer (`Topbar.tsx`) on `Sheet`, since that's a navigation pattern, not a detail popup.
+- Surfaced two real print bugs in the receipt, found only by generating actual `page.pdf()` output (not just `emulateMedia` screenshots, which don't truly paginate and missed both): a `translate` CSS property (Tailwind v4's compiled form of `-translate-x-1/2`) was establishing its own containing block and confining the receipt to the dialog's centered width even after `position: static`; and `#root`'s invisible-but-still-laid-out sidebar/topbar tree was pushing the receipt onto a blank page 2. Both fixed in `index.css`'s `@media print` block.
+- A follow-up bug report ("where's the print button?") found the shared `DialogContent` had no height cap at all — a long dialog (or a tall receipt) could grow past the viewport with no way to scroll to its own header, close button, or footer action. Fixed at the shared-component level (`ui/dialog.tsx`): capped at `max-h-[85vh]`, `flex flex-col`, only the body scrolls, header/footer stay pinned. Moved "Print receipt" out of the scrollable body into a `DialogFooter` so it's always reachable without scrolling, and added a print-icon shortcut next to the close button for a zero-scroll option too.
+
+### Animated SideRays background on auth screens (done 2026-08-03)
+
+Integrated the React Bits `SideRays` component (WebGL light-beam effect via `ogl`) into `AuthBackground.tsx` (Login/Register/ForgotPassword/etc.), layered on top of the existing aurora blobs, recolored per theme to the brand green + sky-blue accents already used there instead of the component's default gold/blue. Ported to TypeScript; never initializes under `prefers-reduced-motion: reduce`, and pauses its render loop via `IntersectionObserver` when scrolled out of view. Scoped to auth screens only (not the persistent app shell), since a WebGL canvas + rAF loop mounted for the entire time someone works in the app is an unusual cost for a persistent business dashboard. Needed a `radial-gradient` CSS mask + `mix-blend-mode: multiply` (light mode) to keep the effect from reading as a flat color wash over the pale background — the raw shader output only looks like a "beam of light" against a dark backdrop.
+
+### Product creation form reorder (done 2026-08-03)
+
+Reordered `ProductFormDialog.tsx`'s fields to Name → Unit & Price → Alternate units → Short code → Description (per Victor's requested order), and shortened three helper-text sentences under those fields to be plain and one-line instead of multi-clause explanations.
+
+### Receipt format: conditional "Billed To", single signature line, page-size-agnostic print (done 2026-08-03)
+
+Feedback from a saved-as-PDF receipt: the browser's own print header/footer (date/title/URL/page-number) was showing. Confirmed this is Chrome's native "Headers and footers" print-dialog setting, injected outside the page entirely — no page CSS/JS can reach it; the only fix is toggling it off in the print dialog (a one-time, per-browser setting, not something this app can control per-print). Fixed everything that *was* in-app scope:
+- "Billed To" is now omitted entirely for anonymous ("Casual Customer") sales instead of printing the placeholder name; still shows a real customer name (linked or typed at POS) when there is one.
+- Removed the blank "Customer signature" line from the printed receipt (kept "Received by").
+- The receipt now fills whatever paper size is chosen (A4/A5/Letter/etc.) instead of staying pinned to the screen dialog's ~576px width — added a top-level `@page { margin: 12mm }` (no forced `size`) and stripped the screen-only width cap during print. This surfaced (and required fixing) a real layout regression: `.receipt-print-area`'s old `position: absolute; inset: 0` approach sized itself against the wrong containing block once the dialog height-cap fix landed, silently clipping the card's own white background short of its actual content with everything past the first row spilling onto the plain page background. Simplified to plain block flow; reverified via a real generated PDF (both a short and a 10-line-item receipt) that everything renders inside the card on exactly one page.
+
+### POS: record cash amount received / change due, persisted (done 2026-08-03)
+
+Real POS/register machines let a cashier enter what the customer handed over and show change due; this app had no equivalent for CASH sales. Added end-to-end, persisted (not just a same-session calculator, per Victor's explicit choice):
+- `Transaction.amountTendered`/`changeGiven` (both nullable `Float`, migration `20260803165307_add_transaction_amount_tendered`) — only ever set for CASH sales where the cashier chose to enter an amount; always null for TRANSFER/CREDIT.
+- `createTransaction` accepts an optional `amountTendered`, rejects it if less than the total, and derives `changeGiven`.
+- POS `SaleSummaryPanel.tsx`: an "Amount received" field appears only for Cash, with a live "Change due" line next to the total; an insufficient amount blocks checkout with an inline error (same pattern as the existing Credit customer-name validation) rather than a failed API round-trip.
+- Shown on the post-sale "Sale complete" popup and on the printed receipt (`TransactionDetailSheet.tsx`) when present.
+- Verified live end-to-end: insufficient-amount validation, a real Cash checkout with change due showing in the confirmation dialog and on both the on-screen and printed (PDF) receipt, and confirmed Transfer sales show none of this (no regression). Also caught and fixed a stale-Prisma-Client issue found during this verification (the running dev server needed a restart to pick up the new schema fields after `prisma generate`).
+
+## 12. Next up (current, as of 2026-08-03)
 
 **UX polish:**
 - [x] Page-by-page UX pass — **done for every screen now**: Register, Customers, Products, Warehouses, Stock Movements (earlier), Team/Reports/Platform Admin (2026-07-30, see Completed Work). Nothing left queued here; revisit only if Victor flags something specific.

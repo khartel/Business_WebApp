@@ -32,7 +32,9 @@ export interface CreditPayment {
 
 // A completed sale. `amountPaid`/`balanceDue` track partial payments for
 // CREDIT sales (both equal `totalAmount`/0 for CASH/TRANSFER); `paidAt` is
-// set once `balanceDue` reaches zero.
+// set once `balanceDue` reaches zero. `amountTendered`/`changeGiven` are
+// only ever non-null for a CASH sale where the cashier chose to record what
+// the customer physically handed over — null otherwise.
 export interface Transaction {
   id: string
   businessId: string
@@ -48,6 +50,8 @@ export interface Transaction {
   payments: CreditPayment[]
   amountPaid: number
   balanceDue: number
+  amountTendered: number | null
+  changeGiven: number | null
   performedBy: { id: string; fullName: string; username: string; role: string }
   warehouse: { id: string; name: string; isPrimary: boolean }
 }
@@ -58,6 +62,8 @@ export interface CreateTransactionInput {
   paymentMethod: PaymentMethod
   customerName?: string
   notes?: string
+  // Only meaningful for CASH; ignored by the backend for TRANSFER/CREDIT.
+  amountTendered?: number
   items: Array<{
     productId: string
     quantitySold: number

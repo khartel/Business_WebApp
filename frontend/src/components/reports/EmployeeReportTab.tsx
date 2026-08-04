@@ -171,7 +171,7 @@ export function EmployeeReportTab() {
                     {topProducts.map((row) => (
                       <li key={row.product.id} className="flex justify-between">
                         <span>{row.product.name}</span>
-                        <span className="text-muted-foreground">× {row.totalQuantity}</span>
+                        <span className="text-muted-foreground">× {row.totalQuantity} {row.product.unit}</span>
                       </li>
                     ))}
                   </ul>

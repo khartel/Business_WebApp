@@ -32,6 +32,10 @@ const createTransactionSchema = {
       }),
       customerName: z.string().trim().optional(),
       notes: z.string().trim().optional(),
+      // Only meaningful for CASH - the service ignores it for other payment
+      // methods rather than rejecting it here, and checks it's enough to
+      // cover the total there too (where the actual total is computed).
+      amountTendered: z.coerce.number().nonnegative("Amount received can't be negative").optional(),
       items: z
         .array(
           z.object({

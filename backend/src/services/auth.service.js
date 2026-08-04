@@ -4,7 +4,7 @@ const QRCode = require("qrcode");
 const prisma = require("../utils/prisma");
 const { generateToken, verifyToken, generateShortLivedToken } = require("../utils/jwt.utils");
 const { getCurrencyForCountry } = require("../utils/currencies");
-const { sendEmail, passwordResetEmailHtml } = require("../utils/email.utils");
+const { sendEmail, passwordResetEmailHtml, welcomeEmailHtml } = require("../utils/email.utils");
 const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { recordAudit } = require("../utils/auditLog");
@@ -48,7 +48,10 @@ const USER_WITH_BUSINESSES_INCLUDE = {
  * Register a new SuperAdmin. Email is required (unlike a team member added
  * via the Team page, who stays email-optional since they always have an
  * admin/owner above them) - it's the SuperAdmin's only self-service password-
- * recovery path, since there's nobody above them in the business.
+ * recovery path, since there's nobody above them in the business. Also
+ * used to send a welcome email right after signup - same fire-and-forget
+ * pattern as `requestPasswordReset`: a send failure is logged but never
+ * thrown, so a flaky email provider can't fail registration itself.
  */
 const registerSuperAdmin = async ({ fullName, username, phone, email, password }) => {
   const cleanEmail = email.trim();
@@ -105,6 +108,16 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
     entityId: user.id,
     metadata: { username: user.username },
   });
+
+  try {
+    await sendEmail({
+      to: { email: user.email, name: user.fullName },
+      subject: "Welcome to VAE Inventory",
+      html: welcomeEmailHtml(user.fullName),
+    });
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "Failed to send welcome email");
+  }
 
   return user;
 };

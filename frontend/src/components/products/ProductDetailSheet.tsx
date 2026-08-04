@@ -8,12 +8,12 @@ import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -24,14 +24,14 @@ import {
 } from "@/components/ui/table"
 
 /**
- * Slide-over sheet showing a single product's details: price, total stock across
+ * Centered dialog showing a single product's details: price, total stock across
  * warehouses, and a per-warehouse breakdown with low/out-of-stock badges.
  *
  * Props:
- * - productId: when null the sheet is closed; setting it triggers the detail fetch
+ * - productId: when null the dialog is closed; setting it triggers the detail fetch
  *   (query is `enabled: !!productId`).
  * - currency: used to format the price stat.
- * - onOpenChange: called when the sheet is dismissed.
+ * - onOpenChange: called when the dialog is dismissed.
  *
  * Each warehouse row is flagged "Out" when quantity is 0, or "Low" when quantity is
  * at/below that warehouse entry's `lowStockThreshold`.
@@ -57,17 +57,17 @@ export function ProductDetailSheet({
   const product = query.data
 
   return (
-    <Sheet open={!!productId} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={!!productId} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             {product?.name ?? t("Product")}
             {product?.shortCode && <Badge variant="secondary">{product.shortCode}</Badge>}
-          </SheetTitle>
-          <SheetDescription>{product?.description || t("No description")}</SheetDescription>
-        </SheetHeader>
+          </DialogTitle>
+          <DialogDescription>{product?.description || t("No description")}</DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4 px-4 pb-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
           {query.isLoading || !product ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
@@ -126,7 +126,7 @@ export function ProductDetailSheet({
             </>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

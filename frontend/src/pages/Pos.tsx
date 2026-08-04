@@ -40,12 +40,16 @@ import {
  *   tracking `quantity`, `catalogPrice` (original price), `unitPrice`
  *   (possibly discounted), `discountPercent`, and `availableStock` (used to
  *   prevent overselling).
- * - `paymentMethod` / `customerName` / `transferNote` — fields of the sale
- *   being built; `customerName` is required only when `paymentMethod` is
- *   "CREDIT" (see `customerNameMissing` below).
+ * - `paymentMethod` / `customerName` / `transferNote` / `amountTendered` —
+ *   fields of the sale being built; `customerName` is required only when
+ *   `paymentMethod` is "CREDIT" (see `customerNameMissing` below).
+ *   `amountTendered` is CASH-only and always optional, but if given must
+ *   cover the total (see `amountTenderedInsufficient`) — the backend derives
+ *   and stores `changeGiven` from it.
  * - `submitAttempted` — flips true once the user tries to complete a sale
- *   that's missing the required customer name, so the error message only
- *   appears after a real attempt (not while the field is merely empty).
+ *   that's missing the required customer name (or has an insufficient cash
+ *   amount received), so the error message only appears after a real
+ *   attempt (not while the field is merely empty).
  * - `completedSale` — set after a successful sale, drives the "Sale
  *   complete" confirmation dialog (with options to print a receipt or
  *   start a new sale).
@@ -65,8 +69,11 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
   const [customerName, setCustomerName] = useState("")
   const [transferNote, setTransferNote] = useState("")
+  const [amountTendered, setAmountTendered] = useState("")
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [completedSale, setCompletedSale] = useState<{ id: string; total: number } | null>(null)
+  const [completedSale, setCompletedSale] = useState<{ id: string; total: number; changeGiven: number | null } | null>(
+    null
+  )
   const [printTransactionId, setPrintTransactionId] = useState<string | null>(null)
 
   const productsQuery = useQuery({
@@ -82,6 +89,7 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     setPaymentMethod("CASH")
     setCustomerName("")
     setTransferNote("")
+    setAmountTendered("")
     setSubmitAttempted(false)
   }
 
@@ -137,12 +145,22 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   // tracking on the Customers page); other payment methods don't require it.
   const customerNameMissing = paymentMethod === "CREDIT" && !customerName.trim()
 
+  // "Amount received" is optional (cashiers who don't care can leave it
+  // blank), but if entered for a CASH sale it must cover the total - can't
+  // give negative change.
+  const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
+  const tenderedNum = amountTendered.trim() === "" ? null : Number(amountTendered)
+  const amountTenderedInsufficient =
+    paymentMethod === "CASH" && tenderedNum != null && !Number.isNaN(tenderedNum) && tenderedNum < total
+
   const saleMutation = useMutation({
     mutationFn: () =>
       transactionService.createTransaction(businessId, {
         paymentMethod,
         customerName: customerName || undefined,
         notes: paymentMethod === "TRANSFER" ? transferNote || undefined : undefined,
+        amountTendered:
+          paymentMethod === "CASH" && tenderedNum != null && !Number.isNaN(tenderedNum) ? tenderedNum : undefined,
         items: cart.map((line) => ({
           productId: line.productId,
           // The backend always deals in base-unit quantities/prices, so a
@@ -160,7 +178,7 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
       queryClient.invalidateQueries({ queryKey: ["transactions", businessId] })
       queryClient.invalidateQueries({ queryKey: ["products", businessId] })
       queryClient.invalidateQueries({ queryKey: ["business", businessId] })
-      setCompletedSale({ id: transaction.id, total: transaction.totalAmount })
+      setCompletedSale({ id: transaction.id, total: transaction.totalAmount, changeGiven: transaction.changeGiven })
       resetTicket()
     },
     onError: (error) => {
@@ -169,9 +187,10 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   })
 
   // Guards the "Complete sale" action: if a credit sale is missing a
-  // customer name, flag the field as invalid instead of submitting.
+  // customer name, or a cash amount received is less than the total, flag
+  // the field as invalid instead of submitting.
   const handleComplete = () => {
-    if (customerNameMissing) {
+    if (customerNameMissing || amountTenderedInsufficient) {
       setSubmitAttempted(true)
       return
     }
@@ -294,6 +313,13 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           }
           transferNote={transferNote}
           onTransferNoteChange={setTransferNote}
+          amountTendered={amountTendered}
+          onAmountTenderedChange={setAmountTendered}
+          amountTenderedError={
+            submitAttempted && amountTenderedInsufficient
+              ? t("Amount received can't be less than the total")
+              : undefined
+          }
           onComplete={handleComplete}
           isSubmitting={saleMutation.isPending}
         />
@@ -312,6 +338,11 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
               })}
             </DialogDescription>
           </DialogHeader>
+          {completedSale?.changeGiven != null && completedSale.changeGiven > 0 && (
+            <p className="-mt-2 text-center text-sm font-medium text-success">
+              {t("Change due: {{amount}}", { amount: formatMoney(completedSale.changeGiven, currency) })}
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             <Button
               className="w-full rounded-xl bg-gradient-to-r from-primary to-success text-primary-foreground shadow-[0_0_16px_var(--glow-primary)] hover:opacity-90"
