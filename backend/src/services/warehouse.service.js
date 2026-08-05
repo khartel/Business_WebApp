@@ -1,6 +1,7 @@
 const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
 const { recordAudit } = require("../utils/auditLog");
+const { getThresholdSettings, resolveLowStockThreshold } = require("../utils/lowStockThreshold");
 
 /**
  * Create a new warehouse for a business. Enforces the invariant that a
@@ -71,34 +72,43 @@ const createWarehouse = async ({ businessId, name, location, isPrimary, userId }
  * @returns {Promise<object[]>}
  */
 const getWarehouses = async (businessId) => {
-  const warehouses = await prisma.warehouse.findMany({
-    where: { businessId, deletedAt: null },
-    include: {
-      stock: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              unit: true,
+  const [warehouses, thresholdSettings] = await Promise.all([
+    prisma.warehouse.findMany({
+      where: { businessId, deletedAt: null },
+      include: {
+        stock: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+              },
             },
           },
         },
-      },
-      _count: {
-        select: {
-          stock: true,
-          transactions: true,
+        _count: {
+          select: {
+            stock: true,
+            transactions: true,
+          },
         },
       },
-    },
-    orderBy: [
-      { isPrimary: "desc" },
-      { createdAt: "asc" },
-    ],
-  });
+      orderBy: [
+        { isPrimary: "desc" },
+        { createdAt: "asc" },
+      ],
+    }),
+    getThresholdSettings(businessId),
+  ]);
 
-  return warehouses;
+  return warehouses.map((warehouse) => ({
+    ...warehouse,
+    stock: warehouse.stock.map((s) => ({
+      ...s,
+      lowStockThreshold: resolveLowStockThreshold(s.lowStockThreshold, s.product.unit, thresholdSettings),
+    })),
+  }));
 };
 
 /**
@@ -111,42 +121,51 @@ const getWarehouses = async (businessId) => {
  * @throws {AppError} 404 if not found in this business.
  */
 const getWarehouseById = async (warehouseId, businessId) => {
-  const warehouse = await prisma.warehouse.findFirst({
-    where: {
-      id: warehouseId,
-      businessId,
-      deletedAt: null,
-    },
-    include: {
-      stock: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              unit: true,
-              description: true,
+  const [warehouse, thresholdSettings] = await Promise.all([
+    prisma.warehouse.findFirst({
+      where: {
+        id: warehouseId,
+        businessId,
+        deletedAt: null,
+      },
+      include: {
+        stock: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+                description: true,
+              },
             },
           },
+          orderBy: {
+            quantity: "asc",
+          },
         },
-        orderBy: {
-          quantity: "asc",
+        _count: {
+          select: {
+            stock: true,
+            transactions: true,
+          },
         },
       },
-      _count: {
-        select: {
-          stock: true,
-          transactions: true,
-        },
-      },
-    },
-  });
+    }),
+    getThresholdSettings(businessId),
+  ]);
 
   if (!warehouse) {
     throw new AppError("Warehouse not found", 404);
   }
 
-  return warehouse;
+  return {
+    ...warehouse,
+    stock: warehouse.stock.map((s) => ({
+      ...s,
+      lowStockThreshold: resolveLowStockThreshold(s.lowStockThreshold, s.product.unit, thresholdSettings),
+    })),
+  };
 };
 
 /**

@@ -20,6 +20,11 @@ export interface BusinessSummary {
   receiptTitle: string
   receiptFooterNote: string
   receiptShowSignature: boolean
+  // Low-stock alert rule (Settings > Stock alerts): defaultLowStockThreshold
+  // is the flat fallback, lowStockThresholdsByUnit an optional per-unit
+  // override map, e.g. {"pcs": 50}.
+  defaultLowStockThreshold: number
+  lowStockThresholdsByUnit: Record<string, number>
   businessUserId?: string
   roleInBusiness?: Role
 }

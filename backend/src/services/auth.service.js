@@ -24,6 +24,8 @@ const BUSINESS_SELECT = {
   receiptTitle: true,
   receiptFooterNote: true,
   receiptShowSignature: true,
+  defaultLowStockThreshold: true,
+  lowStockThresholdsByUnit: true,
 };
 
 /**
@@ -42,6 +44,31 @@ const USER_WITH_BUSINESSES_INCLUDE = {
   ownedBusinesses: {
     select: BUSINESS_SELECT,
   },
+};
+
+/**
+ * Builds the normalized `businesses` array embedded in a session/profile
+ * response, from a User record fetched with `USER_WITH_BUSINESSES_INCLUDE`.
+ * SUPERADMINs see their owned businesses as-is; everyone else sees the
+ * businesses they've been added to as staff, each carrying their
+ * membership id/role for that specific business. Spreading `bu.business`
+ * (rather than hand-listing its fields, as this used to do in two separate
+ * places that quietly drifted out of sync with each other and with
+ * BUSINESS_SELECT) means every field there automatically flows through
+ * here too, with nothing left to remember to update per new field.
+ *
+ * @param {object} user - Has `role`, `ownedBusinesses`, `businessUsers`.
+ * @returns {object[]}
+ */
+const buildBusinessesList = (user) => {
+  if (user.role === "SUPERADMIN") {
+    return user.ownedBusinesses;
+  }
+  return user.businessUsers.map((bu) => ({
+    ...bu.business,
+    businessUserId: bu.id,
+    roleInBusiness: bu.role,
+  }));
 };
 
 /**
@@ -109,15 +136,17 @@ const registerSuperAdmin = async ({ fullName, username, phone, email, password }
     metadata: { username: user.username },
   });
 
-  try {
-    await sendEmail({
-      to: { email: user.email, name: user.fullName },
-      subject: "Welcome to VAE Inventory",
-      html: welcomeEmailHtml(user.fullName),
-    });
-  } catch (err) {
+  // Deliberately not awaited: registration must not hang or fail because a
+  // third-party email API is slow or down. Errors (including a slow
+  // rejection) are still caught and logged, just off the request's
+  // critical path.
+  sendEmail({
+    to: { email: user.email, name: user.fullName },
+    subject: "Welcome to VAE Inventory",
+    html: welcomeEmailHtml(user.fullName),
+  }).catch((err) => {
     logger.error({ err, userId: user.id }, "Failed to send welcome email");
-  }
+  });
 
   return user;
 };
@@ -139,26 +168,7 @@ const issueSession = (user, rememberMe) => {
     rememberMe
   );
 
-  // Build businesses list depending on role
-  let businesses = [];
-
-  if (user.role === "SUPERADMIN") {
-    businesses = user.ownedBusinesses;
-  } else {
-    // Map businessUsers to a clean businesses array
-    businesses = user.businessUsers.map((bu) => ({
-      id: bu.business.id,
-      name: bu.business.name,
-      country: bu.business.country,
-      currency: bu.business.currency,
-      location: bu.business.location,
-      receiptTitle: bu.business.receiptTitle,
-      receiptFooterNote: bu.business.receiptFooterNote,
-      receiptShowSignature: bu.business.receiptShowSignature,
-      businessUserId: bu.id,
-      roleInBusiness: bu.role,
-    }));
-  }
+  const businesses = buildBusinessesList(user);
 
   // Remove passwordHash/2FA secret from response
   const { passwordHash, twoFactorSecret, businessUsers, ownedBusinesses, ...userWithoutPassword } = user;
@@ -267,8 +277,10 @@ const invalidateSessions = async (userId) => {
  * `verifyToken` + a `purpose` check). Deliberately returns nothing and never
  * throws for "no such account" or "send failed" - the controller always
  * responds with the same generic message either way, so this endpoint can't
- * be used to probe which emails are registered. A send failure is still
- * logged server-side so it's not silently invisible to us.
+ * be used to probe which emails are registered. The send itself isn't
+ * awaited either, so a slow/unreachable email provider can't stall this
+ * endpoint's response - a failure is still logged server-side so it's not
+ * silently invisible to us, just off the request's critical path.
  *
  * @param {string} email
  */
@@ -280,15 +292,13 @@ const requestPasswordReset = async (email) => {
   const resetToken = generateShortLivedToken({ id: user.id, purpose: "password-reset" }, "30m");
   const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
-  try {
-    await sendEmail({
-      to: { email: user.email, name: user.fullName },
-      subject: "Reset your VAE Inventory password",
-      html: passwordResetEmailHtml(resetUrl),
-    });
-  } catch (err) {
+  sendEmail({
+    to: { email: user.email, name: user.fullName },
+    subject: "Reset your VAE Inventory password",
+    html: passwordResetEmailHtml(resetUrl),
+  }).catch((err) => {
     logger.error({ err, userId: user.id }, "Failed to send password-reset email");
-  }
+  });
 };
 
 /**
@@ -353,35 +363,7 @@ const getMe = async (userId) => {
       twoFactorEnabled: true,
       language: true,
       createdAt: true,
-      ownedBusinesses: {
-        select: {
-          id: true,
-          name: true,
-          country: true,
-          currency: true,
-          location: true,
-          receiptTitle: true,
-          receiptFooterNote: true,
-          receiptShowSignature: true,
-        },
-      },
-      businessUsers: {
-        select: {
-          role: true,
-          business: {
-            select: {
-              id: true,
-              name: true,
-              country: true,
-              currency: true,
-              location: true,
-              receiptTitle: true,
-              receiptFooterNote: true,
-              receiptShowSignature: true,
-            },
-          },
-        },
-      },
+      ...USER_WITH_BUSINESSES_INCLUDE,
     },
   });
 
@@ -389,26 +371,10 @@ const getMe = async (userId) => {
     throw new AppError("User not found", 404);
   }
 
-  // Build the same normalized `businesses` array shape as loginUser, so the
-  // frontend can rely on it regardless of whether the session came from a
-  // fresh login or a /auth/me refetch (e.g. after a page reload).
-  let businesses = [];
-
-  if (user.role === "SUPERADMIN") {
-    businesses = user.ownedBusinesses;
-  } else {
-    businesses = user.businessUsers.map((bu) => ({
-      id: bu.business.id,
-      name: bu.business.name,
-      country: bu.business.country,
-      currency: bu.business.currency,
-      location: bu.business.location,
-      receiptTitle: bu.business.receiptTitle,
-      receiptFooterNote: bu.business.receiptFooterNote,
-      receiptShowSignature: bu.business.receiptShowSignature,
-      roleInBusiness: bu.role,
-    }));
-  }
+  // Build the same normalized `businesses` array shape as issueSession, so
+  // the frontend can rely on it regardless of whether the session came from
+  // a fresh login or a /auth/me refetch (e.g. after a page reload).
+  const businesses = buildBusinessesList(user);
 
   const { ownedBusinesses, businessUsers, ...userWithoutRaw } = user;
 

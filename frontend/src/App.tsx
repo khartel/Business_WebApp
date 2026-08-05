@@ -29,6 +29,7 @@ const SettingsHub = lazy(() => import("@/pages/settings/SettingsHub"))
 const SettingsProfile = lazy(() => import("@/pages/settings/SettingsProfile"))
 const SettingsTwoFactor = lazy(() => import("@/pages/settings/SettingsTwoFactor"))
 const SettingsReceipt = lazy(() => import("@/pages/settings/SettingsReceipt"))
+const SettingsStockAlerts = lazy(() => import("@/pages/settings/SettingsStockAlerts"))
 const SettingsAppearance = lazy(() => import("@/pages/settings/SettingsAppearance"))
 const SettingsActivity = lazy(() => import("@/pages/settings/SettingsActivity"))
 const SettingsTrash = lazy(() => import("@/pages/settings/SettingsTrash"))
@@ -104,6 +105,7 @@ function App() {
               <Route path="profile" element={<SettingsProfile />} />
               <Route path="2fa" element={<SettingsTwoFactor />} />
               <Route path="receipt" element={<SettingsReceipt />} />
+              <Route path="stock-alerts" element={<SettingsStockAlerts />} />
               <Route path="appearance" element={<SettingsAppearance />} />
               <Route path="activity" element={<SettingsActivity />} />
               <Route path="trash" element={<SettingsTrash />} />

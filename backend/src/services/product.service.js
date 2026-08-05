@@ -2,6 +2,7 @@ const prisma = require("../utils/prisma");
 const AppError = require("../utils/AppError");
 const { recordAudit } = require("../utils/auditLog");
 const { startOfDay, endOfDay } = require("date-fns");
+const { getThresholdSettings, resolveLowStockThreshold } = require("../utils/lowStockThreshold");
 
 /**
  * Ensure a short code isn't already used by another product in this
@@ -127,38 +128,51 @@ const createProduct = async ({ businessId, name, unit, price, description, short
  * List all products for a business, each annotated with `totalQuantity`
  * (summed across every warehouse) and `primaryStock` (the stock row at the
  * business's primary warehouse, or null if none), so list views don't need
- * to re-derive these from the raw per-warehouse stock array.
+ * to re-derive these from the raw per-warehouse stock array. Every stock
+ * row's `lowStockThreshold` is resolved to its effective value (explicit
+ * override, or the business's per-unit/default rule) before it goes out, so
+ * the frontend's `quantity <= lowStockThreshold` checks never need to know
+ * about the rule themselves.
  *
  * @param {string} businessId
  * @returns {Promise<object[]>} Products ordered alphabetically by name.
  */
 const getProducts = async (businessId) => {
-  const products = await prisma.product.findMany({
-    where: { businessId, deletedAt: null },
-    include: {
-      units: true,
-      stock: {
-        include: {
-          warehouse: {
-            select: {
-              id: true,
-              name: true,
-              isPrimary: true,
-              location: true,
+  const [products, thresholdSettings] = await Promise.all([
+    prisma.product.findMany({
+      where: { businessId, deletedAt: null },
+      include: {
+        units: true,
+        stock: {
+          include: {
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+                isPrimary: true,
+                location: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+    }),
+    getThresholdSettings(businessId),
+  ]);
 
-  // Add total quantity across all warehouses
-  const productsWithTotal = products.map((product) => ({
-    ...product,
-    totalQuantity: product.stock.reduce((sum, s) => sum + s.quantity, 0),
-    primaryStock: product.stock.find((s) => s.warehouse.isPrimary) || null,
-  }));
+  const productsWithTotal = products.map((product) => {
+    const stock = product.stock.map((s) => ({
+      ...s,
+      lowStockThreshold: resolveLowStockThreshold(s.lowStockThreshold, product.unit, thresholdSettings),
+    }));
+    return {
+      ...product,
+      stock,
+      totalQuantity: stock.reduce((sum, s) => sum + s.quantity, 0),
+      primaryStock: stock.find((s) => s.warehouse.isPrimary) || null,
+    };
+  });
 
   return productsWithTotal;
 };
@@ -174,56 +188,65 @@ const getProducts = async (businessId) => {
  * @throws {AppError} 404 if not found in this business.
  */
 const getProductById = async (productId, businessId) => {
-  const product = await prisma.product.findFirst({
-    where: {
-      id: productId,
-      businessId,
-      deletedAt: null,
-    },
-    include: {
-      units: true,
-      stock: {
-        include: {
-          warehouse: {
-            select: {
-              id: true,
-              name: true,
-              isPrimary: true,
-              location: true,
+  const [product, thresholdSettings] = await Promise.all([
+    prisma.product.findFirst({
+      where: {
+        id: productId,
+        businessId,
+        deletedAt: null,
+      },
+      include: {
+        units: true,
+        stock: {
+          include: {
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+                isPrimary: true,
+                location: true,
+              },
             },
           },
         },
-      },
-      transactionItems: {
-        take: 10,
-        orderBy: { transaction: { createdAt: "desc" } },
-        include: {
-          transaction: {
-            select: {
-              id: true,
-              createdAt: true,
-              paymentMethod: true,
-              performedBy: {
-                select: {
-                  fullName: true,
-                  username: true,
+        transactionItems: {
+          take: 10,
+          orderBy: { transaction: { createdAt: "desc" } },
+          include: {
+            transaction: {
+              select: {
+                id: true,
+                createdAt: true,
+                paymentMethod: true,
+                performedBy: {
+                  select: {
+                    fullName: true,
+                    username: true,
+                  },
                 },
               },
             },
           },
         },
       },
-    },
-  });
+    }),
+    getThresholdSettings(businessId),
+  ]);
 
   if (!product) {
     throw new AppError("Product not found", 404);
   }
 
+  const stock = product.stock.map((s) => ({
+    ...s,
+    lowStockThreshold: resolveLowStockThreshold(s.lowStockThreshold, product.unit, thresholdSettings),
+  }));
+
   return {
     ...product,
-    totalQuantity: product.stock.reduce((sum, s) => sum + s.quantity, 0),
-    primaryStock: product.stock.find((s) => s.warehouse.isPrimary) || null,
+    stock,
+    totalQuantity: stock.reduce((sum, s) => sum + s.quantity, 0),
+    primaryStock: stock.find((s) => s.warehouse.isPrimary) || null,
   };
 };
 
@@ -504,7 +527,9 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
             warehouseId,
             productId,
             quantity,
-            lowStockThreshold: lowStockThreshold ?? 10,
+            // Left null (no explicit override) unless the caller set one -
+            // governed instead by the business's live low-stock rule.
+            lowStockThreshold: lowStockThreshold ?? null,
           },
         });
       }
@@ -550,40 +575,51 @@ const receiveStock = async ({ businessId, warehouseId, items, movedById, notes }
  *   flagged stock list sorted lowest-quantity first.
  */
 const getAllStock = async (businessId) => {
-  const warehouses = await prisma.warehouse.findMany({
-    where: { businessId, deletedAt: null },
-    include: {
-      stock: {
-        where: { product: { deletedAt: null } },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              unit: true,
-              description: true,
+  const [warehouses, thresholdSettings] = await Promise.all([
+    prisma.warehouse.findMany({
+      where: { businessId, deletedAt: null },
+      include: {
+        stock: {
+          where: { product: { deletedAt: null } },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+                description: true,
+              },
             },
           },
-        },
-        orderBy: {
-          quantity: "asc",
+          orderBy: {
+            quantity: "asc",
+          },
         },
       },
-    },
-    orderBy: [
-      { isPrimary: "desc" },
-      { createdAt: "asc" },
-    ],
-  });
+      orderBy: [
+        { isPrimary: "desc" },
+        { createdAt: "asc" },
+      ],
+    }),
+    getThresholdSettings(businessId),
+  ]);
 
-  // Flag low stock items
+  // Resolve each row's effective threshold, then flag low/out-of-stock items.
   const warehousesWithAlerts = warehouses.map((warehouse) => ({
     ...warehouse,
-    stock: warehouse.stock.map((item) => ({
-      ...item,
-      isLowStock: item.quantity <= item.lowStockThreshold,
-      isOutOfStock: item.quantity === 0,
-    })),
+    stock: warehouse.stock.map((item) => {
+      const lowStockThreshold = resolveLowStockThreshold(
+        item.lowStockThreshold,
+        item.product.unit,
+        thresholdSettings
+      );
+      return {
+        ...item,
+        lowStockThreshold,
+        isLowStock: item.quantity <= lowStockThreshold,
+        isOutOfStock: item.quantity === 0,
+      };
+    }),
   }));
 
   return warehousesWithAlerts;

@@ -258,14 +258,25 @@ const getBusinessById = async (businessId, userId, role) => {
  * @param {string} businessId
  * @param {string} ownerId - Must match the business's owner.
  * @param {object} fields - Partial update (name, phone, email, location,
- *   receiptTitle, receiptFooterNote, receiptShowSignature).
+ *   receiptTitle, receiptFooterNote, receiptShowSignature,
+ *   defaultLowStockThreshold, lowStockThresholdsByUnit).
  * @returns {Promise<object>} The updated business record.
  * @throws {Error} If the business doesn't exist or isn't owned by ownerId.
  */
 const updateBusiness = async (
   businessId,
   ownerId,
-  { name, phone, email, location, receiptTitle, receiptFooterNote, receiptShowSignature }
+  {
+    name,
+    phone,
+    email,
+    location,
+    receiptTitle,
+    receiptFooterNote,
+    receiptShowSignature,
+    defaultLowStockThreshold,
+    lowStockThresholdsByUnit,
+  }
 ) => {
   // Make sure this business belongs to this owner
   const existing = await prisma.business.findFirst({
@@ -286,6 +297,8 @@ const updateBusiness = async (
       ...(receiptTitle !== undefined && { receiptTitle }),
       ...(receiptFooterNote !== undefined && { receiptFooterNote }),
       ...(receiptShowSignature !== undefined && { receiptShowSignature }),
+      ...(defaultLowStockThreshold !== undefined && { defaultLowStockThreshold }),
+      ...(lowStockThresholdsByUnit !== undefined && { lowStockThresholdsByUnit }),
     },
   });
 

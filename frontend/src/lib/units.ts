@@ -5,6 +5,26 @@ export interface UnitChoice {
   factor: number
 }
 
+// Preset unit choices offered wherever a product's unit is picked (the
+// product form's "Unit" dropdown, and Settings > Stock alerts' per-unit
+// threshold rules) - shared so both stay in sync instead of drifting apart.
+export const PRESET_UNITS = [
+  "pcs",
+  "dozen",
+  "pack",
+  "box",
+  "carton",
+  "bag",
+  "kg",
+  "g",
+  "litre",
+  "millilitre",
+  "pair",
+  "roll",
+  "bundle",
+  "set",
+]
+
 const PCS = "pcs"
 const DOZEN = "dozen"
 const DOZEN_FACTOR = 12

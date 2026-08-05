@@ -79,6 +79,13 @@ model Business {
   receiptTitle         String  @default("RECEIPT")
   receiptFooterNote    String  @default("Thank you for your business!")
   receiptShowSignature Boolean @default(true)
+  // Low-stock alert rule, applied to any WarehouseStock row that doesn't
+  // have its own explicit lowStockThreshold override: lowStockThresholdsByUnit
+  // is a { unit: threshold } map (e.g. {"pcs": 50, "dozen": 5}) checked first
+  // by the product's unit, falling back to defaultLowStockThreshold for any
+  // unit not listed there.
+  defaultLowStockThreshold Float @default(10)
+  lowStockThresholdsByUnit Json  @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -185,7 +192,11 @@ model WarehouseStock {
   warehouseId       String
   productId         String
   quantity          Float    @default(0)
-  lowStockThreshold Float    @default(10)
+  // Null means "no explicit override" - governed instead by the business's
+  // live lowStockThresholdsByUnit/defaultLowStockThreshold rule (resolved at
+  // read time, see utils/lowStockThreshold.js), so changing that rule in
+  // Settings retroactively affects every row that hasn't been customized.
+  lowStockThreshold Float?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

@@ -9,6 +9,7 @@ import {
   Palette,
   History,
   ArchiveRestore,
+  PackageX,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -93,6 +94,12 @@ export default function SettingsHub() {
           title="Receipt appearance"
           description="Customize what prints on your receipts"
           onClick={() => navigate("/settings/receipt")}
+        />
+        <SettingsCard
+          icon={PackageX}
+          title="Stock alerts"
+          description="Set when you're notified that a product is running low"
+          onClick={() => navigate("/settings/stock-alerts")}
         />
         <SettingsCard
           icon={Palette}

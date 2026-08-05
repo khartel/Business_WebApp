@@ -75,6 +75,8 @@ export interface UpdateBusinessInput {
   receiptTitle?: string
   receiptFooterNote?: string
   receiptShowSignature?: boolean
+  defaultLowStockThreshold?: number
+  lowStockThresholdsByUnit?: Record<string, number>
 }
 
 /** Fetches full details for one business. */

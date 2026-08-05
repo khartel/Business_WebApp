@@ -1,5 +1,6 @@
 const prisma = require("../utils/prisma");
 const { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval, eachWeekOfInterval } = require("date-fns");
+const { getThresholdSettings, resolveLowStockThreshold } = require("../utils/lowStockThreshold");
 
 /**
  * Builds a Prisma-friendly date range filter (`{ gte, lte }`) spanning the
@@ -677,37 +678,46 @@ const getProductReport = async (businessId, startDate, endDate) => {
 /**
  * Stock Alert Report — buckets every stock line across all of a business's
  * warehouses into out-of-stock (quantity 0), low-stock (quantity > 0 but at
- * or below that line's own `lowStockThreshold`), and healthy, so reordering
- * decisions can be made at a glance. Thresholds are per warehouse-product
- * line, not global, since different warehouses may want different reorder
- * points for the same product.
+ * or below that line's effective threshold), and healthy, so reordering
+ * decisions can be made at a glance. Each line's threshold is its own
+ * explicit override if it has one, otherwise the business's configured
+ * per-unit/default low-stock rule (Settings > Stock alerts) - see
+ * `resolveLowStockThreshold`.
  *
  * @param {string} businessId
  * @returns {Promise<object>} `{ summary, outOfStock, lowStock, healthyStock }`.
  */
 const getStockAlertReport = async (businessId) => {
-  const stock = await prisma.warehouseStock.findMany({
-    where: {
-      warehouse: { businessId },
-    },
-    include: {
-      product: {
-        select: {
-          id: true,
-          name: true,
-          unit: true,
+  const [rawStock, thresholdSettings] = await Promise.all([
+    prisma.warehouseStock.findMany({
+      where: {
+        warehouse: { businessId },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+          },
+        },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+            isPrimary: true,
+          },
         },
       },
-      warehouse: {
-        select: {
-          id: true,
-          name: true,
-          isPrimary: true,
-        },
-      },
-    },
-    orderBy: { quantity: "asc" },
-  });
+      orderBy: { quantity: "asc" },
+    }),
+    getThresholdSettings(businessId),
+  ]);
+
+  const stock = rawStock.map((s) => ({
+    ...s,
+    lowStockThreshold: resolveLowStockThreshold(s.lowStockThreshold, s.product.unit, thresholdSettings),
+  }));
 
   const outOfStock = stock.filter((s) => s.quantity === 0);
   const lowStock = stock.filter(

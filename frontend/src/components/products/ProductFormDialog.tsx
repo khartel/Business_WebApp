@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as productService from "@/services/product.service"
 import type { Product } from "@/services/product.service"
+import { PRESET_UNITS } from "@/lib/units"
 import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
@@ -33,22 +34,7 @@ import {
 
 // Preset unit choices offered in the "Unit" dropdown; selecting "Other (custom)" (OTHER_UNIT)
 // switches the field into free-text entry mode instead.
-const UNIT_OPTIONS = [
-  "pcs",
-  "dozen",
-  "pack",
-  "box",
-  "carton",
-  "bag",
-  "kg",
-  "g",
-  "litre",
-  "millilitre",
-  "pair",
-  "roll",
-  "bundle",
-  "set",
-]
+const UNIT_OPTIONS = PRESET_UNITS
 const OTHER_UNIT = "__other__"
 
 // Units whose relationship to a base unit is fixed by definition, so we can

@@ -30,6 +30,10 @@ const updateBusinessSchema = {
     receiptTitle: z.string().trim().min(1).max(40).optional(),
     receiptFooterNote: z.string().trim().max(200).optional(),
     receiptShowSignature: z.boolean().optional(),
+    // Low-stock alert rule (Settings > Stock alerts): a flat fallback plus
+    // an optional per-unit map, e.g. {"pcs": 50, "dozen": 5}.
+    defaultLowStockThreshold: z.coerce.number().positive("Must be greater than 0").optional(),
+    lowStockThresholdsByUnit: z.record(z.string(), z.coerce.number().positive()).optional(),
   }),
 };
 
