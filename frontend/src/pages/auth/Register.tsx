@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Link, useNavigate } from "react-router-dom"
@@ -8,14 +8,16 @@ import { useTranslation } from "react-i18next"
 import * as authService from "@/services/auth.service"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input"
 import { AuthShell } from "@/components/auth/AuthShell"
 import { AuthField } from "@/components/auth/AuthField"
+import { cn } from "@/lib/utils"
 
 const registerSchema = z
   .object({
     fullName: z.string().min(1, "Full name is required"),
     username: z.string().min(3, "Username must be at least 3 characters"),
-    phone: z.string().min(7, "Phone number is required"),
+    phone: z.string().refine(isValidPhoneNumber, "Enter a valid phone number"),
     email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
@@ -47,6 +49,7 @@ export default function Register() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
@@ -95,14 +98,41 @@ export default function Register() {
           error={errors.username?.message}
           {...register("username")}
         />
-        <AuthField
-          icon={Phone}
-          label="Phone number"
-          type="tel"
-          placeholder="Phone number"
-          error={errors.phone?.message}
-          {...register("phone")}
-        />
+        {/* Matches AuthField's pill chrome by hand, since PhoneInput needs a
+            controlled value/onChange (via Controller) rather than a plain
+            forwarded <input> ref that register() expects. */}
+        <div className="space-y-1.5">
+          <label htmlFor="register-phone" className="sr-only">
+            {t("Phone number")}
+          </label>
+          <div
+            className={cn(
+              "flex items-center gap-3 rounded-full border bg-white/50 px-2 py-1.5 backdrop-blur-sm transition-colors",
+              "border-border/60 focus-within:border-primary focus-within:bg-white/70",
+              "dark:border-white/15 dark:bg-white/5 dark:focus-within:border-primary dark:focus-within:bg-white/10",
+              errors.phone && "border-destructive/60 dark:border-destructive/60"
+            )}
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-black/5 text-foreground/60 dark:bg-white/10 dark:text-foreground/70">
+              <Phone className="size-4" />
+            </span>
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  id="register-phone"
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder={t("Phone number")}
+                  aria-invalid={!!errors.phone}
+                  className="!h-auto !w-full !border-0 !bg-transparent !p-0 text-sm"
+                />
+              )}
+            />
+          </div>
+          {errors.phone?.message && <p className="pl-4 text-xs text-destructive">{t(errors.phone.message)}</p>}
+        </div>
         <AuthField
           icon={Mail}
           label="Email"

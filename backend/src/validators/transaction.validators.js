@@ -19,9 +19,11 @@ const transactionIdParamSchema = {
 
 /**
  * Validates POST .../transactions - creates a sale with one or more line
- * items. `customerName` is conditionally required: the refine() enforces it
- * whenever paymentMethod is "CREDIT", since a credit sale needs a customer
- * to bill later.
+ * items. `customerId` is conditionally required: the refine() enforces it
+ * whenever paymentMethod is "CREDIT", since credit can only be extended to
+ * a real, already-known customer (no typing an arbitrary name). `customerName`
+ * stays free-text and optional - meaningful only for CASH/TRANSFER, where
+ * it's just a receipt-display snapshot (see transaction.service.js).
  */
 const createTransactionSchema = {
   params: businessIdParamSchema.params,
@@ -30,6 +32,7 @@ const createTransactionSchema = {
       paymentMethod: z.enum(["CASH", "TRANSFER", "CREDIT"], {
         message: "Payment method must be CASH, TRANSFER, or CREDIT",
       }),
+      customerId: z.string().uuid("Invalid customer id").optional(),
       customerName: z.string().trim().optional(),
       notes: z.string().trim().optional(),
       // Only meaningful for CASH - the service ignores it for other payment
@@ -53,10 +56,10 @@ const createTransactionSchema = {
         .min(1, "At least one item is required"),
     })
     .refine(
-      (data) => data.paymentMethod !== "CREDIT" || !!data.customerName?.trim(),
+      (data) => data.paymentMethod !== "CREDIT" || !!data.customerId,
       {
-        message: "Customer name is required for credit sales",
-        path: ["customerName"],
+        message: "Select an existing customer for credit sales",
+        path: ["customerId"],
       }
     ),
 };

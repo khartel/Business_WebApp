@@ -214,7 +214,10 @@ model Customer {
   id         String    @id @default(uuid())
   businessId String
   name       String
-  phone      String?
+  // Required so every saved customer is actually reachable/locatable -
+  // enforced at the application layer (validators), not just here.
+  phone      String
+  address    String
   // Soft-delete: hidden from the directory/pickers when set; past
   // transactions keep their `customerName` snapshot regardless.
   deletedAt  DateTime?

@@ -60,6 +60,9 @@ export interface Transaction {
 // current user's active warehouse/business context on the backend.
 export interface CreateTransactionInput {
   paymentMethod: PaymentMethod
+  // Required for CREDIT (must reference an existing customer); ignored for
+  // CASH/TRANSFER, which use free-text customerName instead.
+  customerId?: string
   customerName?: string
   notes?: string
   // Only meaningful for CASH; ignored by the backend for TRANSFER/CREDIT.

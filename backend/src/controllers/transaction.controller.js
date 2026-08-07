@@ -14,12 +14,13 @@ const asyncHandler = require("../utils/asyncHandler");
  * Make a sale
  */
 const create = asyncHandler(async (req, res) => {
-  const { paymentMethod, items, notes, customerName, amountTendered } = req.body;
+  const { paymentMethod, items, notes, customerId, customerName, amountTendered } = req.body;
 
   const transaction = await createTransaction({
     businessId: req.params.businessId,
     performedById: req.user.id,
     paymentMethod,
+    customerId,
     customerName,
     items,
     notes,

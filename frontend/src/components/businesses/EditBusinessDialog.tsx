@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -8,10 +8,12 @@ import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as businessService from "@/services/business.service"
 import type { BusinessListItem } from "@/services/business.service"
+import { countryNameToIso } from "@/lib/countries"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input"
 import {
   Dialog,
   DialogContent,
@@ -25,7 +27,7 @@ import {
 // Validation for the edit-business form (same shape as create, minus country which isn't editable here).
 const schema = z.object({
   name: z.string().trim().min(1, "Business name is required"),
-  phone: z.string().trim().min(7, "Phone number is required"),
+  phone: z.string().refine(isValidPhoneNumber, "Enter a valid phone number"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   location: z.string().trim().min(1, "Location is required"),
 })
@@ -50,6 +52,7 @@ export function EditBusinessDialog({ business }: { business: BusinessListItem })
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -96,7 +99,19 @@ export function EditBusinessDialog({ business }: { business: BusinessListItem })
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-biz-phone-${business.id}`}>{t("Phone number")}</Label>
-            <Input id={`edit-biz-phone-${business.id}`} {...register("phone")} />
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  id={`edit-biz-phone-${business.id}`}
+                  value={field.value}
+                  onChange={field.onChange}
+                  defaultCountry={countryNameToIso(business.country)}
+                  aria-invalid={!!errors.phone}
+                />
+              )}
+            />
             {errors.phone?.message && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
           </div>
           <div className="space-y-1.5">

@@ -177,6 +177,62 @@
   .animate-aurora-3 { animation: aurora-3 24s ease-in-out infinite; }
 }
 
+/* Country-flag phone input (react-phone-number-input, see ui/phone-input.tsx).
+   Its internal class names (.PhoneInput*) can't be reached with Tailwind
+   utility classes, so the shadcn Input look (border/radius/focus-ring) is
+   replicated here by hand instead. */
+.phone-input-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--input);
+  background: transparent;
+  padding: 0 0.625rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.phone-input-field:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+.phone-input-field[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+.phone-input-field .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.phone-input-field .PhoneInputCountryIcon {
+  width: 1.25rem;
+  box-shadow: none;
+}
+.phone-input-field .PhoneInputCountrySelectArrow {
+  opacity: 0.6;
+}
+.phone-input-field .PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--text-base, 1rem);
+  color: inherit;
+}
+.phone-input-field .PhoneInputInput::placeholder {
+  color: var(--muted-foreground);
+}
+@media (min-width: 48rem) {
+  .phone-input-field .PhoneInputInput {
+    font-size: 0.875rem;
+  }
+}
+
 /* No `size:` here on purpose - leaving it unset means the receipt follows
    whatever paper size the user picks in their print dialog (A4, A5, Letter,
    ...) instead of forcing one. `margin` just keeps a consistent frame around

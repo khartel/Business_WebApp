@@ -8,10 +8,13 @@ import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as teamService from "@/services/team.service"
 import { useAuth } from "@/context/AuthContext"
+import { useActiveBusiness } from "@/hooks/useActiveBusiness"
+import { countryNameToIso } from "@/lib/countries"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input"
 import {
   Dialog,
   DialogContent,
@@ -32,7 +35,7 @@ import {
 const schema = z.object({
   fullName: z.string().trim().min(1, "Full name is required"),
   username: z.string().trim().min(3, "Username must be at least 3 characters"),
-  phone: z.string().trim().min(7, "Phone number is required"),
+  phone: z.string().refine(isValidPhoneNumber, "Enter a valid phone number"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   role: z.enum(["ADMIN", "EMPLOYEE"], { message: "Select a role" }),
 })
@@ -61,6 +64,7 @@ export function AddTeamMemberDialog() {
   const [created, setCreated] = useState<{ username: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const { activeBusinessId } = useAuth()
+  const activeBusiness = useActiveBusiness()
   const queryClient = useQueryClient()
 
   const {
@@ -173,7 +177,19 @@ export function AddTeamMemberDialog() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="member-phone">{t("Phone number")}</Label>
-                  <Input id="member-phone" {...register("phone")} />
+                  <Controller
+                    name="phone"
+                    control={control}
+                    render={({ field }) => (
+                      <PhoneInput
+                        id="member-phone"
+                        value={field.value}
+                        onChange={field.onChange}
+                        defaultCountry={countryNameToIso(activeBusiness?.country)}
+                        aria-invalid={!!errors.phone}
+                      />
+                    )}
+                  />
                   {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message ?? "")}</p>}
                 </div>
                 <div className="space-y-1.5">

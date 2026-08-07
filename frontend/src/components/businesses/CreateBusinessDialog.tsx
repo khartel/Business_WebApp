@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -7,10 +7,12 @@ import { Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as businessService from "@/services/business.service"
+import { countryNameToIso } from "@/lib/countries"
 import { ApiError } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input"
 import {
   Dialog,
   DialogContent,
@@ -31,7 +33,7 @@ import {
 // Validation for the new-business form. Email is optional (empty string allowed).
 const schema = z.object({
   name: z.string().trim().min(1, "Business name is required"),
-  phone: z.string().trim().min(7, "Phone number is required"),
+  phone: z.string().refine(isValidPhoneNumber, "Enter a valid phone number"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   country: z.string().min(1, "Country is required"),
   location: z.string().trim().min(1, "Location is required"),
@@ -74,6 +76,7 @@ export function CreateBusinessDialog({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
@@ -101,6 +104,14 @@ export function CreateBusinessDialog({
 
   const onSubmit = (values: FormValues) => createMutation.mutate(values)
 
+  // Unlike the other phone fields in the app, country here is picked in
+  // this same form rather than coming from an already-active business - so
+  // the phone input's default country needs to react to it. `defaultCountry`
+  // only applies on mount, so a `key` forces a remount when the picked
+  // country changes (this does mean a half-typed number resets if the
+  // country field is changed after the fact - an accepted minor rough edge).
+  const countryIso = countryNameToIso(watch("country"))
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -126,7 +137,20 @@ export function CreateBusinessDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="biz-phone">{t("Phone number")}</Label>
-            <Input id="biz-phone" {...register("phone")} />
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  key={countryIso}
+                  id="biz-phone"
+                  value={field.value}
+                  onChange={field.onChange}
+                  defaultCountry={countryIso}
+                  aria-invalid={!!errors.phone}
+                />
+              )}
+            />
             {errors.phone?.message && <p className="text-xs text-destructive">{t(errors.phone.message)}</p>}
           </div>
 

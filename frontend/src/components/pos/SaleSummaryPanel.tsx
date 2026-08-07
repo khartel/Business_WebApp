@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CustomerNameField } from "@/components/pos/CustomerNameField"
+import { CreditCustomerPicker, type SelectedCreditCustomer } from "@/components/pos/CreditCustomerPicker"
 import type { CartLine } from "@/components/pos/CartItemsPanel"
 import type { PaymentMethod } from "@/services/transaction.service"
 
@@ -16,8 +17,9 @@ interface SaleSummaryPanelProps {
   onPaymentMethodChange: (method: PaymentMethod) => void
   customerName: string
   onCustomerNameChange: (value: string) => void
-  customerNameRequired: boolean
-  customerNameError?: string
+  creditCustomer: SelectedCreditCustomer | null
+  onCreditCustomerChange: (value: SelectedCreditCustomer | null) => void
+  customerFieldError?: string
   transferNote: string
   onTransferNoteChange: (value: string) => void
   amountTendered: string
@@ -28,14 +30,16 @@ interface SaleSummaryPanelProps {
 }
 
 /**
- * Right-hand panel of the POS register: customer name field, a payment
- * method picker (Cash / Transfer / Credit), method-specific extra fields
- * (a transfer note for Transfer, an explanatory note for Credit), the
- * running total (derived from `cart` here rather than passed in), and the
- * "Complete sale" submit button. `customerNameRequired` is driven by the
- * parent based on payment method (credit sales require a name to track who
- * owes money) and is just forwarded to `CustomerNameField` for validation
- * display. Purely presentational/controlled — all state lives in the parent.
+ * Right-hand panel of the POS register: customer field, a payment method
+ * picker (Cash / Transfer / Credit), method-specific extra fields (a
+ * transfer note for Transfer, an explanatory note for Credit), the running
+ * total (derived from `cart` here rather than passed in), and the "Complete
+ * sale" submit button. The customer field itself switches component
+ * entirely by payment method: Credit uses `CreditCustomerPicker` (a strict
+ * pick from the real directory — free text alone isn't enough), Cash/
+ * Transfer use the free-text `CustomerNameField` (just a receipt snapshot,
+ * optionally linked if it matches an existing customer). Purely
+ * presentational/controlled — all state lives in the parent (`Pos.tsx`).
  */
 export function SaleSummaryPanel({
   businessId,
@@ -45,8 +49,9 @@ export function SaleSummaryPanel({
   onPaymentMethodChange,
   customerName,
   onCustomerNameChange,
-  customerNameRequired,
-  customerNameError,
+  creditCustomer,
+  onCreditCustomerChange,
+  customerFieldError,
   transferNote,
   onTransferNoteChange,
   amountTendered,
@@ -69,16 +74,22 @@ export function SaleSummaryPanel({
           <h2 className="font-heading text-base font-semibold">{t("Sale details")}</h2>
         </div>
 
-        <CustomerNameField
-          businessId={businessId}
-          placeholder={
-            customerNameRequired ? t("Customer name (required for credit)") : t("Customer name (optional)")
-          }
-          value={customerName}
-          onChange={onCustomerNameChange}
-          required={customerNameRequired}
-          error={customerNameError}
-        />
+        {paymentMethod === "CREDIT" ? (
+          <CreditCustomerPicker
+            businessId={businessId}
+            value={creditCustomer}
+            onChange={onCreditCustomerChange}
+            error={customerFieldError}
+          />
+        ) : (
+          <CustomerNameField
+            businessId={businessId}
+            placeholder={t("Customer name (optional)")}
+            value={customerName}
+            onChange={onCustomerNameChange}
+            error={customerFieldError}
+          />
+        )}
 
         <div className="grid grid-cols-3 gap-2">
           <button

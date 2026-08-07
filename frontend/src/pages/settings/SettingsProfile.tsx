@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Loader2 } from "lucide-react"
@@ -7,6 +7,8 @@ import { toast } from "sonner"
 import { useTranslation } from "react-i18next"
 import * as authService from "@/services/auth.service"
 import { useAuth } from "@/context/AuthContext"
+import { useActiveBusiness } from "@/hooks/useActiveBusiness"
+import { countryNameToIso } from "@/lib/countries"
 import { ApiError } from "@/lib/api-client"
 import { SettingsSectionHeader } from "@/pages/settings/SettingsSectionHeader"
 import { Badge } from "@/components/ui/badge"
@@ -14,10 +16,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input"
 
 const profileSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required"),
-  phone: z.string().trim().min(7, "Phone number is required"),
+  phone: z.string().refine(isValidPhoneNumber, "Enter a valid phone number"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
 })
 
@@ -32,10 +35,12 @@ type ProfileValues = z.infer<typeof profileSchema>
 export default function SettingsProfile() {
   const { t } = useTranslation()
   const { user, refetchMe } = useAuth()
+  const activeBusiness = useActiveBusiness()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileValues>({
@@ -78,7 +83,19 @@ export default function SettingsProfile() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="settings-phone">{t("Phone number")}</Label>
-                <Input id="settings-phone" {...register("phone")} />
+                <Controller
+                  name="phone"
+                  control={control}
+                  render={({ field }) => (
+                    <PhoneInput
+                      id="settings-phone"
+                      value={field.value}
+                      onChange={field.onChange}
+                      defaultCountry={countryNameToIso(activeBusiness?.country)}
+                      aria-invalid={!!errors.phone}
+                    />
+                  )}
+                />
                 {errors.phone && <p className="text-xs text-destructive">{t(errors.phone.message ?? "")}</p>}
               </div>
               <div className="space-y-1.5">

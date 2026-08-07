@@ -46,21 +46,34 @@ const withCreditStats = (transaction) => {
  * exists, stock is sufficient, and quantity/price are positive, computing
  * a subtotal and the overall total before touching the database.
  *
- * The actual write happens inside a `$transaction` that: (1) resolves the
- * named customer to an existing `Customer` row by case-insensitive name
- * match, or silently creates a lightweight one — this is what lets staff
- * type a name at the register without pre-registering customers, and is
- * what powers the Customers/Credit tracking page; (2) creates the
- * Transaction with its nested TransactionItems; (3) decrements
- * WarehouseStock for every item sold. Wrapping all of this atomically
- * guarantees a sale is never recorded without its stock being deducted (or
- * vice versa) even if something fails partway through.
+ * The actual write happens inside a `$transaction` that: (1) resolves who
+ * the sale is attributed to — differently depending on payment method (see
+ * `customerId`/`customerName` below); (2) creates the Transaction with its
+ * nested TransactionItems; (3) decrements WarehouseStock for every item
+ * sold. Wrapping all of this atomically guarantees a sale is never recorded
+ * without its stock being deducted (or vice versa) even if something fails
+ * partway through.
+ *
+ * Customer resolution differs by payment method:
+ * - CREDIT: `customerId` must reference a real, non-deleted customer of this
+ *   business (enforced here, not just by the validator, since the validator
+ *   can't check the database) — credit can only ever be extended to someone
+ *   already known, never an arbitrary typed name. The stored `customerName`
+ *   snapshot is always derived from that customer's actual name, ignoring
+ *   any client-supplied `customerName`, so a receipt can never diverge from
+ *   who it's actually billed to.
+ * - CASH/TRANSFER: `customerName` is free text. If it case-insensitively
+ *   matches an existing customer, the sale links to them (so their
+ *   purchase history/stats include it) — but no match no longer creates a
+ *   new customer record (changed 2026-08-07; it used to auto-create). A
+ *   blank name defaults to "Casual Customer" and is never linked.
  *
  * @param {object} params
  * @param {string} params.businessId
  * @param {string} params.performedById - Staff member making the sale.
  * @param {"CASH"|"TRANSFER"|"CREDIT"} params.paymentMethod
- * @param {string} [params.customerName] - Free-text name; blank defaults to "Casual Customer".
+ * @param {string} [params.customerId] - Required for CREDIT; must be an existing customer of this business.
+ * @param {string} [params.customerName] - Free-text name, CASH/TRANSFER only; blank defaults to "Casual Customer".
  * @param {Array<{productId: string, quantitySold: number, unitPrice: number, discountPercent?: number, unitLabel?: string, unitQuantity?: number}>} params.items
  *   `unitLabel`/`unitQuantity` are display-only passthroughs (e.g. "2
  *   dozen") - `quantitySold`/`unitPrice` must already be in base-unit terms.
@@ -78,6 +91,7 @@ const createTransaction = async ({
   businessId,
   performedById,
   paymentMethod,
+  customerId,
   customerName,
   items,
   notes,
@@ -187,18 +201,27 @@ const createTransaction = async ({
   const trimmedCustomerName = customerName?.trim();
 
   const transaction = await prisma.$transaction(async (tx) => {
-    // Recognize a returning customer by exact (case-insensitive) name match,
-    // or quietly create a lightweight record for a new one — this is what
-    // powers the register's autocomplete and the Customers/Credit tracking
-    // page, without requiring anyone to pre-register a customer first.
-    let customerId = null;
-    if (trimmedCustomerName) {
+    // Resolve who the sale is attributed to. CREDIT requires an existing,
+    // real customer (never typed free-text, never auto-created) - see the
+    // JSDoc above. CASH/TRANSFER link to an existing customer on an exact
+    // (case-insensitive) name match, but no longer auto-create one on a miss.
+    let resolvedCustomerId = null;
+    let resolvedCustomerName = trimmedCustomerName || "Casual Customer";
+
+    if (paymentMethod === "CREDIT") {
+      const customer = await tx.customer.findFirst({
+        where: { id: customerId, businessId, deletedAt: null },
+      });
+      if (!customer) {
+        throw new AppError("Customer not found", 404);
+      }
+      resolvedCustomerId = customer.id;
+      resolvedCustomerName = customer.name;
+    } else if (trimmedCustomerName) {
       const existingCustomer = await tx.customer.findFirst({
         where: { businessId, deletedAt: null, name: { equals: trimmedCustomerName, mode: "insensitive" } },
       });
-      customerId = existingCustomer
-        ? existingCustomer.id
-        : (await tx.customer.create({ data: { businessId, name: trimmedCustomerName } })).id;
+      resolvedCustomerId = existingCustomer?.id ?? null;
     }
 
     const newTransaction = await tx.transaction.create({
@@ -206,10 +229,10 @@ const createTransaction = async ({
         businessId,
         warehouseId: primaryWarehouse.id,
         performedById,
-        customerId,
+        customerId: resolvedCustomerId,
         paymentMethod,
         totalAmount,
-        customerName: trimmedCustomerName || "Casual Customer",
+        customerName: resolvedCustomerName,
         notes,
         amountTendered: storedAmountTendered,
         changeGiven,

@@ -8,7 +8,8 @@ export interface Customer {
   id: string
   businessId: string
   name: string
-  phone: string | null
+  phone: string
+  address: string
   createdAt: string
   updatedAt: string
   transactionCount: number
@@ -52,7 +53,8 @@ export interface CustomerDetail extends Customer {
 // Fields required to add a new customer.
 export interface CreateCustomerInput {
   name: string
-  phone?: string
+  phone: string
+  address: string
 }
 
 // Partial customer fields for edits.
@@ -90,7 +92,7 @@ export const deleteCustomer = (businessId: string, customerId: string) =>
 export interface DeletedCustomer {
   id: string
   name: string
-  phone: string | null
+  phone: string
   deletedAt: string
 }
 

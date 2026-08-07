@@ -15,6 +15,7 @@ import { ErrorState } from "@/components/ErrorState"
 import { ProductSearch } from "@/components/pos/ProductSearch"
 import { CartItemsPanel, type CartLine } from "@/components/pos/CartItemsPanel"
 import { SaleSummaryPanel } from "@/components/pos/SaleSummaryPanel"
+import type { SelectedCreditCustomer } from "@/components/pos/CreditCustomerPicker"
 import { TransactionDetailSheet } from "@/components/transactions/TransactionDetailSheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,9 +41,15 @@ import {
  *   tracking `quantity`, `catalogPrice` (original price), `unitPrice`
  *   (possibly discounted), `discountPercent`, and `availableStock` (used to
  *   prevent overselling).
- * - `paymentMethod` / `customerName` / `transferNote` / `amountTendered` —
- *   fields of the sale being built; `customerName` is required only when
- *   `paymentMethod` is "CREDIT" (see `customerNameMissing` below).
+ * - `paymentMethod` / `customerName` / `selectedCreditCustomer` /
+ *   `transferNote` / `amountTendered` — fields of the sale being built.
+ *   `customerName` is free text, used only for CASH/TRANSFER (a receipt
+ *   snapshot, optionally linked server-side if it matches an existing
+ *   customer). `selectedCreditCustomer` is a real `{id, name}` pick from the
+ *   directory, required only when `paymentMethod` is "CREDIT" (see
+ *   `customerMissing` below) — credit can't be extended to an untracked
+ *   name. Switching payment method clears whichever of the two isn't
+ *   relevant, so stale state from one mode can't leak into the submission.
  *   `amountTendered` is CASH-only and always optional, but if given must
  *   cover the total (see `amountTenderedInsufficient`) — the backend derives
  *   and stores `changeGiven` from it.
@@ -68,6 +75,7 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   const [cart, setCart] = useState<CartLine[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
   const [customerName, setCustomerName] = useState("")
+  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<SelectedCreditCustomer | null>(null)
   const [transferNote, setTransferNote] = useState("")
   const [amountTendered, setAmountTendered] = useState("")
   const [submitAttempted, setSubmitAttempted] = useState(false)
@@ -88,9 +96,22 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     setCart([])
     setPaymentMethod("CASH")
     setCustomerName("")
+    setSelectedCreditCustomer(null)
     setTransferNote("")
     setAmountTendered("")
     setSubmitAttempted(false)
+  }
+
+  // Switching payment method clears whichever customer field isn't relevant
+  // to the new method, so a stale free-text name or a stale credit
+  // selection can never leak into a submission under the wrong method.
+  const handlePaymentMethodChange = (method: PaymentMethod) => {
+    setPaymentMethod(method)
+    if (method === "CREDIT") {
+      setCustomerName("")
+    } else {
+      setSelectedCreditCustomer(null)
+    }
   }
 
   // Adds `quantity` of `product`, sold in the given pack size `unit`, to
@@ -141,9 +162,11 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     })
   }
 
-  // Credit sales must be tied to a named customer (for the receivables/credit
-  // tracking on the Customers page); other payment methods don't require it.
-  const customerNameMissing = paymentMethod === "CREDIT" && !customerName.trim()
+  // Credit sales must be tied to a real, already-known customer (for the
+  // receivables/credit tracking on the Customers page, and so credit is
+  // never extended to an untraceable name); other payment methods don't
+  // require a customer at all.
+  const customerMissing = paymentMethod === "CREDIT" && !selectedCreditCustomer
 
   // "Amount received" is optional (cashiers who don't care can leave it
   // blank), but if entered for a CASH sale it must cover the total - can't
@@ -157,7 +180,9 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
     mutationFn: () =>
       transactionService.createTransaction(businessId, {
         paymentMethod,
-        customerName: customerName || undefined,
+        ...(paymentMethod === "CREDIT"
+          ? { customerId: selectedCreditCustomer!.id }
+          : { customerName: customerName || undefined }),
         notes: paymentMethod === "TRANSFER" ? transferNote || undefined : undefined,
         amountTendered:
           paymentMethod === "CASH" && tenderedNum != null && !Number.isNaN(tenderedNum) ? tenderedNum : undefined,
@@ -187,10 +212,10 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
   })
 
   // Guards the "Complete sale" action: if a credit sale is missing a
-  // customer name, or a cash amount received is less than the total, flag
-  // the field as invalid instead of submitting.
+  // selected customer, or a cash amount received is less than the total,
+  // flag the field as invalid instead of submitting.
   const handleComplete = () => {
-    if (customerNameMissing || amountTenderedInsufficient) {
+    if (customerMissing || amountTenderedInsufficient) {
       setSubmitAttempted(true)
       return
     }
@@ -302,13 +327,14 @@ function RegisterTab({ businessId, currency }: { businessId: string; currency: s
           cart={cart}
           currency={currency}
           paymentMethod={paymentMethod}
-          onPaymentMethodChange={setPaymentMethod}
+          onPaymentMethodChange={handlePaymentMethodChange}
           customerName={customerName}
           onCustomerNameChange={setCustomerName}
-          customerNameRequired={paymentMethod === "CREDIT"}
-          customerNameError={
-            submitAttempted && customerNameMissing
-              ? t("Customer name is required for credit sales")
+          creditCustomer={selectedCreditCustomer}
+          onCreditCustomerChange={setSelectedCreditCustomer}
+          customerFieldError={
+            submitAttempted && customerMissing
+              ? t("Select an existing customer for credit sales")
               : undefined
           }
           transferNote={transferNote}

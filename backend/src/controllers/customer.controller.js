@@ -13,16 +13,17 @@ const asyncHandler = require("../utils/asyncHandler");
 
 /**
  * POST /api/businesses/:businessId/customers
- * Creates a customer record (name + phone) for the business, used for
- * attaching sales/credit to a known customer. Returns the created customer.
+ * Creates a customer record (name + phone + address) for the business, used
+ * for attaching sales/credit to a known customer. Returns the created customer.
  */
 const create = asyncHandler(async (req, res) => {
-  const { name, phone } = req.body;
+  const { name, phone, address } = req.body;
 
   const customer = await createCustomer({
     businessId: req.params.businessId,
     name,
     phone,
+    address,
   });
 
   return sendSuccess(res, {
@@ -64,14 +65,15 @@ const getOne = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/businesses/:businessId/customers/:customerId
- * Updates a customer's name and/or phone. Returns the updated customer.
+ * Updates a customer's name, phone, and/or address. Returns the updated customer.
  */
 const update = asyncHandler(async (req, res) => {
-  const { name, phone } = req.body;
+  const { name, phone, address } = req.body;
 
   const customer = await updateCustomer(req.params.customerId, req.params.businessId, {
     name,
     phone,
+    address,
   });
 
   return sendSuccess(res, {

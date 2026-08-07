@@ -43,12 +43,12 @@ const withStats = (customer) => {
  * response matches the shape of `getCustomers`/`getCustomerById` without an
  * extra round-trip, since a brand-new customer has no transactions yet.
  *
- * @param {{businessId: string, name: string, phone?: string}} params
+ * @param {{businessId: string, name: string, phone: string, address: string}} params
  * @returns {Promise<object>} The created customer with zeroed stats.
  */
-const createCustomer = async ({ businessId, name, phone }) => {
+const createCustomer = async ({ businessId, name, phone, address }) => {
   const customer = await prisma.customer.create({
-    data: { businessId, name, phone },
+    data: { businessId, name, phone, address },
   });
 
   return { ...customer, transactionCount: 0, totalSpent: 0, outstandingCredit: 0 };
@@ -139,11 +139,11 @@ const getCustomerById = async (customerId, businessId) => {
  *
  * @param {string} customerId
  * @param {string} businessId - Scopes the lookup to this business.
- * @param {{name?: string, phone?: string}} fields
+ * @param {{name?: string, phone?: string, address?: string}} fields
  * @returns {Promise<object>} The updated customer.
  * @throws {AppError} 404 if not found in this business.
  */
-const updateCustomer = async (customerId, businessId, { name, phone }) => {
+const updateCustomer = async (customerId, businessId, { name, phone, address }) => {
   const customer = await prisma.customer.findFirst({
     where: { id: customerId, businessId, deletedAt: null },
   });
@@ -157,6 +157,7 @@ const updateCustomer = async (customerId, businessId, { name, phone }) => {
     data: {
       ...(name && { name }),
       ...(phone !== undefined && { phone }),
+      ...(address !== undefined && { address }),
     },
   });
 
