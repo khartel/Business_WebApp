@@ -25,7 +25,7 @@ const listAuditLog = async (businessId, { limit = 100 } = {}) => {
  * deletion). Scoped to a fixed action allowlist rather than "businessId is
  * null", since that would also catch entries where the business was simply
  * deleted later for unrelated reasons - this list is exactly what
- * `ROADMAP.md` asked for: `business.deleted` and SuperAdmin add/remove.
+ * was asked for: `business.deleted` and SuperAdmin add/remove.
  *
  * @param {{limit?: number}} [options]
  * @returns {Promise<object[]>}

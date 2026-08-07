@@ -2,7 +2,7 @@
 
 A multi-business inventory and sales management tool — built so a small business owner (and their staff) can track stock, record sales, manage warehouses, and see reports across one or more businesses from a single login.
 
-> **Working on this project?** Read [`ROADMAP.md`](./ROADMAP.md) first — it's the living record of architecture decisions, what's been built, what's known-broken, and what's next. This README only covers "how do I run it."
+> **Working on this project?** Read [`projects_roadmap/instructions.md`](./projects_roadmap/instructions.md) first, then [`projects_roadmap/phase-00-analysis.md`](./projects_roadmap/phase-00-analysis.md) and [`projects_roadmap/todo.md`](./projects_roadmap/todo.md) — that folder is the living record of architecture decisions, what's been built, what's known-broken, and what's next. This README only covers "how do I run it."
 
 ## Stack
 
@@ -17,9 +17,9 @@ A multi-business inventory and sales management tool — built so a small busine
 
 ```
 business_webapp/
-├── backend/     Express API (routes → controllers → services → Prisma)
-├── frontend/    React app (Vite + TypeScript)
-└── ROADMAP.md   Project context, decisions, and phase-by-phase status
+├── backend/            Express API (routes → controllers → services → Prisma)
+├── frontend/           React app (Vite + TypeScript)
+└── projects_roadmap/   Project context, decisions, and phase-by-phase status
 ```
 
 ## Prerequisites
@@ -111,4 +111,4 @@ npm test
 
 ## Current status
 
-Backend is hardened and tested (see `ROADMAP.md` §9 for what "hardened" covers). Frontend has its foundation built — auth flow and app shell are real and working; the feature screens (Products, Warehouses, Stock, Sales, Team, Reports) are still placeholders pending the next build phase. Full detail, decisions, and the phase-by-phase plan live in [`ROADMAP.md`](./ROADMAP.md).
+Backend and frontend are both feature-complete for the app's current scope (Products, Warehouses, Stock, POS/Sales, Team, Reports, Customers/Credit, Settings) and hardened (auth, IDOR fixes, soft-delete/audit trail, structured logging, tested). A free-tier demo deployment (Vercel + Render + Neon) is live for real-world testing. The only open phase is production deployment/ops (Docker, CI, staging, monitoring, and the long-term hosting decision) — see [`projects_roadmap/todo.md`](./projects_roadmap/todo.md). Full detail, decisions, and the phase-by-phase plan live in [`projects_roadmap/`](./projects_roadmap/).
